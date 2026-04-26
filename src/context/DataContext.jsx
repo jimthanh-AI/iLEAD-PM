@@ -131,14 +131,16 @@ const fetchAll = async () => {
 };
 
 const pushToSupabase = async (data) => {
-  // Upsert all data (one-time migration from localStorage → Supabase)
+  // Sequential: partners first (FK parent), then children in parallel
+  await supabase.from('partners').upsert(data.partners);
   await Promise.all([
-    supabase.from('partners').upsert(data.partners),
     supabase.from('activities').upsert(data.activities),
+    supabase.from('partner_budgets').upsert(data.partnerBudgets),
+  ]);
+  await Promise.all([
     supabase.from('tasks').upsert(data.tasks),
     supabase.from('mel_entries').upsert(data.melEntries),
     supabase.from('activity_indicators').upsert(data.activityIndicators),
-    supabase.from('partner_budgets').upsert(data.partnerBudgets),
   ]);
 };
 
@@ -170,23 +172,24 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     const boot = async () => {
       try {
+        console.log('[Boot] Fetching Supabase...');
         const remote = await fetchAll();
+        console.log('[Boot] Supabase partners:', remote.partners.length);
         if (remote.partners.length > 0) {
-          // Supabase has data — use it
           setData(remote);
           saveLocal(remote);
         } else {
-          // Supabase empty — upload local/SEED data
           const local = loadLocal() || SEED;
-          // Normalize task statuses
           local.tasks = (local.tasks || []).map(t =>
             t.status === 'in_progress' ? { ...t, status: 'todo' } : t
           );
           setData(local);
+          console.log('[Boot] Pushing to Supabase:', local.partners.length, 'partners,', local.activities.length, 'activities,', local.tasks.length, 'tasks');
           await pushToSupabase(local);
+          console.log('[Boot] Push complete');
         }
       } catch (err) {
-        console.warn('Supabase unavailable, using localStorage:', err.message);
+        console.warn('[Boot] Supabase unavailable:', err.message);
         const local = loadLocal();
         if (local) {
           local.tasks = (local.tasks || []).map(t =>
