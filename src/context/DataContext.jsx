@@ -119,7 +119,9 @@ const fetchAll = async () => {
     supabase.from('activity_indicators').select('*').order('id'),
     supabase.from('partner_budgets').select('*'),
   ]);
-  if (p.error || a.error || t.error) throw new Error('Supabase fetch failed');
+  // Check ALL responses — partial errors must not silently return [] and overwrite local
+  const errs = [p, a, t, m, ai, pb].map((r, i) => r.error && `${['partners','activities','tasks','mel_entries','activity_indicators','partner_budgets'][i]}: ${r.error.message}`).filter(Boolean);
+  if (errs.length) throw new Error('Supabase fetch failed → ' + errs.join('; '));
   return {
     partners:           p.data  || [],
     activities:         a.data  || [],
@@ -130,18 +132,45 @@ const fetchAll = async () => {
   };
 };
 
+// Guard empty arrays — Supabase upsert([]) can error/no-op inconsistently
+const safeUpsert = (table, rows) =>
+  rows && rows.length ? supabase.from(table).upsert(rows) : Promise.resolve({ error: null });
+
 const pushToSupabase = async (data) => {
   // Sequential: partners first (FK parent), then children in parallel
-  await supabase.from('partners').upsert(data.partners);
+  await safeUpsert('partners', data.partners);
   await Promise.all([
-    supabase.from('activities').upsert(data.activities),
-    supabase.from('partner_budgets').upsert(data.partnerBudgets),
+    safeUpsert('activities', data.activities),
+    safeUpsert('partner_budgets', data.partnerBudgets),
   ]);
   await Promise.all([
-    supabase.from('tasks').upsert(data.tasks),
-    supabase.from('mel_entries').upsert(data.melEntries),
-    supabase.from('activity_indicators').upsert(data.activityIndicators),
+    safeUpsert('tasks', data.tasks),
+    safeUpsert('mel_entries', data.melEntries),
+    safeUpsert('activity_indicators', data.activityIndicators),
   ]);
+};
+
+// Merge helpers — recover items in local that are missing from remote (id-keyed)
+const COLLECTIONS_BY_ID = ['partners', 'activities', 'tasks', 'melEntries', 'activityIndicators'];
+const localOnlyByCollection = (local, remote) => {
+  const out = {};
+  for (const c of COLLECTIONS_BY_ID) {
+    const remoteIds = new Set((remote[c] || []).map(x => x.id));
+    out[c] = (local[c] || []).filter(x => x.id && !remoteIds.has(x.id));
+  }
+  const remoteBudgetIds = new Set((remote.partnerBudgets || []).map(x => x.partnerId));
+  out.partnerBudgets = (local.partnerBudgets || []).filter(b => b.partnerId && !remoteBudgetIds.has(b.partnerId));
+  return out;
+};
+const hasLocalOnly = (delta) =>
+  COLLECTIONS_BY_ID.some(c => (delta[c] || []).length > 0) || (delta.partnerBudgets || []).length > 0;
+const mergeRemoteWithLocal = (remote, delta) => {
+  const out = { ...remote };
+  for (const c of COLLECTIONS_BY_ID) {
+    out[c] = [...(remote[c] || []), ...(delta[c] || [])];
+  }
+  out.partnerBudgets = [...(remote.partnerBudgets || []), ...(delta.partnerBudgets || [])];
+  return out;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,6 +179,7 @@ const pushToSupabase = async (data) => {
 export const DataProvider = ({ children }) => {
   const [data, setData] = useState(SEED);
   const [loading, setLoading] = useState(true);
+  const [syncError, setSyncError] = useState(null);  // visible banner when Supabase fails
 
   // ── RBAC ──────────────────────────────────────────────────────
   const [userRole, setUserRole] = useState(
@@ -168,28 +198,48 @@ export const DataProvider = ({ children }) => {
   const dataRef = useRef(data);
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // ── Boot: load from Supabase, migrate if empty ────────────────
+  // ── Boot: load from Supabase, migrate if empty, MERGE if local has unsynced items ─────
   useEffect(() => {
     const boot = async () => {
       try {
         console.log('[Boot] Fetching Supabase...');
         const remote = await fetchAll();
-        console.log('[Boot] Supabase partners:', remote.partners.length);
-        if (remote.partners.length > 0) {
+        const local  = loadLocal();
+        console.log('[Boot] remote partners:', remote.partners.length, '· local partners:', local?.partners?.length || 0);
+
+        if (remote.partners.length === 0) {
+          // ── Empty remote (first-time / migration): seed from local or SEED, push up
+          const seed = local || SEED;
+          seed.tasks = (seed.tasks || []).map(t => t.status === 'in_progress' ? { ...t, status: 'todo' } : t);
+          setData(seed);
+          console.log('[Boot] Pushing seed to Supabase:', seed.partners.length, 'partners,', seed.activities.length, 'activities,', seed.tasks.length, 'tasks');
+          await pushToSupabase(seed);
+          console.log('[Boot] Push complete');
+        } else if (local) {
+          // ── Both sides have data: recover items in local but missing from remote (avoid data loss)
+          const delta = localOnlyByCollection(local, remote);
+          if (hasLocalOnly(delta)) {
+            const summary = COLLECTIONS_BY_ID.map(c => `${c}:${delta[c].length}`).concat(`partnerBudgets:${delta.partnerBudgets.length}`).filter(s => !s.endsWith(':0')).join(', ');
+            console.warn('[Boot] Recovering local-only items NOT in remote →', summary);
+            const merged = mergeRemoteWithLocal(remote, delta);
+            // Push the recovered items to Supabase (sequential for FK)
+            await safeUpsert('partners', delta.partners);
+            await Promise.all([safeUpsert('activities', delta.activities), safeUpsert('partner_budgets', delta.partnerBudgets)]);
+            await Promise.all([safeUpsert('tasks', delta.tasks), safeUpsert('mel_entries', delta.melEntries), safeUpsert('activity_indicators', delta.activityIndicators)]);
+            setData(merged);
+            saveLocal(merged);
+            console.log('[Boot] Recovery complete');
+          } else {
+            setData(remote);
+            saveLocal(remote);
+          }
+        } else {
           setData(remote);
           saveLocal(remote);
-        } else {
-          const local = loadLocal() || SEED;
-          local.tasks = (local.tasks || []).map(t =>
-            t.status === 'in_progress' ? { ...t, status: 'todo' } : t
-          );
-          setData(local);
-          console.log('[Boot] Pushing to Supabase:', local.partners.length, 'partners,', local.activities.length, 'activities,', local.tasks.length, 'tasks');
-          await pushToSupabase(local);
-          console.log('[Boot] Push complete');
         }
       } catch (err) {
         console.warn('[Boot] Supabase unavailable:', err.message);
+        setSyncError('Không kết nối được Supabase. Đang dùng dữ liệu local. Thay đổi của bạn sẽ KHÔNG được lưu cloud.');
         const local = loadLocal();
         if (local) {
           local.tasks = (local.tasks || []).map(t =>
@@ -211,14 +261,21 @@ export const DataProvider = ({ children }) => {
 
   // ── Supabase fire-and-forget helper ───────────────────────────
   // Supabase v2 query builders are thenable but not real Promises (no .catch),
-  // so wrap with Promise.resolve(). Also surface { error } from the response.
-  const sb = (fn) => {
+  // so wrap with Promise.resolve(). Surface errors visibly via setSyncError so
+  // the user is never silently disconnected.
+  const sb = (fn, label = 'sync') => {
     Promise.resolve()
       .then(() => fn())
       .then((res) => {
-        if (res && res.error) console.error('Supabase:', res.error.message);
+        if (res && res.error) {
+          console.error('Supabase[' + label + ']:', res.error.message);
+          setSyncError('Lỗi đồng bộ (' + label + '): ' + res.error.message + '. Dữ liệu có thể chưa lưu cloud.');
+        }
       })
-      .catch((err) => console.error('Supabase:', err?.message || err));
+      .catch((err) => {
+        console.error('Supabase[' + label + ']:', err?.message || err);
+        setSyncError('Lỗi đồng bộ (' + label + '): ' + (err?.message || err) + '. Dữ liệu có thể chưa lưu cloud.');
+      });
   };
 
   // ── Mutations: Partners ────────────────────────────────────────
@@ -336,6 +393,7 @@ export const DataProvider = ({ children }) => {
       ...data, setData,
       partnerMap, activityMap,
       userRole, isAdmin, canEdit, canDelete,
+      syncError, setSyncError,
       addPartner, updatePartner, deletePartner,
       addActivity, updateActivity, deleteActivity,
       addTask, updateTask, deleteTask,
@@ -343,6 +401,22 @@ export const DataProvider = ({ children }) => {
       addMelEntry, updateMelEntry, deleteMelEntry,
       updatePartnerBudget,
     }}>
+      {syncError && (
+        <div style={{
+          position:'fixed', top:0, left:0, right:0, zIndex:9999,
+          background:'#fef2f2', borderBottom:'1px solid #fecaca',
+          color:'#991b1b', padding:'10px 16px', fontSize:'13px',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          fontFamily:'system-ui, sans-serif',
+          boxShadow:'0 1px 3px rgba(0,0,0,.06)',
+        }}>
+          <span>⚠️ {syncError}</span>
+          <button onClick={() => setSyncError(null)}
+            style={{ background:'transparent', border:'1px solid #fca5a5', color:'#991b1b', borderRadius:'6px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' }}>
+            Đóng
+          </button>
+        </div>
+      )}
       {children}
     </DataContext.Provider>
   );
