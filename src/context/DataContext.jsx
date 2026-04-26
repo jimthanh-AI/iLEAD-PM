@@ -296,9 +296,27 @@ export const DataProvider = ({ children }) => {
         activities:         d.activities.filter(a => a.partnerId !== id),
         tasks:              d.tasks.filter(t => !aIds.includes(t.activityId)),
         activityIndicators: d.activityIndicators.filter(ai => !aIds.includes(ai.activityId)),
+        melEntries:         d.melEntries.filter(e => e.partnerId !== id && !aIds.includes(e.activityId)),
+        partnerBudgets:     d.partnerBudgets.filter(b => b.partnerId !== id),
       };
     });
-    sb(() => supabase.from('partners').delete().eq('id', id));
+    sb(async () => {
+      const { data: acts } = await supabase.from('activities').select('id').eq('partnerId', id);
+      const aIds = (acts || []).map(a => a.id);
+      if (aIds.length > 0) {
+        await Promise.all([
+          supabase.from('tasks').delete().in('activityId', aIds),
+          supabase.from('activity_indicators').delete().in('activityId', aIds),
+          supabase.from('mel_entries').delete().in('activityId', aIds),
+        ]);
+        await supabase.from('activities').delete().eq('partnerId', id);
+      }
+      await Promise.all([
+        supabase.from('mel_entries').delete().eq('partnerId', id),
+        supabase.from('partner_budgets').delete().eq('partnerId', id),
+        supabase.from('partners').delete().eq('id', id),
+      ]);
+    });
   };
 
   // ── Mutations: Activities ──────────────────────────────────────
@@ -316,8 +334,16 @@ export const DataProvider = ({ children }) => {
       activities:         d.activities.filter(a => a.id !== id),
       tasks:              d.tasks.filter(t => t.activityId !== id),
       activityIndicators: d.activityIndicators.filter(ai => ai.activityId !== id),
+      melEntries:         d.melEntries.filter(e => e.activityId !== id),
     }));
-    sb(() => supabase.from('activities').delete().eq('id', id));
+    sb(async () => {
+      await Promise.all([
+        supabase.from('tasks').delete().eq('activityId', id),
+        supabase.from('activity_indicators').delete().eq('activityId', id),
+        supabase.from('mel_entries').delete().eq('activityId', id),
+      ]);
+      await supabase.from('activities').delete().eq('id', id);
+    });
   };
 
   // ── Mutations: Tasks ───────────────────────────────────────────
