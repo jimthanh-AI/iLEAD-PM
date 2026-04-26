@@ -1,0 +1,18 @@
+.act-kanban-card { cursor:grab; }
+.act-kanban-card:active { cursor:grabbing; }
+
+/* Done card styling */
+.act-kanban-card--done {
+  opacity: 0.62;
+  border-left: 3px solid #10b981 !important;
+  box-shadow: inset 0 0 0 1000px rgba(16,185,129,0.07) !important;
+}
+.act-kanban-card--done .proj-card-name {
+  text-decoration: line-through;
+  color: var(--text3);
+}
+.act-kanban-card--done:hover { opacity: 0.85; }
+.act-kanban-next { font-size:9px; color:var(--orange); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-top:1px dashed var(--border); padding-top:4px; }
+.proj-card-actions { display:none; gap:3px; margin-top:4px; justify-content:flex-end; }
+.proj-card:hover .proj-card-actions { display:flex; }
+.act-kanban-card:hover .proj-card-actions { display:flex; }

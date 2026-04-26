@@ -1,0 +1,12 @@
+[
+  {"id":"a_csv_1","name":"Làm base line research với VCCI MTTN","status":"done","stage":"S7_Monitoring","startDate":"2025-10-15","endDate":"2025-12-15","ballOwner":"CR/Mnr","ca":"Steve","nextAction":"Hợp phần đã kết thúc","type":"3"},
+  {"id":"a_csv_2","name":"Tổ chức 2 lớp TOT cho SMEs và CBCC tại VCCI MTTN","status":"done","stage":"S7_Monitoring","startDate":"2026-01-10","endDate":"2026-01-20","ballOwner":"Partner","ca":"Wayne","nextAction":"","type":"1A"},
+  {"id":"a_csv_3","name":"Tổ chức workshop ESG trong ngành hospitality với SHi","status":"done","stage":"S7_Monitoring","startDate":"2026-01-10","endDate":"2026-01-17","ballOwner":"CR/Mnr","ca":"","nextAction":"","type":"6"},
+  {"id":"a_csv_4","name":"Hội nghị sáng kiến ESG tại Hà Nội với APED Ha Noi","status":"done","stage":"S7_Monitoring","startDate":"2026-01-01","endDate":"2026-01-06","ballOwner":"CR/Mnr","ca":"","nextAction":"","type":"6"},
+  {"id":"a_csv_5","name":"Research review về luật doanh nghiệp hiện hành tại APED Ha Noi","status":"in_progress","stage":"S2_ThietKeAAF","startDate":"2026-01-15","endDate":"2026-06-30","ballOwner":"CR/Mnr","ca":"","nextAction":"Jim gửi TOR cho Jane duyệt","type":"3"},
+  {"id":"a_csv_6","name":"Làm base line research với VCCI HCMC","status":"not_started","stage":"S2_ThietKeAAF","startDate":"2025-12-20","endDate":"2026-06-30","ballOwner":"Partner","ca":"","nextAction":"Họp với VCCI HCMC","type":"3"},
+  {"id":"a_csv_7","name":"Làm RBP guideline cho ngành hospitality tại VNAH","status":"in_progress","stage":"S2_ThietKeAAF","startDate":"2025-12-15","endDate":"2026-06-30","ballOwner":"CR/Mnr","ca":"","nextAction":"Jane đã approve, gửi cho VNAH kí","type":"7"},
+  {"id":"a_csv_8","name":"Các hoạt động triển khai với RED Communication","status":"not_started","stage":"S1_PhatTrien_NewPartner","startDate":"2026-01-15","endDate":"2026-10-30","ballOwner":"CR/Mnr","ca":"","nextAction":"Đã gửi MOU cho Jane approve","type":"1"},
+  {"id":"a_csv_9","name":"Phát triển chỉ số ESG với VCCI MTTN","status":"not_started","stage":"S1_PhatTrien_NewPartner","startDate":"2026-04-15","endDate":"2026-08-30","ballOwner":"Partner","ca":"","nextAction":"","type":"3"},
+  {"id":"a_csv_10","name":"Làm digital platform với VCCI MTTN","status":"not_started","stage":"S2_ThietKeAAF","startDate":"2026-05-01","endDate":"2026-08-30","ballOwner":"Partner","ca":"","nextAction":"","type":"8"}
+]

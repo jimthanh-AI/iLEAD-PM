@@ -1,0 +1,138 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  min-height: 56px;
+  z-index: 5;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.topbar-left { display:flex; align-items:center; }
+.topbar-right { display:flex; align-items:center; gap:16px; }
+
+/* Breadcrumb */
+.breadcrumb { display:flex; align-items:center; gap:0; }
+.bc { font-size:13px; padding:3px 6px; border-radius:var(--radius); white-space:nowrap; }
+.bc-link { color:var(--text2); cursor:pointer; background:transparent; border:none; font-size:13px; transition:all var(--transition); padding:3px 6px; border-radius:var(--radius); font-family:inherit; }
+.bc-link:hover { background:var(--surface3); color:var(--text); }
+.bc-cur { font-weight:600; color:var(--text); max-width:300px; overflow:hidden; text-overflow:ellipsis; }
+.bc-sep { color:var(--text3); font-size:13px; padding:0 2px; }
+
+/* Global Search */
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 250px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text3);
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 10px 8px 32px;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  margin-top: 8px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text3);
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border2);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: var(--surface2);
+}
+
+.search-res-type {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  min-width: 60px;
+  text-align: center;
+}
+
+.search-res-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Settings gear button */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.btn-icon:hover { background: var(--surface2); color: var(--text); }
+.btn-icon.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }

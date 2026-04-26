@@ -1,0 +1,66 @@
+.act-detail-header { padding:20px 24px; display:flex; flex-direction:column; gap:10px; }
+.act-detail-title { font-size:22px; font-weight:700; letter-spacing:-.02em; line-height:1.3; }
+
+/* Stage track */
+.stage-track { display:flex; gap:0; flex-wrap:nowrap; overflow-x:auto; }
+.stage-step {
+  flex:0 0 auto; padding:5px 11px; font-size:10px; font-weight:600; font-family:var(--font-mono);
+  border:1px solid var(--border2); border-right:none; cursor:pointer; white-space:nowrap;
+  transition:all var(--transition); color:var(--text2);
+}
+.stage-step:first-child { border-radius:var(--radius) 0 0 var(--radius); }
+.stage-step:last-child  { border-right:1px solid var(--border2); border-radius:0 var(--radius) var(--radius) 0; }
+.stage-step.done-s { background:var(--green-bg); color:var(--green); border-color:transparent; }
+.stage-step.cur-s  { background:var(--orange-bg); border-color:rgba(245,158,11,.35); z-index:1; }
+.stage-step:not(.cur-s):hover { background:var(--surface3); }
+
+/* Properties row */
+.act-detail-props { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--text2); }
+.dp { display:flex; align-items:center; gap:5px; }
+.dp-lbl { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text3); }
+
+/* Next action box */
+.act-next-box { background:var(--orange-bg); border-radius:var(--radius); padding:8px 12px; font-size:12px; color:var(--orange); display:flex; align-items:center; gap:7px; }
+
+/* Tasks */
+.task-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.task-header-title { font-size:13px; font-weight:600; color:var(--text2); }
+.btn-sm { padding:4px 12px; font-size:12px; }
+.task-list { display:flex; flex-direction:column; gap:2px; }
+.task-item { display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:var(--radius); cursor:pointer; transition:background var(--transition); position:relative; }
+.task-item:hover { background:var(--surface2); }
+.task-item:hover .task-actions { display:flex; }
+.task-check {
+  width:16px; height:16px; border:1.5px solid var(--border2); border-radius:4px;
+  flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center;
+  transition:all var(--transition); cursor:pointer;
+}
+.task-check.todo        { background:transparent; }
+.task-check.in_progress { background:var(--accent-bg); border-color:var(--accent); }
+.task-check.in_progress::after { content:'–'; font-size:10px; color:var(--accent); font-weight:700; }
+.task-check.done        { background:var(--green); border-color:var(--green); }
+.task-check.done::after { content:'✓'; font-size:10px; color:#fff; font-weight:700; }
+.task-body { flex:1; min-width:0; }
+.task-name { font-size:13px; line-height:1.45; }
+.task-name.done { text-decoration:line-through; color:var(--text3); }
+.task-meta { font-size:11px; color:var(--text3); margin-top:2px; display:flex; gap:8px; }
+.task-actions { position:absolute; right:8px; top:50%; transform:translateY(-50%); display:none; gap:3px; background:var(--surface2); padding:2px; border-radius:var(--radius); }
+.task-action-btn { background:transparent; border:none; cursor:pointer; font-size:12px; padding:2px 4px; border-radius:3px; transition:background var(--transition); }
+.task-action-btn:hover { background:var(--surface3); }
+.task-action-btn.danger:hover { color:var(--red); }
+.task-add-row { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--radius); color:var(--text3); font-size:13px; cursor:pointer; transition:background var(--transition); margin-top:2px; }
+.task-add-row:hover { background:var(--surface2); color:var(--text2); }
+
+/* Deadline warnings */
+.task-item.task-overdue {
+  background: var(--red-bg);
+  border-left: 3px solid var(--red);
+  padding-left: 8px;
+}
+.task-item.task-overdue:hover { background: rgba(239,68,68,.15); }
+.task-item.task-soon {
+  background: var(--orange-bg);
+  border-left: 3px solid var(--orange);
+  padding-left: 8px;
+}
+.task-item.task-soon:hover { background: rgba(245,158,11,.15); }

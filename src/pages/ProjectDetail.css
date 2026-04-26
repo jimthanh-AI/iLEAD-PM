@@ -1,0 +1,9 @@
+.act-list { display:flex; flex-direction:column; gap:6px; }
+.act-row { display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; position:relative; }
+.act-row:hover { box-shadow:var(--shadow); border-color:var(--border2); }
+.act-row:hover .act-row-actions { display:flex; }
+.act-row-info { flex:1; min-width:0; }
+.act-row-name { font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.act-row-meta { font-size:11px; color:var(--text2); display:flex; gap:10px; margin-top:2px; flex-wrap:wrap; }
+.act-row-next { font-size:11px; color:var(--orange); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.act-row-actions { display:none; gap:2px; flex-shrink:0; }

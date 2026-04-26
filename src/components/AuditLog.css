@@ -1,0 +1,133 @@
+/* ══════════════════════════════════════
+   AuditLog — Timeline component styles
+══════════════════════════════════════ */
+
+.alog-wrap {
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+/* Header row */
+.alog-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+.alog-hdr:hover { background: var(--surface2); }
+.alog-hdr-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.alog-toggle {
+  font-size: 10px;
+  color: var(--text3);
+}
+
+/* Body */
+.alog-body {
+  padding: 0 0 8px;
+}
+
+/* Empty / loading states */
+.alog-empty,
+.alog-error {
+  padding: 20px 16px;
+  font-size: 12px;
+  color: var(--text3);
+  text-align: center;
+}
+.alog-error { color: var(--red); }
+
+/* ── One "save event" group ── */
+.alog-group {
+  padding: 10px 16px 4px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.alog-group:last-child { border-bottom: none; }
+
+/* Left accent line (timeline effect) */
+.alog-group::before {
+  content: '';
+  position: absolute;
+  left: 28px;
+  top: 32px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border2);
+}
+.alog-group:last-child::before { display: none; }
+
+/* Group header */
+.alog-group-hdr {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.alog-action-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.alog-user {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.alog-action-lbl {
+  font-size: 11px;
+  font-weight: 500;
+}
+.alog-time {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  margin-left: auto;
+}
+
+/* ── Field diff row ── */
+.alog-diff-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 0 3px 22px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.alog-field {
+  font-weight: 600;
+  color: var(--text2);
+  min-width: 90px;
+  flex-shrink: 0;
+}
+.alog-old {
+  color: var(--red);
+  text-decoration: line-through;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.alog-arrow {
+  color: var(--text3);
+  flex-shrink: 0;
+}
+.alog-new {
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

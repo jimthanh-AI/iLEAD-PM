@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>i-LEAD MEL — Layer 3 Mockup</title>
+<style>
+  :root{
+    --bg:#fafafa; --card:#fff; --border:#e5e7eb; --muted:#6b7280;
+    --green:#16a34a; --green-bg:#dcfce7;
+    --amber:#d97706; --amber-bg:#fef3c7;
+    --red:#dc2626; --red-bg:#fee2e2;
+    --blue:#2563eb; --blue-bg:#dbeafe;
+    --purple:#7c3aed; --purple-bg:#ede9fe;
+    --pink:#db2777;
+    --gray:#9ca3af;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);margin:0;padding:24px;color:#111}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .module{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:24px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .module-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:16px}
+  .module-title{font-size:17px;font-weight:600;margin:0}
+  .module-desc{color:var(--muted);font-size:12px;margin-top:2px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+  .b-green{background:var(--green-bg);color:var(--green)}
+  .b-amber{background:var(--amber-bg);color:var(--amber)}
+  .b-red{background:var(--red-bg);color:var(--red)}
+  .b-blue{background:var(--blue-bg);color:var(--blue)}
+  .b-gray{background:#f3f4f6;color:var(--muted)}
+  .b-purple{background:var(--purple-bg);color:var(--purple)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:10px 8px;background:#f9fafb;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+  td{padding:12px 8px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+  tr:hover{background:#fafafa;cursor:pointer}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .bar-cell{position:relative;width:140px;background:#f3f4f6;border-radius:4px;height:8px;overflow:hidden}
+  .bar-fill{position:absolute;left:0;top:0;height:100%;border-radius:4px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .stat{padding:14px;border:1px solid var(--border);border-radius:10px;background:#fff}
+  .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .stat-val{font-size:22px;font-weight:700;margin-top:4px}
+  .stat-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .health-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .donut-mini{width:56px;height:56px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .alert{padding:12px 14px;border-radius:10px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start;font-size:13px}
+  .alert-red{background:var(--red-bg);border-left:3px solid var(--red);color:#7f1d1d}
+  .alert-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#78350f}
+  .alert-blue{background:var(--blue-bg);border-left:3px solid var(--blue);color:#1e3a8a}
+  .alert b{display:block;margin-bottom:2px}
+  .stack-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:#f3f4f6;margin:6px 0}
+  .stack-bar > div{height:100%}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:6px}
+  .legend span{display:inline-flex;align-items:center;gap:4px}
+  .legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .mini-chart{height:80px;display:flex;align-items:flex-end;gap:4px;padding:8px 0}
+  .mini-chart > div{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#3b82f6,#93c5fd);position:relative}
+  .quarter-tick{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted)}
+  .projection-line{stroke:#dc2626;stroke-width:2;stroke-dasharray:4,4;fill:none}
+  .actual-line{stroke:#16a34a;stroke-width:2.5;fill:none}
+  .target-line{stroke:#2563eb;stroke-width:2;fill:none}
+  details > summary{cursor:pointer;font-size:12px;color:var(--blue);padding:6px 0}
+  .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:#f3f4f6;color:var(--muted);margin-right:4px}
+  .ge1{background:#fee2e2;color:#991b1b}
+  .ge2{background:#fef3c7;color:#78350f}
+  .ge3{background:#dcfce7;color:#14532d}
+  .filter-bar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px}
+  .filter-bar select{padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:#fff}
+  .note{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px}
+</style>
+</head>
+<body>
+
+<h1>i-LEAD MEL Dashboard — Layer 3 Mockup (v2 simplified)</h1>
+<div class="sub">3 modules cho PM Vietnam team · FY 2025-2026 · Activity = single source of truth</div>
+
+<!-- FILTER BAR (cross-cutting) -->
+<div class="filter-bar">
+  <b>🔍 Filters:</b>
+  <select><option>All Quarters</option><option>Q1 (Apr-Jun)</option><option>Q2</option><option>Q3</option><option>Q4</option></select>
+  <select><option>All Outcomes</option><option>1100 — Capacity Building</option><option>1200 — Women Leadership</option></select>
+  <select><option>All Partners</option><option>VCCI MTTN</option><option>APED/BAC</option><option>VNAH</option></select>
+  <select><option>All Provinces</option><option>Đà Nẵng</option><option>Quảng Nam</option><option>HCMC</option></select>
+  <span style="margin-left:auto;color:var(--muted)">Last updated: 2026-04-26 · 14:32 by MEL Officer</span>
+</div>
+
+<!-- ============================================ -->
+<!-- MODULE A — INDICATOR RISK MATRIX -->
+<!-- ============================================ -->
+<div class="module">
+  <div class="module-head">
+    <div>
+      <div class="module-title">📊 Module A — Indicator Risk Matrix</div>
+      <div class="module-desc">Thay thế bar chart hiện tại · sort theo risk · click row để drill-down activities</div>
+    </div>
+    <div>
+      <span class="badge b-green">9 On track</span>
+      <span class="badge b-amber">3 At risk</span>
+      <span class="badge b-red">1 Critical</span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Indicator</th>
+        <th>Outcome</th>
+        <th class="num">Target</th>
+        <th class="num">Actual</th>
+        <th>Progress</th>
+        <th class="num">Time-adj %</th>
+        <th>Female %</th>
+        <th>Lead Partner</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="health-dot" style="background:var(--red)"></span><span class="badge b-red">Critical</span></td>
+        <td><b>1221C</b><div class="note" style="margin:0">Women in decision-making roles</div></td>
+        <td><span class="tag">1200</span></td>
+        <td class="num">120</td>
+        <td class="num">1</td>
+        <td><div class="bar-cell"><div class="bar-fill" style="width:1%;background:var(--red)"></div></div><div class="note" style="margin:0">0.8%</div></td>
+        <td class="num" style="color:var(--red);font-weight:600">10%</td>
+        <td><span style="color:var(--green);font-weight:600">100% ✓</span></td>
+        <td>VCCI HCMC</td>
+        <td><a style="color:var(--blue);font-size:12px">→ Drill</a></td>
+      </tr>
+      <tr>
+        <td><span class="health-dot" style="background:var(--amber)"></span><span class="badge b-amber">At risk</span></td>
+        <td><b>1112</b><div class="note" style="margin:0">Govt staff trained on RBP</div></td>
+        <td><span class="tag">1100</span></td>
+        <td class="num">504</td>
+        <td class="num">39</td>
+        <td><div class="bar-cell"><div class="bar-fill" style="width:7.7%;background:var(--amber)"></div></div><div class="note" style="margin:0">7.7%</div></td>
+        <td class="num" style="color:var(--amber);font-weight:600">96%</td>
+        <td><span style="color:var(--red);font-weight:600">38% 🔴</span></td>
+        <td>VCCI MTTN</td>
+        <td><a style="color:var(--blue);font-size:12px">→ Drill</a></td>
+      </tr>
+      <tr>
+        <td><span class="health-dot" style="background:var(--amber)"></span><span class="badge b-amber">At risk</span></td>
+        <td><b>1122</b><div class="note" style="margin:0">Enterprises adopting RBP</div></td>
+        <td><span class="tag">1100</span></td>
+        <td class="num">630</td>
+        <td class="num">5</td>
+        <td><div class="bar-cell"><div class="bar-fill" style="width:0.8%;background:var(--amber)"></div></div><div class="note" style="margin:0">0.8%</div></td>
+        <td class="num" style="color:var(--amber);font-weight:600">10%</td>
+        <td><span style="color:var(--green);font-weight:600">60% ✓</span></td>
+        <td>APED/BAC</td>
+        <td><a style="color:var(--blue);font-size:12px">→ Drill</a></td>
+      </tr>
+      <tr>
+        <td><span class="health-dot" style="background:var(--green)"></span><span class="badge b-green">On track</span></td>
+        <td><b>1221A</b><div class="note" style="margin:0">Women trained in leadership</div></td>
+        <td><span class="tag">1200</span></td>
+        <td class="num">1,050</td>
+        <td class="num">200</td>
+        <td><div class="bar-cell"><div class="bar-fill" style="width:19%;background:var(--green)"></div></div><div class="note" style="margin:0">19%</div></td>
+        <td class="num" style="color:var(--green);font-weight:600">238% ↑</td>
+        <td><span style="color:var(--green);font-weight:600">100% ✓</span></td>
+        <td>VCCI MTTN</td>
+        <td><a style="color:var(--blue);font-size:12px">→ Drill</a></td>
+      </tr>
+      <tr>
+        <td><span class="health-dot" style="background:var(--green)"></span><span class="badge b-green">Ahead</span></td>
+        <td><b>1121A</b><div class="note" style="margin:0">CSO members trained</div></td>
+        <td><span class="tag">1100</span></td>
+        <td class="num">30</td>
+        <td class="num">25</td>
+        <td><div class="bar-cell"><div class="bar-fill" style="width:83%;background:var(--green)"></div></div><div class="note" style="margin:0">83%</div></td>
+        <td class="num" style="color:var(--green);font-weight:600">1037% ↑</td>
+        <td><span style="color:var(--green);font-weight:600">100% ✓</span></td>
+        <td>VNAH</td>
+        <td><a style="color:var(--blue);font-size:12px">→ Drill</a></td>
+      </tr>
+      <tr>
+        <td><span class="health-dot" style="background:var(--green)"></span><span class="badge b-green">On track</span></td>
+        <td><b>1111A</b><div class="note" style="margin:0">ToT civil servants completed</div></td>
+        <td><span class="tag">1100</span></td>
+        <td class="num">770</td>
+        <td class="num">140</td>
+        <td><div class="bar-cell"><div class="bar-fill" style="width:18%;background:var(--green)"></div></div><div class="note" style="margin:0">18%</div></td>
+        <td class="num" style="color:var(--green);font-weight:600">227% ↑</td>
+        <td><span style="color:var(--green);font-weight:600">50% ✓</span></td>
+        <td>VCCI MTTN</td>
+        <td><a style="color:var(--blue);font-size:12px">→ Drill</a></td>
+      </tr>
+      <tr>
+        <td><span class="health-dot" style="background:var(--amber)"></span><span class="badge b-amber">At risk</span></td>
+        <td><b>1111B</b><div class="note" style="margin:0">SMEs leadership trained</div></td>
+        <td><span class="tag">1100</span></td>
+        <td class="num">770</td>
+        <td class="num">15</td>
+        <td><div class="bar-cell"><div class="bar-fill" style="width:2%;background:var(--amber)"></div></div><div class="note" style="margin:0">2%</div></td>
+        <td class="num" style="color:var(--amber);font-weight:600">25%</td>
+        <td><span style="color:var(--red);font-weight:600">43% 🔴</span></td>
+        <td>APED/BAC</td>
+        <td><a style="color:var(--blue);font-size:12px">→ Drill</a></td>
+      </tr>
+      <tr style="opacity:.5">
+        <td colspan="10" style="text-align:center;font-size:12px;color:var(--muted)">+ 7 indicators khác (collapsed)</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note" style="margin-top:6px">💡 Female% &lt; 50% sẽ flag đỏ — đây là gender check duy nhất, không cần ethnic/PWD/youth.</div>
+
+  <details style="margin-top:12px">
+    <summary>📂 Drill-down example: 1221A — activities contributing</summary>
+    <div style="background:#f9fafb;padding:12px;border-radius:8px;margin-top:8px;font-size:12px">
+      <div>• <b>Act-2025-04-15</b> — IDS workshop Đà Nẵng (50 women, partner: VCCI MTTN) — <span class="badge b-green">Completed</span></div>
+      <div>• <b>Act-2025-05-02</b> — Mentoring program kickoff (100 women) — <span class="badge b-green">Completed</span></div>
+      <div>• <b>Act-2025-05-20</b> — RBP training for women entrepreneurs (50 women) — <span class="badge b-amber">In progress</span></div>
+      <div>• <b>Act-2025-06-10</b> — Coaching circles Q2 (planned 80 women) — <span class="badge b-blue">Planned</span></div>
+    </div>
+  </details>
+</div>
+
+<!-- ============================================ -->
+<!-- MODULE B — PARTNER SCORECARD -->
+<!-- ============================================ -->
+<div class="module">
+  <div class="module-head">
+    <div>
+      <div class="module-title">🤝 Module B — Partner Performance Scorecard</div>
+      <div class="module-desc">So sánh hiệu quả 8 đối tác · Health score = composite của burn-rate, delivery, GE</div>
+    </div>
+    <span class="badge b-blue">Q1 FY25-26 snapshot</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Partner</th>
+        <th class="num">Budget</th>
+        <th>Burn rate</th>
+        <th class="num">Activities</th>
+        <th class="num">Indicators</th>
+        <th class="num">People reached</th>
+        <th>Female %</th>
+        <th>Health</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>VCCI MTTN</b><div class="note" style="margin:0">Đà Nẵng & Central</div></td>
+        <td class="num">$66,450</td>
+        <td>
+          <div class="bar-cell" style="width:120px"><div class="bar-fill" style="width:70.6%;background:var(--red)"></div></div>
+          <div class="note" style="margin:0">70.6% spent · <b style="color:var(--red)">⚠ over-burn</b></div>
+        </td>
+        <td class="num">8 / 12</td>
+        <td class="num">4</td>
+        <td class="num">220</td>
+        <td>
+          <div class="stack-bar"><div style="width:58%;background:var(--pink)"></div><div style="width:42%;background:var(--blue)"></div></div>
+          <div class="note" style="margin:0">58% nữ</div>
+        </td>
+        <td><span class="badge b-amber">⚠ Watch</span></td>
+      </tr>
+      <tr>
+        <td><b>APED/BAC</b><div class="note" style="margin:0">Largest partner</div></td>
+        <td class="num">$132,900</td>
+        <td>
+          <div class="bar-cell" style="width:120px"><div class="bar-fill" style="width:10.8%;background:var(--green)"></div></div>
+          <div class="note" style="margin:0">10.8% spent · on pace</div>
+        </td>
+        <td class="num">2 / 15</td>
+        <td class="num">2</td>
+        <td class="num">80</td>
+        <td>
+          <div class="stack-bar"><div style="width:65%;background:var(--pink)"></div><div style="width:35%;background:var(--blue)"></div></div>
+          <div class="note" style="margin:0">65% nữ</div>
+        </td>
+        <td><span class="badge b-amber">🟡 Slow start</span></td>
+      </tr>
+      <tr>
+        <td><b>VNAH</b><div class="note" style="margin:0">Disability inclusion</div></td>
+        <td class="num">$26,580</td>
+        <td>
+          <div class="bar-cell" style="width:120px"><div class="bar-fill" style="width:15.4%;background:var(--green)"></div></div>
+          <div class="note" style="margin:0">15.4% spent</div>
+        </td>
+        <td class="num">1 / 8</td>
+        <td class="num">1</td>
+        <td class="num">30</td>
+        <td>
+          <div class="stack-bar"><div style="width:70%;background:var(--pink)"></div><div style="width:30%;background:var(--blue)"></div></div>
+          <div class="note" style="margin:0">70% nữ · 20% PWD</div>
+        </td>
+        <td><span class="badge b-green">🟢 Healthy</span></td>
+      </tr>
+      <tr>
+        <td><b>RED Communication</b></td>
+        <td class="num">$39,870</td>
+        <td>
+          <div class="bar-cell" style="width:120px"><div class="bar-fill" style="width:0%;background:var(--gray)"></div></div>
+          <div class="note" style="margin:0">0% — not started</div>
+        </td>
+        <td class="num">0 / 6</td>
+        <td class="num">0</td>
+        <td class="num">0</td>
+        <td><span class="note">—</span></td>
+        <td><span class="badge b-gray">⏸ Pending kickoff</span></td>
+      </tr>
+      <tr>
+        <td><b>VCCI HCMC</b></td>
+        <td class="num">$66,450</td>
+        <td>
+          <div class="bar-cell" style="width:120px"><div class="bar-fill" style="width:0%;background:var(--gray)"></div></div>
+          <div class="note" style="margin:0">0%</div>
+        </td>
+        <td class="num">0 / 10</td>
+        <td class="num">0</td>
+        <td class="num">0</td>
+        <td><span class="note">—</span></td>
+        <td><span class="badge b-gray">⏸ Pending kickoff</span></td>
+      </tr>
+      <tr style="opacity:.55">
+        <td><b>VLA</b></td><td class="num">$0</td><td><span class="note">Not allocated</span></td>
+        <td class="num">0</td><td class="num">0</td><td class="num">0</td><td>—</td>
+        <td><span class="badge b-gray">Not in scope</span></td>
+      </tr>
+      <tr style="opacity:.55">
+        <td><b>SHi</b></td><td class="num">$0</td><td><span class="note">Pending allocation</span></td>
+        <td class="num">0</td><td class="num">0</td><td class="num">0</td><td>—</td>
+        <td><span class="badge b-gray">Pending allocation</span></td>
+      </tr>
+      <tr style="opacity:.55">
+        <td><b>DAFO</b></td><td class="num">$0</td><td><span class="note">Pending allocation</span></td>
+        <td class="num">0</td><td class="num">0</td><td class="num">0</td><td>—</td>
+        <td><span class="badge b-gray">Pending allocation</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:14px;padding:12px;background:#fffbeb;border-left:3px solid var(--amber);border-radius:6px;font-size:13px">
+    <b>💡 PM Insight:</b> VCCI MTTN burn 70.6% budget mới Q1 — cần review cost norm hoặc adjust scope. APED/BAC nhận 40% budget tổng nhưng mới triển khai 13% activities — risk concentration cần monitoring.
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODULE D — FORECAST & RE-BUDGETING -->
+<!-- ============================================ -->
+<div class="module">
+  <div class="module-head">
+    <div>
+      <div class="module-title">📈 Module C — Forecast & Re-budgeting</div>
+      <div class="module-desc">Projection cuối FY · what-if scenarios · alerts cho PM lập kế hoạch Q2-Q4</div>
+    </div>
+    <span class="badge b-blue">As of Apr 26, 2026</span>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-red">
+    <div>🔴</div>
+    <div>
+      <b>Critical: Indicator 1221C projected end-FY = 4 / 120 (3.3%)</b>
+      Tại tốc độ hiện tại, sẽ thiếu 96.7% target. Cần escalate với VCCI HCMC hoặc reallocate sang partner khác.
+    </div>
+  </div>
+  <div class="alert alert-amber">
+    <div>⚠</div>
+    <div>
+      <b>VCCI MTTN: budget burn projection 282% by EOY</b>
+      Burn rate hiện tại × 4 quý = $188K, vượt $66.5K allocated. Đề xuất: (a) reduce activity scope, (b) reallocate $40K từ APED/BAC, hoặc (c) request additional funding từ HQ.
+    </div>
+  </div>
+  <div class="alert alert-blue">
+    <div>💡</div>
+    <div>
+      <b>Opportunity: Indicators 1121A, 1221A đang vượt pace</b>
+      Có thể stretch target hoặc reallocate effort sang indicators đang yếu (1112, 1122).
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:18px">
+    <!-- LEFT: Quarterly burn projection -->
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Budget burn projection (linear)</div>
+      <svg viewBox="0 0 400 220" style="width:100%;height:220px;background:#fafafa;border-radius:8px">
+        <!-- grid -->
+        <line x1="40" y1="20" x2="40" y2="180" stroke="#e5e7eb"/>
+        <line x1="40" y1="180" x2="380" y2="180" stroke="#e5e7eb"/>
+        <!-- y labels -->
+        <text x="35" y="25" text-anchor="end" font-size="9" fill="#6b7280">$332K</text>
+        <text x="35" y="105" text-anchor="end" font-size="9" fill="#6b7280">$166K</text>
+        <text x="35" y="183" text-anchor="end" font-size="9" fill="#6b7280">$0</text>
+        <!-- x labels -->
+        <text x="100" y="200" font-size="10" fill="#6b7280">Q1</text>
+        <text x="180" y="200" font-size="10" fill="#6b7280">Q2</text>
+        <text x="260" y="200" font-size="10" fill="#6b7280">Q3</text>
+        <text x="340" y="200" font-size="10" fill="#6b7280">Q4</text>
+        <!-- target (linear allocation) -->
+        <line x1="40" y1="180" x2="380" y2="20" class="target-line"/>
+        <!-- actual so far -->
+        <polyline points="40,180 100,148" class="actual-line"/>
+        <!-- projection (red dashed) -->
+        <polyline points="100,148 380,52" class="projection-line"/>
+        <!-- labels -->
+        <text x="105" y="143" font-size="10" fill="#16a34a" font-weight="600">Spent $65K (Q1)</text>
+        <text x="240" y="80" font-size="10" fill="#dc2626" font-weight="600">Projected: $260K EOY</text>
+        <text x="290" y="40" font-size="10" fill="#2563eb" font-weight="600">Target: $332K</text>
+        <circle cx="100" cy="148" r="4" fill="#16a34a"/>
+        <circle cx="380" cy="52" r="4" fill="#dc2626"/>
+      </svg>
+      <div class="legend">
+        <span><i style="background:#2563eb"></i>Linear allocation</span>
+        <span><i style="background:#16a34a"></i>Actual spent</span>
+        <span><i style="background:#dc2626"></i>Projection</span>
+      </div>
+      <div class="note">→ Đang under-burn $20K so với linear; OK ở Q1 vì kickoff phase.</div>
+    </div>
+
+    <!-- RIGHT: Required pace -->
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Required pace để hit 100% target</div>
+      <table>
+        <thead><tr><th>Indicator</th><th class="num">Remaining</th><th class="num">Q2-Q4 needed</th><th>Feasibility</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1112</td>
+            <td class="num">465</td>
+            <td class="num">155/quarter</td>
+            <td><span class="badge b-amber">⚠ Tight</span></td>
+          </tr>
+          <tr>
+            <td>1122</td>
+            <td class="num">625</td>
+            <td class="num">208/quarter</td>
+            <td><span class="badge b-red">🔴 Unrealistic</span></td>
+          </tr>
+          <tr>
+            <td>1221A</td>
+            <td class="num">850</td>
+            <td class="num">283/quarter</td>
+            <td><span class="badge b-green">✓ Achievable</span></td>
+          </tr>
+          <tr>
+            <td>1221C</td>
+            <td class="num">119</td>
+            <td class="num">40/quarter</td>
+            <td><span class="badge b-red">🔴 Need new strategy</span></td>
+          </tr>
+          <tr>
+            <td>1121A</td>
+            <td class="num">5</td>
+            <td class="num">2/quarter</td>
+            <td><span class="badge b-green">✓ Easy</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="background:#eff6ff;border-radius:10px;padding:12px;margin-top:14px;font-size:12px">
+        <b style="color:var(--blue)">🎯 What-if scenarios</b>
+        <div style="margin-top:8px">
+          <b>Scenario A:</b> Reallocate $40K APED→VCCI MTTN → cover over-burn, indicator 1122 drops 15%
+        </div>
+        <div style="margin-top:6px">
+          <b>Scenario B:</b> Drop indicator 1221C target từ 120 → 50 (revise với GAC) → realistic
+        </div>
+        <div style="margin-top:6px">
+          <b>Scenario C:</b> Activate SHi/DAFO Q2 với $30K each → boost coverage, reduce APED concentration risk
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;color:var(--muted);font-size:11px;margin-top:24px">
+  Mockup v1 · 2026-04-26 · Tất cả số liệu là demo/illustrative · chưa kết nối DB thật
+</div>
+
+</body>
+</html>
