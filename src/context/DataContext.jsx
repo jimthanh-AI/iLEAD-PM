@@ -210,7 +210,16 @@ export const DataProvider = ({ children }) => {
   }, [data, loading]);
 
   // ── Supabase fire-and-forget helper ───────────────────────────
-  const sb = (fn) => { fn().catch(err => console.error('Supabase:', err.message)); };
+  // Supabase v2 query builders are thenable but not real Promises (no .catch),
+  // so wrap with Promise.resolve(). Also surface { error } from the response.
+  const sb = (fn) => {
+    Promise.resolve()
+      .then(() => fn())
+      .then((res) => {
+        if (res && res.error) console.error('Supabase:', res.error.message);
+      })
+      .catch((err) => console.error('Supabase:', err?.message || err));
+  };
 
   // ── Mutations: Partners ────────────────────────────────────────
   const addPartner = (p) => {
