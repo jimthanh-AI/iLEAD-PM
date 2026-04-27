@@ -23,6 +23,49 @@
   overflow-y: auto;
 }
 
+/* ── Mobile filter bar (hidden on desktop) ── */
+.mc-mobile-filters {
+  display: none;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+  .mc-root {
+    margin: -12px;
+    width: calc(100% + 24px);
+  }
+  .mc-sidebar {
+    display: none;
+  }
+  .mc-header {
+    height: auto;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .mc-header .page-title {
+    font-size: 16px !important;
+    flex: 1 1 100%;
+  }
+  .mc-nav-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+  .mc-mobile-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-solid);
+  }
+  .mc-grid-container {
+    padding: 8px;
+  }
+}
+
 .mc-sb-group {
   display: flex;
   flex-direction: column;

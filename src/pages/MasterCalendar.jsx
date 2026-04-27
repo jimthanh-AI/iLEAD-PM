@@ -420,6 +420,36 @@ export const MasterCalendar = () => {
           </div>
         </div>
 
+        {/* ── Mobile filter bar (hidden on desktop via CSS) ── */}
+        <div className="mc-mobile-filters">
+          <label className="mc-sb-item" style={{ margin:0 }}>
+            <input type="checkbox" checked={showTasks.todo} onChange={() => toggleTaskFilter('todo')} />
+            <span className="mc-sb-swatch" style={{ background:'#9ca3af', border:'1px solid #6b7280' }}></span>
+            <span style={{ fontSize:'12px' }}>Todo</span>
+          </label>
+          <label className="mc-sb-item" style={{ margin:0 }}>
+            <input type="checkbox" checked={showTasks.done} onChange={() => toggleTaskFilter('done')} />
+            <span className="mc-sb-swatch" style={{ background: CHIP_COLORS.done.bg, border:`1px solid ${CHIP_COLORS.done.border}` }}></span>
+            <span style={{ fontSize:'12px' }}>Done</span>
+          </label>
+          <label className="mc-sb-item" style={{ margin:0 }}>
+            <input type="checkbox" checked={showTasks.overdue} onChange={() => toggleTaskFilter('overdue')} />
+            <span className="mc-sb-swatch" style={{ background:'rgba(239,68,68,0.1)', border:'1px solid #ef4444' }}></span>
+            <span style={{ fontSize:'12px', color:'var(--red)' }}>Quá hạn</span>
+          </label>
+          {!gcalAuthToken ? (
+            <button className="btn btn-sm" onClick={handleAuthClick} style={{ marginLeft:'auto', background:'#fff', border:'1px solid var(--border)', color:'#3b82f6' }}>
+              📅 GCal
+            </button>
+          ) : (
+            <label className="mc-sb-item" style={{ margin:0, marginLeft:'auto' }}>
+              <input type="checkbox" checked={showGcalEvents} onChange={() => setShowGcalEvents(v=>!v)} />
+              <span className="mc-sb-swatch" style={{ background:'#4285F4' }}></span>
+              <span style={{ fontSize:'12px' }}>Google Cal ☑</span>
+            </label>
+          )}
+        </div>
+
         {/* ── Quick Add Panel ── */}
         {quickAdd && (
           <div style={{ position:'absolute', zIndex:100, top:'60px', right:'20px' }}>

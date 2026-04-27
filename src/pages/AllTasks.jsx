@@ -20,11 +20,18 @@ const AllTasks = () => {
   const [taskFormOpen,    setTaskFormOpen]     = useState(false);
   const [editTask,        setEditTask]         = useState(null);
   const [doneCollapsed,   setDoneCollapsed]    = useState(false);
+  const [isMobile,        setIsMobile]         = useState(() => window.innerWidth < 640);
 
   useEffect(() => {
     const handler = () => setTaskFormOpen(true);
     window.addEventListener('open-task-form', handler);
     return () => window.removeEventListener('open-task-form', handler);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   // ── Stats ──────────────────────────────────────────────────
@@ -121,9 +128,12 @@ const AllTasks = () => {
     const isDone = t.status === 'done';
     const isSelected = selectedIds.has(t.id);
 
+    const grid = isMobile
+      ? '36px 36px 1fr 70px'
+      : '36px 36px 2fr 1.5fr 100px 90px 75px';
     return (
       <div className="tbl-row"
-        style={{ gridTemplateColumns:'36px 36px 2fr 1.5fr 100px 90px 75px', background: isSelected ? 'var(--accent-bg)' : isOverdue ? 'rgba(239,68,68,.04)' : undefined }}
+        style={{ gridTemplateColumns: grid, background: isSelected ? 'var(--accent-bg)' : isOverdue ? 'rgba(239,68,68,.04)' : undefined }}
         onClick={e => { if (!e.defaultPrevented) act && nav(`/activity/${act.id}`); }}
       >
         {/* Select checkbox */}
@@ -139,27 +149,43 @@ const AllTasks = () => {
           {isDone ? '✓' : ''}
         </div>
 
-        {/* Task name */}
-        <div style={{ display:'flex', alignItems:'center', gap:'6px', minWidth:0 }}>
-          <div style={{ fontSize:'13px', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text3)' : isOverdue ? 'var(--red)' : 'var(--text)' }}>
-            {isOverdue && <span style={{ fontSize:'10px', marginRight:'4px' }}>⚠️</span>}
-            {t.name}
+        {/* Task name + sub-info on mobile */}
+        <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', gap:'2px', minWidth:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'6px', minWidth:0 }}>
+            <div style={{ fontSize:'13px', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text3)' : isOverdue ? 'var(--red)' : 'var(--text)' }}>
+              {isOverdue && <span style={{ fontSize:'10px', marginRight:'4px' }}>⚠️</span>}
+              {t.name}
+            </div>
+            <button onClick={e => openEdit(e, t)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'11px', padding:'0 2px', flexShrink:0, opacity:0.6 }} title="Sửa">✏️</button>
           </div>
-          <button onClick={e => openEdit(e, t)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'11px', padding:'0 2px', flexShrink:0, opacity:0.6 }} title="Sửa">✏️</button>
+          {isMobile && (
+            <div style={{ fontSize:'10px', color: pa?.color || 'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {pa?.name && <span style={{ fontWeight:600 }}>{pa.name}</span>}
+              {pa?.name && act?.name && ' · '}
+              {act?.name && <span style={{ color:'var(--text3)' }}>{act.name}</span>}
+              {t.assignee && <span style={{ color:'var(--text2)', marginLeft:4 }}>· {t.assignee}</span>}
+            </div>
+          )}
         </div>
 
-        {/* Activity */}
-        <span style={{ fontSize:'11px', color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={act?.name}>
-          {act?.name || <span style={{ color:'var(--text3)' }}>Hoạt động khác</span>}
-        </span>
+        {/* Activity — desktop only */}
+        {!isMobile && (
+          <span style={{ fontSize:'11px', color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={act?.name}>
+            {act?.name || <span style={{ color:'var(--text3)' }}>Hoạt động khác</span>}
+          </span>
+        )}
 
-        {/* Partner */}
-        <span style={{ fontSize:'11px', fontWeight:600, color: pa?.color || 'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-          {pa?.name || '—'}
-        </span>
+        {/* Partner — desktop only */}
+        {!isMobile && (
+          <span style={{ fontSize:'11px', fontWeight:600, color: pa?.color || 'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {pa?.name || '—'}
+          </span>
+        )}
 
-        {/* Assignee */}
-        <span style={{ fontSize:'11px', color:'var(--text2)' }}>{t.assignee || '—'}</span>
+        {/* Assignee — desktop only */}
+        {!isMobile && (
+          <span style={{ fontSize:'11px', color:'var(--text2)' }}>{t.assignee || '—'}</span>
+        )}
 
         {/* Due date */}
         <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:dc, fontWeight: isOverdue ? 700 : 400 }}>
@@ -230,13 +256,13 @@ const AllTasks = () => {
         </div>
 
         {/* Column headers */}
-        <div className="tbl-hdr" style={{ gridTemplateColumns:'36px 36px 2fr 1.5fr 100px 90px 75px' }}>
+        <div className="tbl-hdr" style={{ gridTemplateColumns: isMobile ? '36px 36px 1fr 70px' : '36px 36px 2fr 1.5fr 100px 90px 75px' }}>
           <span />
           <span />
           <span>Task</span>
-          <span>Hoạt động</span>
-          <span>Partner</span>
-          <span>Giao cho</span>
+          {!isMobile && <span>Hoạt động</span>}
+          {!isMobile && <span>Partner</span>}
+          {!isMobile && <span>Giao cho</span>}
           <span>Deadline</span>
         </div>
 
