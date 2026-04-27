@@ -18,12 +18,24 @@
 /* ── Filter bar (visible on all screens) ── */
 .mc-mobile-filters {
   display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-solid);
+}
+
+/* Nav row — hidden on desktop, shown on mobile */
+.mc-nav-mobile-row {
+  display: none;
+}
+
+/* Filter chips row */
+.mc-filter-chips-row {
+  display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-solid);
 }
 
 /* ── Mobile responsive ── */
@@ -50,7 +62,14 @@
     gap: 6px;
     width: 100%;
   }
-  .mc-mobile-filters {
+  .mc-nav-mobile-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mc-filter-chips-row {
     padding: 8px 12px;
   }
   .mc-grid-container {

@@ -567,34 +567,44 @@ export const MasterCalendar = () => {
           </div>
         </div>
 
-        {/* ── Mobile filter bar (hidden on desktop via CSS) ── */}
+        {/* ── Filter bar (all screens) ── */}
         <div className="mc-mobile-filters">
-          <label className="mc-sb-item" style={{ margin:0 }}>
-            <input type="checkbox" checked={showTasks.todo} onChange={() => toggleTaskFilter('todo')} />
-            <span className="mc-sb-swatch" style={{ background:'#9ca3af', border:'1px solid #6b7280' }}></span>
-            <span style={{ fontSize:'12px' }}>Todo</span>
-          </label>
-          <label className="mc-sb-item" style={{ margin:0 }}>
-            <input type="checkbox" checked={showTasks.done} onChange={() => toggleTaskFilter('done')} />
-            <span className="mc-sb-swatch" style={{ background: CHIP_COLORS.done.bg, border:`1px solid ${CHIP_COLORS.done.border}` }}></span>
-            <span style={{ fontSize:'12px' }}>Done</span>
-          </label>
-          <label className="mc-sb-item" style={{ margin:0 }}>
-            <input type="checkbox" checked={showTasks.overdue} onChange={() => toggleTaskFilter('overdue')} />
-            <span className="mc-sb-swatch" style={{ background:'rgba(239,68,68,0.1)', border:'1px solid #ef4444' }}></span>
-            <span style={{ fontSize:'12px', color:'var(--red)' }}>Quá hạn</span>
-          </label>
-          {!gcalAuthToken ? (
-            <button className="btn btn-sm" onClick={handleAuthClick} style={{ marginLeft:'auto', background:'#fff', border:'1px solid var(--border)', color:'#3b82f6' }}>
-              📅 GCal
-            </button>
-          ) : (
-            <label className="mc-sb-item" style={{ margin:0, marginLeft:'auto' }}>
-              <input type="checkbox" checked={showGcalEvents} onChange={() => setShowGcalEvents(v=>!v)} />
-              <span className="mc-sb-swatch" style={{ background:'#4285F4' }}></span>
-              <span style={{ fontSize:'12px' }}>Google Cal ☑</span>
+          {/* Nav row — only shown on mobile */}
+          <div className="mc-nav-mobile-row">
+            <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o - 1) : setMonthOffset(o => o - 1)}>‹</button>
+            <span style={{ fontSize:'13px', fontWeight:600, flex:1, textAlign:'center' }}>{navLabel}</span>
+            <button className="btn btn-sm" onClick={() => { setWeekOffset(0); setMonthOffset(0); }}>Hôm nay</button>
+            <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o + 1) : setMonthOffset(o => o + 1)}>›</button>
+          </div>
+          {/* Filter chips row */}
+          <div className="mc-filter-chips-row">
+            <label className="mc-sb-item" style={{ margin:0 }}>
+              <input type="checkbox" checked={showTasks.todo} onChange={() => toggleTaskFilter('todo')} />
+              <span className="mc-sb-swatch" style={{ background:'#9ca3af', border:'1px solid #6b7280' }}></span>
+              <span style={{ fontSize:'12px' }}>Todo</span>
             </label>
-          )}
+            <label className="mc-sb-item" style={{ margin:0 }}>
+              <input type="checkbox" checked={showTasks.done} onChange={() => toggleTaskFilter('done')} />
+              <span className="mc-sb-swatch" style={{ background: CHIP_COLORS.done.bg, border:`1px solid ${CHIP_COLORS.done.border}` }}></span>
+              <span style={{ fontSize:'12px' }}>Done</span>
+            </label>
+            <label className="mc-sb-item" style={{ margin:0 }}>
+              <input type="checkbox" checked={showTasks.overdue} onChange={() => toggleTaskFilter('overdue')} />
+              <span className="mc-sb-swatch" style={{ background:'rgba(239,68,68,0.1)', border:'1px solid #ef4444' }}></span>
+              <span style={{ fontSize:'12px', color:'var(--red)' }}>Quá hạn</span>
+            </label>
+            {!gcalAuthToken ? (
+              <button className="btn btn-sm" onClick={handleAuthClick} style={{ marginLeft:'auto', background:'#fff', border:'1px solid var(--border)', color:'#3b82f6' }}>
+                📅 GCal
+              </button>
+            ) : (
+              <label className="mc-sb-item" style={{ margin:0, marginLeft:'auto' }}>
+                <input type="checkbox" checked={showGcalEvents} onChange={() => setShowGcalEvents(v=>!v)} />
+                <span className="mc-sb-swatch" style={{ background:'#4285F4' }}></span>
+                <span style={{ fontSize:'12px' }}>Google Cal ☑</span>
+              </label>
+            )}
+          </div>
         </div>
 
         {/* ── Quick Add Panel ── */}
