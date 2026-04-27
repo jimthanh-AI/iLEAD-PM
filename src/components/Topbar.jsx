@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Search, Download, Settings, FileText } from 'lucide-react';
+import { Search, Settings } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
-import { generateTasksReport } from '../utils/reportGenerator';
 import './Topbar.css';
 
 const Topbar = ({ onHamburger }) => {
   const location   = useLocation();
   const nav        = useNavigate();
-  const { partners, activities, tasks, downloadBackupJSON } = useData();
+  const { partners, activities, tasks } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -66,8 +65,6 @@ const Topbar = ({ onHamburger }) => {
 
   const crumbs = buildBreadcrumbs();
   const searchResults = executeSearch();
-
-  const openTasksReport = () => generateTasksReport(tasks, activities, partners);
 
   return (
     <header className="topbar">
@@ -130,12 +127,6 @@ const Topbar = ({ onHamburger }) => {
           )}
         </div>
 
-        <button className="btn btn-secondary" onClick={openTasksReport} title="Xuất báo cáo Tasks (PDF)">
-          <FileText size={15} /> Report
-        </button>
-        <button className="btn btn-secondary" onClick={downloadBackupJSON} title="Tải backup toàn bộ dữ liệu (JSON)">
-          <Download size={15} /> Backup
-        </button>
         <NotificationCenter />
         <button
           className={`btn btn-icon${location.pathname === '/settings' ? ' active' : ''}`}

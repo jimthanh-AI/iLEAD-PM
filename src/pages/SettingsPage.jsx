@@ -199,7 +199,7 @@ export default function SettingsPage() {
             <div className="info-row"><span>Chương trình</span><strong>iLEAD 2025–2028</strong></div>
             <div className="info-row"><span>Quốc gia</span><strong>Vietnam</strong></div>
             <div className="info-row"><span>Fiscal Year</span><strong>Q1 Apr–Jun · Q4 ends 31 Mar</strong></div>
-            <div className="info-row"><span>Storage</span><strong>localStorage only</strong></div>
+            <div className="info-row"><span>Storage</span><strong>Supabase (cloud)</strong></div>
           </div>
         </div>
 
