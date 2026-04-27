@@ -3,12 +3,10 @@ import { useData } from '../../context/DataContext';
 import { STAGES, STAGE_LABELS, STATUS_LABELS, ACTIVITY_TYPES, ACTIVITY_TYPE_MAP, generateId, BALL_OWNERS } from '../../utils/constants';
 import { Modal } from '../Modal';
 
-const TYPES = ['', 'local', 'in-country', 'virtual'];
-
 const defaultForm = {
   name:'', status:'not_started', stage:'S1',
   activityTypeCode:'', iteration:1,
-  ballOwner:'', ca:'', type:'',
+  ballOwner:'', ca:'',
   reachTotal:0, reachWomen:0, reachMen:0,
   budget_planned:'', budget_actual:'',
   startDate:'', endDate:'', nextAction:'', notes:'',
@@ -22,7 +20,6 @@ const fromActivity = (a) => ({
   iteration:        a.iteration        || 1,
   ballOwner:        a.ballOwner        || '',
   ca:               a.ca               || '',
-  type:             a.type             || '',
   reachTotal:       a.reachTotal       ?? 0,
   reachWomen:       a.reachWomen       ?? 0,
   reachMen:         a.reachMen         ?? 0,
@@ -170,15 +167,9 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         </div>
       )}
 
-      {/* Type + Iteration — edit only */}
+      {/* Iteration — edit only */}
       {editActivity && (
         <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Assignment Type</label>
-            <select className="form-select" value={form.type} onChange={e => set('type', e.target.value)}>
-              {TYPES.map(t => <option key={t} value={t}>{t || '—'}</option>)}
-            </select>
-          </div>
           <div className="form-group">
             <label className="form-label">Lần thứ</label>
             <input className="form-input" type="number" min="1" value={form.iteration}
