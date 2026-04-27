@@ -80,15 +80,10 @@ const Dashboard = () => {
   }).filter(x => x.acts.length);
 
   // ── Follow-up & upcoming ──────────────────────────────────────
-  // Sort by nearest open task deadline (then activity endDate as fallback)
+  // Sort by activity endDate ascending (nearest deadline first)
   const followUp = activities
     .filter(a => a.status === 'in_progress' && a.nextAction)
-    .map(a => {
-      const openTasks = tasks.filter(t => t.activityId === a.id && t.status !== 'done' && t.dueDate);
-      openTasks.sort((x, y) => x.dueDate.localeCompare(y.dueDate));
-      return { ...a, _nearestDue: openTasks[0]?.dueDate || a.endDate || '' };
-    })
-    .sort((a, b) => a._nearestDue.localeCompare(b._nearestDue))
+    .sort((a, b) => (a.endDate || '9999').localeCompare(b.endDate || '9999'))
     .slice(0, 6);
   const upcoming = activities
     .filter(a => { if (a.status === 'done') return false; const dl = daysLeft(a.endDate); return dl !== null && dl >= 0 && dl <= 14; })
@@ -106,11 +101,9 @@ const Dashboard = () => {
 
   const ActRow = ({ a }) => {
     const pa = partnerMap[a.partnerId];
-    // Use _nearestDue (nearest open task deadline) for prio dot and deadline column if available
-    const deadlineDate = a._nearestDue || a.endDate;
     return (
       <div className="tbl-row act-tbl-row" onClick={() => nav(`/activity/${a.id}`)}>
-        <div className={`prio-dot ${PRIO_CLASS[guessPrio(deadlineDate)]}`}></div>
+        <div className={`prio-dot ${PRIO_CLASS[guessPrio(a.endDate)]}`}></div>
         <div>
           <div className="cell-name">{a.name}</div>
           {a.nextAction && <div className="cell-next">→ {a.nextAction}</div>}
@@ -118,7 +111,7 @@ const Dashboard = () => {
         <span className="cell-tag" style={{color: pa?.color}}>{pa?.name || '—'}</span>
         <span className={`cell-tag stage-${a.stage}`}>{a.stage}</span>
         <span className="cell-small">{a.ballOwner || '—'}</span>
-        <span className="cell-mono">{dlStr(deadlineDate)}</span>
+        <span className="cell-mono">{dlStr(a.endDate)}</span>
       </div>
     );
   };
