@@ -39,7 +39,6 @@ const QuickAddTask = ({ defaultDate, activities, addTask, onClose }) => {
       assignee,
       dueDate,
       notes: '',
-      pos: Date.now(),
     });
     onClose();
   };
