@@ -80,7 +80,6 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
           id: generateId('a'),
           partnerId,
           ...form,
-          pos: Date.now(),
         });
       }
       setForm(defaultForm);

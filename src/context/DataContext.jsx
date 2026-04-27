@@ -237,8 +237,10 @@ export const DataProvider = ({ children }) => {
 
   // ── Mutations: Activities ──────────────────────────────────────
   const addActivity = (a) => {
-    setData(d => ({ ...d, activities: [...d.activities, a] }));
-    sb(() => supabase.from('activities').upsert(a));
+    const pos = data.activities.filter(x => x.partnerId === a.partnerId).length;
+    const item = { ...a, pos };
+    setData(d => ({ ...d, activities: [...d.activities, item] }));
+    sb(() => supabase.from('activities').upsert(item), 'addActivity');
   };
   const updateActivity = (id, u) => {
     setData(d => ({ ...d, activities: d.activities.map(a => a.id === id ? { ...a, ...u } : a) }));
@@ -264,8 +266,10 @@ export const DataProvider = ({ children }) => {
 
   // ── Mutations: Tasks ───────────────────────────────────────────
   const addTask = (t) => {
-    setData(d => ({ ...d, tasks: [...d.tasks, t] }));
-    sb(() => supabase.from('tasks').upsert(t));
+    const pos = data.tasks.filter(x => x.activityId === t.activityId).length;
+    const item = { ...t, pos };
+    setData(d => ({ ...d, tasks: [...d.tasks, item] }));
+    sb(() => supabase.from('tasks').upsert(item), 'addTask');
   };
   const updateTask = (id, u) => {
     setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? { ...t, ...u } : t) }));

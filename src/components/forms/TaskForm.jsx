@@ -33,7 +33,7 @@ export const TaskForm = ({ isOpen, onClose, activityId, editTask }) => {
       if (editTask) {
         updateTask(editTask.id, { ...form, notes: editTask.notes || '' });
       } else {
-        addTask({ id: generateId('t'), notes: '', pos: Date.now(), ...form });
+        addTask({ id: generateId('t'), notes: '', ...form });
       }
       setForm(defaultForm(activityId));
       setError('');
