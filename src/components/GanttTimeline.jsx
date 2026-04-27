@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { generateTimelineReport } from '../utils/reportGenerator';
 import { useData } from '../context/DataContext';
 import { STAGE_COLORS, daysLeft, fmtDate } from '../utils/constants';
 import '../pages/Dashboard.css';
@@ -69,31 +70,7 @@ export const GanttTimeline = () => {
     return s <= re && e >= rs;
   });
 
-  const exportCSV = () => {
-    const rows = [['#','Partner','Tên Hoạt Động','Status','Stage','Ngày bắt đầu','Ngày kết thúc','Số ngày']];
-    visible.forEach((a, i) => {
-      const p = partners.find(p => p.id === a.partnerId);
-      const s = new Date(a.startDate + 'T00:00:00');
-      const e = new Date((a.endDate || a.startDate) + 'T00:00:00');
-      const days = Math.round((e - s) / 86400000) + 1;
-      rows.push([
-        i + 1,
-        p ? `"${p.name}"` : '',
-        `"${a.name}"`,
-        a.status || '',
-        a.stage || '',
-        a.startDate || '',
-        a.endDate || '',
-        days,
-      ]);
-    });
-    const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
-    const el = document.createElement('a');
-    el.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    el.download = `iLEAD_Timeline_${new Date().toISOString().split('T')[0]}.csv`;
-    el.click();
-    URL.revokeObjectURL(el.href);
-  };
+  const openReport = () => generateTimelineReport(visible, partners, rangeLabel);
 
   return (
     <div className="page-container animate-fade-in">
@@ -119,7 +96,7 @@ export const GanttTimeline = () => {
             <option value="">Tất cả Partner</option>
             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className="btn btn-secondary btn-sm" onClick={exportCSV} title="Export Timeline (CSV)"><Download size={14} /> Export</button>
+          <button className="btn btn-secondary btn-sm" onClick={openReport} title="Xuất báo cáo Timeline (PDF)"><FileText size={14} /> Report</button>
         </div>
         <div className="gantt-range-label">{rangeLabel} — {visible.length} activities</div>
 
