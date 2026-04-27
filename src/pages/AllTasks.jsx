@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { daysLeft, fmtDate, TEAM_MEMBERS } from '../utils/constants';
 import { TaskForm } from '../components/forms/TaskForm';
+import { generateTasksReport } from '../utils/reportGenerator';
+import { FileText } from 'lucide-react';
 import './Dashboard.css';
 import './PartnerView.css';
 
@@ -197,6 +199,8 @@ const AllTasks = () => {
     );
   };
 
+  const openReport = () => generateTasksReport(tasks, activities, partners);
+
   return (
     <div className="page-container animate-fade-in">
       <div className="page-header-row">
@@ -217,6 +221,7 @@ const AllTasks = () => {
             ))}
           </div>
         </div>
+        <button className="btn btn-secondary btn-sm" onClick={openReport} title="Xuất báo cáo Tasks (PDF)"><FileText size={14} /> Report</button>
       </div>
 
       {/* ── Bulk toolbar ── */}
