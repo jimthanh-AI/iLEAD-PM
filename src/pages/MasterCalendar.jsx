@@ -82,15 +82,146 @@ const QuickAddTask = ({ defaultDate, activities, addTask, onClose }) => {
   );
 };
 
+/* ── Task Detail Popup ── */
+const TaskDetailPopup = ({ task, act, pa, nav, onClose, updateTask }) => {
+  const isOverdue = task.dueDate && daysLeft(task.dueDate) < 0 && task.status !== 'done';
+  const dl = task.dueDate ? daysLeft(task.dueDate) : null;
+
+  const toggleDone = () => {
+    updateTask(task.id, { status: task.status === 'done' ? 'todo' : 'done' });
+    onClose();
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--surface-solid)',
+          border: '1px solid var(--border)',
+          borderRadius: '10px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          width: '360px',
+          maxWidth: '92vw',
+          overflow: 'hidden',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '12px 14px',
+          background: isOverdue ? 'rgba(239,68,68,0.08)' : task.status === 'done' ? 'rgba(16,185,129,0.08)' : 'var(--surface2)',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'flex-start', gap: '8px',
+        }}>
+          <span style={{ fontSize: '16px', marginTop: '2px' }}>
+            {task.status === 'done' ? '✅' : isOverdue ? '⚠️' : '🔲'}
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontWeight: 700, fontSize: '14px', color: 'var(--text)',
+              textDecoration: task.status === 'done' ? 'line-through' : 'none',
+              opacity: task.status === 'done' ? 0.7 : 1,
+            }}>{task.name}</div>
+            {act && (
+              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>
+                {pa ? `${pa.name} · ` : ''}{act.name}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', color: 'var(--text3)', padding: '0 2px' }}
+          >✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {task.dueDate && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+              <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Deadline</span>
+              <span style={{
+                fontWeight: 600,
+                color: isOverdue ? '#ef4444' : dl !== null && dl <= 3 ? '#f59e0b' : 'var(--text)',
+              }}>
+                {fmtDate(task.dueDate)}
+                {dl !== null && task.status !== 'done' && (
+                  <span style={{ fontWeight: 400, marginLeft: '6px', fontSize: '11px', color: isOverdue ? '#ef4444' : 'var(--text3)' }}>
+                    {isOverdue ? `Quá hạn ${Math.abs(dl)} ngày` : dl === 0 ? 'Hôm nay' : `còn ${dl} ngày`}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+          {task.assignee && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+              <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Giao cho</span>
+              <span style={{ fontWeight: 500 }}>👤 {task.assignee}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Trạng thái</span>
+            <span style={{
+              padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600,
+              background: isOverdue ? 'rgba(239,68,68,0.12)' : task.status === 'done' ? 'rgba(16,185,129,0.12)' : 'rgba(156,163,175,0.15)',
+              color: isOverdue ? '#ef4444' : task.status === 'done' ? '#059669' : '#6b7280',
+            }}>
+              {isOverdue ? 'Quá hạn' : task.status === 'done' ? 'Hoàn thành' : 'Todo'}
+            </span>
+          </div>
+          {task.notes && (
+            <div style={{ fontSize: '12px', color: 'var(--text2)', background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', marginTop: '2px' }}>
+              {task.notes}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px' }}>
+          <button
+            className="btn btn-sm"
+            style={{
+              flex: 1,
+              background: task.status === 'done' ? 'rgba(156,163,175,0.15)' : 'rgba(16,185,129,0.12)',
+              color: task.status === 'done' ? '#6b7280' : '#059669',
+              border: `1px solid ${task.status === 'done' ? '#9ca3af' : '#10b981'}`,
+              fontWeight: 600,
+            }}
+            onClick={toggleDone}
+          >
+            {task.status === 'done' ? '↩ Mở lại' : '✓ Đánh dấu Done'}
+          </button>
+          {act && (
+            <button
+              className="btn btn-sm"
+              style={{ flex: 1, fontWeight: 500 }}
+              onClick={() => { onClose(); nav(`/activity/${act.id}`); }}
+            >
+              Xem Activity →
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const MasterCalendar = () => {
   const nav = useNavigate();
-  const { tasks, activities, partners, addTask } = useData();
+  const { tasks, activities, partners, addTask, updateTask } = useData();
 
   // View state
   const [view, setView]               = useState('month');
   const [weekOffset, setWeekOffset]   = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [quickAdd, setQuickAdd]       = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
   const touchStartX = useRef(null);
 
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
@@ -287,7 +418,7 @@ export const MasterCalendar = () => {
       <div
         className={`uc-event uc-evt-task${compact ? ' compact' : ''}`}
         style={chipStyle}
-        onClick={(e) => { e.stopPropagation(); act && nav(`/activity/${act.id}`); }}
+        onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
         title={`Task: ${task.name}${act ? ' · ' + act.name : ''}`}
       >
         <span className="uc-evt-icon">
@@ -332,6 +463,8 @@ export const MasterCalendar = () => {
       </div>
     );
   };
+  const selectedTaskCtx = selectedTask ? getContext(selectedTask) : {};
+
   return (
     <div className="mc-root animate-fade-in" onClick={() => setQuickAdd(null)}>
 
@@ -555,6 +688,16 @@ export const MasterCalendar = () => {
 
       </div>
 
+      {selectedTask && (
+        <TaskDetailPopup
+          task={selectedTask}
+          act={selectedTaskCtx.act}
+          pa={selectedTaskCtx.pa}
+          nav={nav}
+          onClose={() => setSelectedTask(null)}
+          updateTask={updateTask}
+        />
+      )}
     </div>
   );
 };
