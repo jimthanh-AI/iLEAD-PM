@@ -117,6 +117,26 @@ const fetchAll = async () => {
 const safeUpsert = (table, rows) =>
   rows && rows.length ? supabase.from(table).upsert(rows) : Promise.resolve({ error: null });
 
+// Numeric and date fields that must be null (not '') when empty
+const ACTIVITY_NUMERIC  = ['budget_planned','budget_actual','reachTotal','reachWomen','reachMen','iteration','pos'];
+const ACTIVITY_DATE     = ['startDate','endDate'];
+const TASK_NUMERIC      = ['pos'];
+const TASK_DATE         = ['dueDate'];
+
+const sanitizeActivity = (a) => {
+  const out = { ...a };
+  ACTIVITY_NUMERIC.forEach(k => { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  ACTIVITY_DATE.forEach(k =>   { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  return out;
+};
+
+const sanitizeTask = (t) => {
+  const out = { ...t };
+  TASK_NUMERIC.forEach(k => { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  TASK_DATE.forEach(k =>   { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  return out;
+};
+
 const pushToSupabase = async (data) => {
   // Sequential: partners first (FK parent), then children in parallel
   await safeUpsert('partners', data.partners);
@@ -184,13 +204,15 @@ export const DataProvider = ({ children }) => {
       .then(() => fn())
       .then((res) => {
         if (res && res.error) {
-          console.error('Supabase[' + label + ']:', res.error.message);
-          setSyncError('Lỗi đồng bộ (' + label + '): ' + res.error.message + '. Dữ liệu có thể chưa lưu cloud.');
+          const msg = res.error.message || res.error.details || JSON.stringify(res.error);
+          console.error('Supabase[' + label + ']:', msg, res.error);
+          setSyncError('[' + label + '] ' + msg);
         }
       })
       .catch((err) => {
-        console.error('Supabase[' + label + ']:', err?.message || err);
-        setSyncError('Lỗi đồng bộ (' + label + '): ' + (err?.message || err) + '. Dữ liệu có thể chưa lưu cloud.');
+        const msg = err?.message || String(err);
+        console.error('Supabase[' + label + ']:', msg);
+        setSyncError('[' + label + '] ' + msg);
       });
   };
 
@@ -238,13 +260,13 @@ export const DataProvider = ({ children }) => {
   // ── Mutations: Activities ──────────────────────────────────────
   const addActivity = (a) => {
     const pos = data.activities.filter(x => x.partnerId === a.partnerId).length;
-    const item = { ...a, pos };
+    const item = sanitizeActivity({ ...a, pos });
     setData(d => ({ ...d, activities: [...d.activities, item] }));
     sb(() => supabase.from('activities').upsert(item), 'addActivity');
   };
   const updateActivity = (id, u) => {
     setData(d => ({ ...d, activities: d.activities.map(a => a.id === id ? { ...a, ...u } : a) }));
-    sb(() => supabase.from('activities').update(u).eq('id', id));
+    sb(() => supabase.from('activities').update(sanitizeActivity(u)).eq('id', id), 'updateActivity');
   };
   const deleteActivity = (id) => {
     setData(d => ({
@@ -267,13 +289,13 @@ export const DataProvider = ({ children }) => {
   // ── Mutations: Tasks ───────────────────────────────────────────
   const addTask = (t) => {
     const pos = data.tasks.filter(x => x.activityId === t.activityId).length;
-    const item = { ...t, pos };
+    const item = sanitizeTask({ ...t, pos });
     setData(d => ({ ...d, tasks: [...d.tasks, item] }));
     sb(() => supabase.from('tasks').upsert(item), 'addTask');
   };
   const updateTask = (id, u) => {
     setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? { ...t, ...u } : t) }));
-    sb(() => supabase.from('tasks').update(u).eq('id', id));
+    sb(() => supabase.from('tasks').update(sanitizeTask(u)).eq('id', id), 'updateTask');
   };
   const deleteTask = (id) => {
     setData(d => ({ ...d, tasks: d.tasks.filter(t => t.id !== id) }));
