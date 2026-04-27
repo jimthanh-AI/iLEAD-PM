@@ -1,11 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
 
 const DataContext = createContext();
 export const useData = () => useContext(DataContext);
 
-const STORAGE_KEY = 'ilead_v5_data';
-const DATA_VERSION = 4;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEED — fallback data if both Supabase and localStorage are empty
@@ -89,23 +87,6 @@ const SEED = {
   ],
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// localStorage helpers (backup)
-// ─────────────────────────────────────────────────────────────────────────────
-const loadLocal = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed.__v || parsed.__v < DATA_VERSION) return null;
-    if (!Array.isArray(parsed.partners) || !Array.isArray(parsed.activities)) return null;
-    return parsed;
-  } catch { return null; }
-};
-
-const saveLocal = (data) => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, __v: DATA_VERSION })); } catch {}
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers
@@ -150,28 +131,6 @@ const pushToSupabase = async (data) => {
   ]);
 };
 
-// Merge helpers — recover items in local that are missing from remote (id-keyed)
-const COLLECTIONS_BY_ID = ['partners', 'activities', 'tasks', 'melEntries', 'activityIndicators'];
-const localOnlyByCollection = (local, remote) => {
-  const out = {};
-  for (const c of COLLECTIONS_BY_ID) {
-    const remoteIds = new Set((remote[c] || []).map(x => x.id));
-    out[c] = (local[c] || []).filter(x => x.id && !remoteIds.has(x.id));
-  }
-  const remoteBudgetIds = new Set((remote.partnerBudgets || []).map(x => x.partnerId));
-  out.partnerBudgets = (local.partnerBudgets || []).filter(b => b.partnerId && !remoteBudgetIds.has(b.partnerId));
-  return out;
-};
-const hasLocalOnly = (delta) =>
-  COLLECTIONS_BY_ID.some(c => (delta[c] || []).length > 0) || (delta.partnerBudgets || []).length > 0;
-const mergeRemoteWithLocal = (remote, delta) => {
-  const out = { ...remote };
-  for (const c of COLLECTIONS_BY_ID) {
-    out[c] = [...(remote[c] || []), ...(delta[c] || [])];
-  }
-  out.partnerBudgets = [...(remote.partnerBudgets || []), ...(delta.partnerBudgets || [])];
-  return out;
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Provider
@@ -195,69 +154,26 @@ export const DataProvider = ({ children }) => {
   const canEdit   = userRole !== 'viewer';
   const canDelete = userRole === 'admin' || userRole === 'pm';
 
-  const dataRef = useRef(data);
-  useEffect(() => { dataRef.current = data; }, [data]);
-
-  // ── Boot: load from Supabase, migrate if empty, MERGE if local has unsynced items ─────
+// ── Boot: load from Supabase only ─────────────────────────────
   useEffect(() => {
     const boot = async () => {
       try {
-        console.log('[Boot] Fetching Supabase...');
         const remote = await fetchAll();
-        const local  = loadLocal();
-        console.log('[Boot] remote partners:', remote.partners.length, '· local partners:', local?.partners?.length || 0);
-
         if (remote.partners.length === 0) {
-          // ── Empty remote (first-time / migration): seed from local or SEED, push up
-          const seed = local || SEED;
-          seed.tasks = (seed.tasks || []).map(t => t.status === 'in_progress' ? { ...t, status: 'todo' } : t);
-          setData(seed);
-          console.log('[Boot] Pushing seed to Supabase:', seed.partners.length, 'partners,', seed.activities.length, 'activities,', seed.tasks.length, 'tasks');
-          await pushToSupabase(seed);
-          console.log('[Boot] Push complete');
-        } else if (local) {
-          // ── Both sides have data: recover items in local but missing from remote (avoid data loss)
-          const delta = localOnlyByCollection(local, remote);
-          if (hasLocalOnly(delta)) {
-            const summary = COLLECTIONS_BY_ID.map(c => `${c}:${delta[c].length}`).concat(`partnerBudgets:${delta.partnerBudgets.length}`).filter(s => !s.endsWith(':0')).join(', ');
-            console.warn('[Boot] Recovering local-only items NOT in remote →', summary);
-            const merged = mergeRemoteWithLocal(remote, delta);
-            // Push the recovered items to Supabase (sequential for FK)
-            await safeUpsert('partners', delta.partners);
-            await Promise.all([safeUpsert('activities', delta.activities), safeUpsert('partner_budgets', delta.partnerBudgets)]);
-            await Promise.all([safeUpsert('tasks', delta.tasks), safeUpsert('mel_entries', delta.melEntries), safeUpsert('activity_indicators', delta.activityIndicators)]);
-            setData(merged);
-            saveLocal(merged);
-            console.log('[Boot] Recovery complete');
-          } else {
-            setData(remote);
-            saveLocal(remote);
-          }
+          // First time: seed Supabase with default data
+          setData(SEED);
+          await pushToSupabase(SEED);
         } else {
           setData(remote);
-          saveLocal(remote);
         }
       } catch (err) {
-        console.warn('[Boot] Supabase unavailable:', err.message);
-        setSyncError('Không kết nối được Supabase. Đang dùng dữ liệu local. Thay đổi của bạn sẽ KHÔNG được lưu cloud.');
-        const local = loadLocal();
-        if (local) {
-          local.tasks = (local.tasks || []).map(t =>
-            t.status === 'in_progress' ? { ...t, status: 'todo' } : t
-          );
-          setData(local);
-        }
+        setSyncError('Không kết nối được Supabase: ' + err.message);
       } finally {
         setLoading(false);
       }
     };
     boot();
   }, []);
-
-  // Save to localStorage on every data change (backup)
-  useEffect(() => {
-    if (!loading) saveLocal(data);
-  }, [data, loading]);
 
   // ── Supabase fire-and-forget helper ───────────────────────────
   // Supabase v2 query builders are thenable but not real Promises (no .catch),
@@ -414,6 +330,16 @@ export const DataProvider = ({ children }) => {
     );
   }
 
+  const downloadBackupJSON = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `iLEAD_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <DataContext.Provider value={{
       ...data, setData,
@@ -426,6 +352,7 @@ export const DataProvider = ({ children }) => {
       addActivityIndicator, updateActivityIndicator, deleteActivityIndicator,
       addMelEntry, updateMelEntry, deleteMelEntry,
       updatePartnerBudget,
+      downloadBackupJSON,
     }}>
       {syncError && (
         <div style={{
