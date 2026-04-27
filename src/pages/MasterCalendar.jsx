@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { TASK_STATUS_LABELS, fmtDate, daysLeft, generateId, TEAM_MEMBERS } from '../utils/constants';
@@ -91,6 +91,20 @@ export const MasterCalendar = () => {
   const [weekOffset, setWeekOffset]   = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [quickAdd, setQuickAdd]       = useState(null);
+  const touchStartX = useRef(null);
+
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd   = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 40) return; // ignore small movements
+    if (dx < 0) {
+      view === 'week' ? setWeekOffset(o => o + 1) : setMonthOffset(o => o + 1);
+    } else {
+      view === 'week' ? setWeekOffset(o => o - 1) : setMonthOffset(o => o - 1);
+    }
+  };
 
   // Toggles panel — tasks are either todo or done (no in_progress status)
   const [showTasks, setShowTasks] = useState({ todo: true, done: true, overdue: true });
@@ -458,7 +472,10 @@ export const MasterCalendar = () => {
         )}
 
         {/* ── UNIFIED GRID (Month & Week) ── */}
-        <div className="mc-grid-container">
+        <div className="mc-grid-container"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           
           {/* MONTH VIEW */}
           {view === 'month' && (
