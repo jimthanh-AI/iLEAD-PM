@@ -79,20 +79,13 @@ const Dashboard = () => {
     return { p, acts, pdone, ppct, reach, budget, topStage };
   }).filter(x => x.acts.length);
 
-  // ── Follow-up (merged) ────────────────────────────────────────
-  // Non-done activities that have at least one open task with a dueDate.
-  // Sorted by nearest open task deadline ascending.
-  const followUp = activities
-    .filter(a => a.status !== 'done')
-    .map(a => {
-      const openTasks = tasks
-        .filter(t => t.activityId === a.id && t.status !== 'done' && t.dueDate)
-        .sort((x, y) => x.dueDate.localeCompare(y.dueDate));
-      if (!openTasks.length) return null;
-      return { ...a, _nearestTask: openTasks[0] };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a._nearestTask.dueDate.localeCompare(b._nearestTask.dueDate))
+  // ── Follow-up: one row per open task, sorted by task dueDate ─
+  const activityMap2 = Object.fromEntries(activities.map(a => [a.id, a]));
+  const followUp = tasks
+    .filter(t => t.status !== 'done' && t.dueDate)
+    .map(t => ({ ...t, _activity: activityMap2[t.activityId] }))
+    .filter(t => t._activity && t._activity.status !== 'done')
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 8);
 
   const dlStr = (endDate) => {
@@ -104,22 +97,20 @@ const Dashboard = () => {
     return fmtDate(endDate);
   };
 
-  const ActRow = ({ a }) => {
-    const pa = partnerMap[a.partnerId];
-    const taskDue = a._nearestTask?.dueDate;
-    const taskName = a._nearestTask?.name;
-    const deadlineDate = taskDue || a.endDate;
+  const ActRow = ({ a: t }) => {
+    const act = t._activity;
+    const pa  = partnerMap[act?.partnerId];
     return (
-      <div className="tbl-row act-tbl-row" onClick={() => nav(`/activity/${a.id}`)}>
-        <div className={`prio-dot ${PRIO_CLASS[guessPrio(deadlineDate)]}`}></div>
+      <div className="tbl-row act-tbl-row" onClick={() => act && nav(`/activity/${act.id}`)}>
+        <div className={`prio-dot ${PRIO_CLASS[guessPrio(t.dueDate)]}`}></div>
         <div>
-          <div className="cell-name">{a.name}</div>
-          {taskName && <div className="cell-next">→ {taskName}</div>}
+          <div className="cell-name">{t.name}</div>
+          {act && <div className="cell-next">↳ {act.name}</div>}
         </div>
         <span className="cell-tag" style={{color: pa?.color}}>{pa?.name || '—'}</span>
-        <span className={`cell-tag stage-${a.stage}`}>{a.stage}</span>
-        <span className="cell-small">{a.ballOwner || '—'}</span>
-        <span className="cell-mono">{dlStr(deadlineDate)}</span>
+        <span className={`cell-tag stage-${act?.stage}`}>{act?.stage || '—'}</span>
+        <span className="cell-small">{t.assignee || act?.ballOwner || '—'}</span>
+        <span className="cell-mono">{dlStr(t.dueDate)}</span>
       </div>
     );
   };
@@ -329,7 +320,7 @@ const Dashboard = () => {
           </div>
           <div className="tbl-wrap">
             <div className="tbl-hdr act-tbl-row">
-              <span></span><span>Activity</span><span>Partner</span><span>Stage</span><span>Owner</span><span>Deadline</span>
+              <span></span><span>Task · Activity</span><span>Partner</span><span>Stage</span><span>Owner</span><span>Deadline</span>
             </div>
             {followUp.map(a => <ActRow key={a.id} a={a} />)}
           </div>
