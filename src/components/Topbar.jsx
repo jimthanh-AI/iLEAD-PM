@@ -8,7 +8,7 @@ import './Topbar.css';
 const Topbar = ({ onHamburger }) => {
   const location   = useLocation();
   const nav        = useNavigate();
-  const { partners, activities, tasks } = useData();
+  const { partners, activities, tasks, downloadBackupJSON } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -71,14 +71,14 @@ const Topbar = ({ onHamburger }) => {
       ['Task ID', 'Partner', 'Activity', 'Task Name', 'Status', 'Assignee', 'Deadline', 'Người Tạo']
     ];
 
-    tasks.forEach(t => {
+    tasks.forEach((t, idx) => {
       const a  = activities.find(act => act.id === t.activityId);
       const pa = a ? partners.find(p => p.id === a.partnerId) : null;
 
       rows.push([
-        t.id,
+        idx + 1,
         pa ? `"${pa.name}"` : '',
-        a ? `"${a.name}"` : '',
+        `"${a ? a.name : 'Hoạt động khác'}"`,
         `"${t.name}"`,
         t.status,
         `"${t.assignee || ''}"`,
@@ -158,8 +158,11 @@ const Topbar = ({ onHamburger }) => {
           )}
         </div>
 
-        <button className="btn btn-secondary" onClick={exportTasksToCSV} title="Xuất dữ liệu Excel (CSV)">
+        <button className="btn btn-secondary" onClick={exportTasksToCSV} title="Xuất tasks (CSV)">
           <Download size={15} /> Export
+        </button>
+        <button className="btn btn-secondary" onClick={downloadBackupJSON} title="Tải backup toàn bộ dữ liệu (JSON)">
+          <Download size={15} /> Backup
         </button>
         <NotificationCenter />
         <button

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { Download } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { STAGE_COLORS, STATUS_CSS, STATUS_LABELS, fmtDate, daysLeft, generateId } from '../utils/constants';
 import { ActivityForm } from '../components/forms/ActivityForm';
@@ -87,6 +88,37 @@ const GlobalKanban = () => {
 
   const getPartner = (a) => partnerMap[a.partnerId];
 
+  const exportCSV = () => {
+    const rows = [['#','Partner','Tên Hoạt Động','Loại','Stage','Status','Ngày bắt đầu','Ngày kết thúc','Budget Planned (CAD)','Budget Actual (CAD)','Ball Owner','CA','Reach Total','Reach Women','Reach Men','Next Action']];
+    acts.forEach((a, i) => {
+      const p = partnerMap[a.partnerId];
+      rows.push([
+        i + 1,
+        p ? `"${p.name}"` : '',
+        `"${a.name}"`,
+        a.activityTypeCode || '',
+        a.stage || '',
+        a.status || '',
+        a.startDate || '',
+        a.endDate || '',
+        a.budget_planned || 0,
+        a.budget_actual || 0,
+        `"${a.ballOwner || ''}"`,
+        `"${a.ca || ''}"`,
+        a.reachTotal || 0,
+        a.reachWomen || 0,
+        a.reachMen || 0,
+        `"${(a.nextAction || '').replace(/"/g, "'")}"`,
+      ]);
+    });
+    const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = `iLEAD_Activities_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   return (
     <div className="page-container animate-fade-in" style={{ display:'flex', flexDirection:'column', minHeight: 0 }}>
       {/* Controls */}
@@ -96,6 +128,7 @@ const GlobalKanban = () => {
           <option value="">Tất cả Partner</option>
           {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+        <button className="btn btn-secondary" onClick={exportCSV} title="Export Activities (CSV)"><Download size={14} /> Export</button>
         <button className="btn btn-primary" onClick={() => openAdd('not_started')}>+ Activity</button>
       </div>
 

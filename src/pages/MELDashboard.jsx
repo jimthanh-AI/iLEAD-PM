@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { useData } from '../context/DataContext';
+import { Download } from 'lucide-react';
 import { INDICATOR_GROUPS, INDICATOR_GROUP_MAP, fmtCad } from '../utils/constants';
 import {
   computeTimeElapsed, computeRiskMatrix, computePartnerScorecard, computeForecasts,
@@ -537,11 +538,41 @@ export default function MELDashboard() {
     { id: 'forecast',     label: 'C — Forecast' },
   ];
 
+  const exportCSV = () => {
+    const rows = [['#','Sub Code','Indicator Group','Partner','Activity','Date','Q1_M','Q1_F','Q1_T','Q2_M','Q2_F','Q2_T','Q3_M','Q3_F','Q3_T','Q4_M','Q4_F','Q4_T','Total']];
+    melEntries.forEach((e, i) => {
+      const p = partnerMap[e.partnerId];
+      const a = activityMap[e.activityId];
+      const q1t = (e.q1_m||0)+(e.q1_f||0), q2t = (e.q2_m||0)+(e.q2_f||0);
+      const q3t = (e.q3_m||0)+(e.q3_f||0), q4t = (e.q4_m||0)+(e.q4_f||0);
+      rows.push([
+        i + 1,
+        e.subCode || '',
+        e.indicatorGroup || '',
+        p ? `"${p.name}"` : '',
+        a ? `"${a.name}"` : '',
+        e.date || '',
+        e.q1_m||0, e.q1_f||0, q1t,
+        e.q2_m||0, e.q2_f||0, q2t,
+        e.q3_m||0, e.q3_f||0, q3t,
+        e.q4_m||0, e.q4_f||0, q4t,
+        q1t + q2t + q3t + q4t,
+      ]);
+    });
+    const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+    const el = document.createElement('a');
+    el.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    el.download = `iLEAD_MEL_${new Date().toISOString().split('T')[0]}.csv`;
+    el.click();
+    URL.revokeObjectURL(el.href);
+  };
+
   return (
     <div className="mel-dashboard">
       <div className="mel-header">
         <h1>i-LEAD MEL Dashboard</h1>
         <span className="mel-subtitle">Fiscal Year 2025–2026 · Vietnam</span>
+        <button className="btn btn-secondary btn-sm" onClick={exportCSV} title="Export MEL Entries (CSV)" style={{ marginLeft:'auto' }}><Download size={14} /> Export MEL</button>
       </div>
 
       {/* Tab bar */}
