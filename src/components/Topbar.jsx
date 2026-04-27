@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Search, Download, Settings } from 'lucide-react';
+import { Search, Download, Settings, FileText } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
+import { generateTasksReport } from '../utils/reportGenerator';
 import './Topbar.css';
 
 const Topbar = ({ onHamburger }) => {
@@ -66,36 +67,7 @@ const Topbar = ({ onHamburger }) => {
   const crumbs = buildBreadcrumbs();
   const searchResults = executeSearch();
 
-  const exportTasksToCSV = () => {
-    const rows = [
-      ['Task ID', 'Partner', 'Activity', 'Task Name', 'Status', 'Assignee', 'Deadline', 'Người Tạo']
-    ];
-
-    tasks.forEach((t, idx) => {
-      const a  = activities.find(act => act.id === t.activityId);
-      const pa = a ? partners.find(p => p.id === a.partnerId) : null;
-
-      rows.push([
-        idx + 1,
-        pa ? `"${pa.name}"` : '',
-        `"${a ? a.name : 'Hoạt động khác'}"`,
-        `"${t.name}"`,
-        t.status,
-        `"${t.assignee || ''}"`,
-        t.dueDate || '',
-        `"${t.author || ''}"`
-      ]);
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `iLEAD_Tasks_Export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const openTasksReport = () => generateTasksReport(tasks, activities, partners);
 
   return (
     <header className="topbar">
@@ -158,8 +130,8 @@ const Topbar = ({ onHamburger }) => {
           )}
         </div>
 
-        <button className="btn btn-secondary" onClick={exportTasksToCSV} title="Xuất tasks (CSV)">
-          <Download size={15} /> Export
+        <button className="btn btn-secondary" onClick={openTasksReport} title="Xuất báo cáo Tasks (PDF)">
+          <FileText size={15} /> Report
         </button>
         <button className="btn btn-secondary" onClick={downloadBackupJSON} title="Tải backup toàn bộ dữ liệu (JSON)">
           <Download size={15} /> Backup

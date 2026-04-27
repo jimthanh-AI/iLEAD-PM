@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Download, Upload, Trash2, Edit2, X, Copy, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Download, Upload, Trash2, Edit2, X, Copy, ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { generateMELReport } from '../utils/reportGenerator';
 import { useData } from '../context/DataContext';
 import {
   INDICATOR_GROUPS, INDICATOR_GROUP_MAP, INDICATOR_CODES, INDICATOR_MAP,
@@ -18,7 +19,7 @@ const QF = { Q1:['q1_m','q1_f'], Q2:['q2_m','q2_f'], Q3:['q3_m','q3_f'], Q4:['q4
 const entryTotal = e => (e.q1_m||0)+(e.q1_f||0)+(e.q2_m||0)+(e.q2_f||0)+(e.q3_m||0)+(e.q3_f||0)+(e.q4_m||0)+(e.q4_f||0);
 
 export default function MELEntry() {
-  const { melEntries, partners, partnerMap, activities, activityMap,
+  const { melEntries, partners, partnerMap, activities, activityMap, partnerBudgets,
           addMelEntry, updateMelEntry, deleteMelEntry, canEdit, canDelete } = useData();
 
   const [showForm, setShowForm]     = useState(false);
@@ -173,6 +174,30 @@ export default function MELEntry() {
   // ── Group subtotals ───────────────────────────────────────────
   const groupTotal = (entries, field) => entries.reduce((s, e) => s + (e[field]||0), 0);
 
+  // ── Report ────────────────────────────────────────────────────
+  const indicatorStats = useMemo(() => {
+    const map = {};
+    INDICATOR_GROUPS.forEach(g => { map[g.code] = { ...g, actual: 0, male: 0, female: 0 }; });
+    melEntries.forEach(e => {
+      if (!map[e.indicatorGroup]) return;
+      const m = (e.q1_m||0)+(e.q2_m||0)+(e.q3_m||0)+(e.q4_m||0);
+      const f = (e.q1_f||0)+(e.q2_f||0)+(e.q3_f||0)+(e.q4_f||0);
+      map[e.indicatorGroup].actual  += m + f;
+      map[e.indicatorGroup].male    += m;
+      map[e.indicatorGroup].female  += f;
+    });
+    return Object.values(map);
+  }, [melEntries]);
+
+  const openReport = () => generateMELReport({
+    indicatorStats,
+    partners,
+    partnerBudgets,
+    melEntries: filtered,
+    activityMap,
+    partnerMap,
+  });
+
   return (
     <div className="mel-entry-page">
       {/* ── Page Header ── */}
@@ -192,6 +217,9 @@ export default function MELEntry() {
               </button>
             </>
           )}
+          <button className="btn-secondary" onClick={openReport}>
+            <FileText size={14} /> Report
+          </button>
           <button className="btn-secondary" onClick={copyToClipboard}>
             <Copy size={14} /> {copied ? 'Đã copy!' : 'Copy CSV'}
           </button>
