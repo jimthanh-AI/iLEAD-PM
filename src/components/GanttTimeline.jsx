@@ -118,6 +118,10 @@ export const GanttTimeline = () => {
               const bl = pct(s); const bw = Math.max(.5, pct(e) - bl);
               const sc = STAGE_COLORS[a.stage] || '#888';
               const isOver = a.endDate && daysLeft(a.endDate) < 0 && a.status !== 'done';
+              const barColor = a.status === 'done' ? '#10b981'
+                             : isOver ? 'var(--red)'
+                             : a.status === 'in_progress' ? sc
+                             : '#9ca3af';
               return (
                 <div key={a.id} className="gantt-row" onClick={() => nav(`/activity/${a.id}`)}>
                   <div className="gantt-left">
@@ -134,7 +138,7 @@ export const GanttTimeline = () => {
                         <div className="gantt-today" />
                       </div>
                     )}
-                    <div className="gantt-bar" style={{left:`${bl}%`,width:`${bw}%`,background:isOver?'var(--red)':sc}}>
+                    <div className="gantt-bar" style={{left:`${bl}%`,width:`${bw}%`,background:barColor}}>
                       {bw > 10 ? a.stage : ''}
                     </div>
                   </div>

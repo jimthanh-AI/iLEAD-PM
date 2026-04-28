@@ -138,6 +138,10 @@ const GlobalKanban = () => {
                       const sc = STAGE_COLORS[a.stage] || '#888';
                       const cardDl = daysLeft(a.endDate);
                       const overdue = cardDl !== null && cardDl < 0 && a.status !== 'done';
+                      const statusColor = overdue ? '#ef4444'
+                                        : a.status === 'done' ? '#10b981'
+                                        : a.status === 'in_progress' ? sc
+                                        : '#9ca3af';
                       return (
                         <Draggable key={a.id} draggableId={a.id} index={index}>
                           {(prov, snap) => (
@@ -150,6 +154,7 @@ const GlobalKanban = () => {
                                 ...prov.draggableProps.style,
                                 boxShadow: snap.isDragging ? 'var(--shadow-lg)' : undefined,
                                 opacity: snap.isDragging ? .9 : (a.status === 'done' ? undefined : 1),
+                                borderLeft: `3px solid ${statusColor}`,
                               }}
                               onClick={() => nav(`/activity/${a.id}`)}
                             >

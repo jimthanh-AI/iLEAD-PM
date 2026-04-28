@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { TASK_STATUS_LABELS, fmtDate, daysLeft, generateId, TEAM_MEMBERS } from '../utils/constants';
+import { TASK_STATUS_LABELS, fmtDate, daysLeft, generateId, TEAM_MEMBERS, STAGE_COLORS } from '../utils/constants';
 import './MasterCalendar.css';
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -432,7 +432,11 @@ export const MasterCalendar = () => {
 
   const ActivityChip = ({ act, compact }) => {
     const pa = partners.find(p => p.id === act.partnerId);
-    const color = pa?.color || '#6366f1';
+    const isOver = act.endDate && daysLeft(act.endDate) < 0 && act.status !== 'done';
+    const color = act.status === 'done' ? '#10b981'
+                : isOver ? '#ef4444'
+                : act.status === 'in_progress' ? (STAGE_COLORS[act.stage] || pa?.color || '#6366f1')
+                : '#9ca3af';
     return (
       <div
         className={`uc-event${compact ? ' compact' : ''}`}
