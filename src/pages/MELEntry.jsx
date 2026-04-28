@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Plus, Download, Upload, Trash2, Edit2, X, Copy, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { generateMELReport } from '../utils/reportGenerator';
 import { useData } from '../context/DataContext';
@@ -26,9 +26,10 @@ export default function MELEntry() {
   const [editId, setEditId]         = useState(null);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [filterGroup, setFilterGroup] = useState('');
-  const [showImport, setShowImport] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [importError, setImportError] = useState('');
+  const [showImport, setShowImport]     = useState(false);
+  const [importPreview, setImportPreview] = useState(null); // { newEntries, skipCount, errorCount, fileName }
+  const [importError, setImportError]   = useState('');
+  const fileRef = useRef();
   const [copied, setCopied]         = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(() =>
     Object.fromEntries(INDICATOR_GROUPS.map(g => [g.code, false]))
@@ -134,42 +135,95 @@ export default function MELEntry() {
   };
 
   // ── Import CSV ────────────────────────────────────────────────
-  const parseImport = () => {
-    setImportError('');
-    const lines = importText.trim().split('\n').filter(l => l.trim());
-    const parsed = [];
-    let errors = 0;
-    lines.forEach((line, i) => {
-      const cols = line.split(',');
-      const group   = cols[2]?.trim();
-      const subCode = cols[3]?.trim();
-      if (!group || !subCode || !INDICATOR_GROUP_MAP[group]) { errors++; return; }
-      const partnerName = cols[5]?.trim();
-      const partner = partners.find(p =>
-        p.name === partnerName || p.name.toLowerCase().includes(partnerName?.toLowerCase()) );
-      const n = (s) => parseInt(s?.trim() || '0') || 0;
-      parsed.push({
-        id: crypto.randomUUID(),
-        indicatorGroup: group, subCode,
-        date: fromMELDate(cols[4]?.trim()),
-        partnerId: partner?.id || '',
-        activityId: '',
-        description: (cols[6]?.trim() || '').replace(/^"|"$/g,''),
-        q1_m: n(cols[17]), q1_f: n(cols[18]),
-        q2_m: n(cols[20]), q2_f: n(cols[21]),
-        q3_m: n(cols[23]), q3_f: n(cols[24]),
-        q4_m: n(cols[26]), q4_f: n(cols[27]),
-      });
-    });
-    if (parsed.length === 0) {
-      setImportError('Không tìm thấy dòng hợp lệ. Hãy kiểm tra lại định dạng.');
-      return;
+  // Proper CSV line parser — handles quoted fields with commas inside
+  const parseCSVLine = (line) => {
+    const cols = [];
+    let cur = '';
+    let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuote && line[i + 1] === '"') { cur += '"'; i++; } // escaped ""
+        else inQuote = !inQuote;
+      } else if (ch === ',' && !inQuote) {
+        cols.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
     }
-    parsed.forEach(e => addMelEntry(e));
-    setImportText('');
-    setShowImport(false);
-    if (errors > 0) setImportError(`Đã import ${parsed.length} dòng. ${errors} dòng bị bỏ qua.`);
+    cols.push(cur);
+    return cols;
   };
+
+  // Fingerprint for dedup: same subCode + date + partnerId + description = same entry
+  const entryFingerprint = (e) =>
+    `${e.subCode}|${e.date}|${e.partnerId}|${(e.description || '').toLowerCase().trim()}`;
+
+  const handleImportFile = (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    setImportError('');
+    setImportPreview(null);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lines = e.target.result.trim().split('\n');
+      const existingFPs = new Set(melEntries.map(entryFingerprint));
+      const newEntries = [];
+      let skipCount = 0;
+      let errorCount = 0;
+      lines.forEach((rawLine, i) => {
+        const line = rawLine.trim();
+        if (!line) return;
+        // Skip header row
+        if (i === 0 && line.toLowerCase().includes('sub_code')) return;
+        const cols = parseCSVLine(line);
+        const group   = cols[2]?.trim();
+        const subCode = cols[3]?.trim();
+        if (!group || !subCode || !INDICATOR_GROUP_MAP[group]) { errorCount++; return; }
+        const partnerName = cols[5]?.trim();
+        const partner = partners.find(p =>
+          p.name === partnerName ||
+          (partnerName && p.name.toLowerCase().includes(partnerName.toLowerCase()))
+        );
+        const n = (s) => parseInt(s?.trim() || '0') || 0;
+        const entry = {
+          id: crypto.randomUUID(),
+          indicatorGroup: group,
+          subCode,
+          date: fromMELDate(cols[4]?.trim()),
+          partnerId: partner?.id || '',
+          activityId: '',
+          description: cols[6]?.trim() || '',
+          q1_m: n(cols[17]), q1_f: n(cols[18]),
+          q2_m: n(cols[20]), q2_f: n(cols[21]),
+          q3_m: n(cols[23]), q3_f: n(cols[24]),
+          q4_m: n(cols[26]), q4_f: n(cols[27]),
+        };
+        if (existingFPs.has(entryFingerprint(entry))) {
+          skipCount++;
+        } else {
+          newEntries.push(entry);
+        }
+      });
+      if (newEntries.length === 0 && skipCount === 0 && errorCount === 0) {
+        setImportError('Không tìm thấy dòng hợp lệ. Kiểm tra lại định dạng CSV.');
+        return;
+      }
+      setImportPreview({ newEntries, skipCount, errorCount, fileName: file.name });
+    };
+    reader.readAsText(file, 'UTF-8');
+    ev.target.value = '';
+  };
+
+  const confirmImport = () => {
+    if (importPreview?.newEntries?.length > 0) {
+      importPreview.newEntries.forEach(e => addMelEntry(e));
+    }
+    setShowImport(false);
+    setImportPreview(null);
+  };
+
+  const closeImport = () => { setShowImport(false); setImportPreview(null); setImportError(''); };
 
   // ── Group subtotals ───────────────────────────────────────────
   const groupTotal = (entries, field) => entries.reduce((s, e) => s + (e[field]||0), 0);
@@ -431,30 +485,98 @@ export default function MELEntry() {
 
       {/* ── Import Modal ── */}
       {showImport && (
-        <div className="mel-modal-overlay" onClick={() => setShowImport(false)}>
+        <div className="mel-modal-overlay" onClick={closeImport}>
           <div className="mel-modal wide" onClick={e => e.stopPropagation()}>
             <div className="mel-modal-header">
-              <h2>Import từ MEL_Master CSV</h2>
-              <button className="icon-btn" onClick={() => setShowImport(false)}><X size={16}/></button>
+              <h2>Import CSV</h2>
+              <button className="icon-btn" onClick={closeImport}><X size={16}/></button>
             </div>
-            <div className="import-instructions">
-              <p>Paste các dòng detail từ MEL_Master (không paste dòng header / summary).</p>
-              <p>Định dạng: <code>,,CODE,SUBCODE,DATE,PARTNER,DESCRIPTION,...,Q1M,Q1F,Q1T,Q2M,Q2F,Q2T,Q3M,Q3F,Q3T,Q4M,Q4F,Q4T</code></p>
-            </div>
-            <textarea
-              className="import-textarea"
-              placeholder="Paste rows từ MEL_Master Excel tại đây..."
-              value={importText}
-              onChange={e => setImportText(e.target.value)}
-              rows={10}
-            />
-            {importError && <div className="import-error">{importError}</div>}
-            <div className="mel-modal-footer">
-              <button className="btn-secondary" onClick={() => setShowImport(false)}>Hủy</button>
-              <button className="btn-primary" disabled={!importText.trim()} onClick={parseImport}>
-                Import {importText.trim().split('\n').filter(Boolean).length} dòng
-              </button>
-            </div>
+
+            {/* Step 1: File picker */}
+            {!importPreview && (
+              <>
+                <div className="import-instructions">
+                  <p>Chọn file CSV xuất từ nút "Tải CSV". Chỉ dòng <strong>chưa tồn tại</strong> sẽ được thêm.</p>
+                  <p style={{ fontSize:'0.75rem', color:'var(--text3)', marginTop:'4px' }}>
+                    Trùng lặp xác định bởi: Sub-code + Ngày + Partner + Mô tả
+                  </p>
+                </div>
+                <div style={{ padding:'28px 24px', textAlign:'center' }}>
+                  <input ref={fileRef} type="file" accept=".csv" style={{ display:'none' }} onChange={handleImportFile} />
+                  <button className="btn-primary" onClick={() => fileRef.current?.click()}>
+                    <Upload size={14} /> Chọn file CSV...
+                  </button>
+                </div>
+                {importError && <div className="import-error">{importError}</div>}
+                <div className="mel-modal-footer">
+                  <button className="btn-secondary" onClick={closeImport}>Đóng</button>
+                </div>
+              </>
+            )}
+
+            {/* Step 2: Preview & confirm */}
+            {importPreview && (
+              <>
+                <div className="import-instructions">
+                  <p>File: <strong>{importPreview.fileName}</strong></p>
+                </div>
+                <div style={{ padding:'16px 24px' }}>
+                  <div style={{ display:'flex', gap:'12px', marginBottom:'16px' }}>
+                    <div style={{ flex:1, padding:'14px', background:'var(--green-bg)', borderRadius:'var(--radius)', textAlign:'center' }}>
+                      <div style={{ fontSize:'28px', fontWeight:700, color:'var(--green)' }}>{importPreview.newEntries.length}</div>
+                      <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>dòng MỚI sẽ được thêm</div>
+                    </div>
+                    <div style={{ flex:1, padding:'14px', background:'var(--surface2)', borderRadius:'var(--radius)', textAlign:'center' }}>
+                      <div style={{ fontSize:'28px', fontWeight:700, color:'var(--text3)' }}>{importPreview.skipCount}</div>
+                      <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>dòng đã tồn tại, bỏ qua</div>
+                    </div>
+                    {importPreview.errorCount > 0 && (
+                      <div style={{ flex:1, padding:'14px', background:'var(--red-bg)', borderRadius:'var(--radius)', textAlign:'center' }}>
+                        <div style={{ fontSize:'28px', fontWeight:700, color:'var(--red)' }}>{importPreview.errorCount}</div>
+                        <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>dòng lỗi định dạng</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {importPreview.newEntries.length > 0 && (
+                    <div style={{ fontSize:'12px', color:'var(--text2)' }}>
+                      Preview dòng mới:
+                      <div style={{ maxHeight:'160px', overflowY:'auto', marginTop:'6px', border:'1px solid var(--border)', borderRadius:'6px' }}>
+                        {importPreview.newEntries.slice(0, 8).map((e, i) => (
+                          <div key={i} style={{ padding:'5px 10px', borderBottom:'1px solid var(--border)', fontSize:'11px', display:'flex', gap:'10px', alignItems:'center' }}>
+                            <span style={{ color:'var(--accent)', fontWeight:600, minWidth:'58px' }}>{e.subCode}</span>
+                            <span style={{ color:'var(--text3)', minWidth:'76px', fontFamily:'var(--font-mono)' }}>{e.date}</span>
+                            <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'var(--text)' }}>{e.description || '—'}</span>
+                          </div>
+                        ))}
+                        {importPreview.newEntries.length > 8 && (
+                          <div style={{ padding:'5px 10px', fontSize:'11px', color:'var(--text3)', fontStyle:'italic' }}>
+                            ... và {importPreview.newEntries.length - 8} dòng nữa
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {importPreview.newEntries.length === 0 && (
+                    <p style={{ textAlign:'center', color:'var(--text2)', fontSize:'13px', padding:'8px 0' }}>
+                      Tất cả dòng đã tồn tại trong database — không có gì để thêm.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mel-modal-footer">
+                  <button className="btn-secondary" onClick={() => setImportPreview(null)}>← Chọn file khác</button>
+                  {importPreview.newEntries.length > 0 ? (
+                    <button className="btn-primary" onClick={confirmImport}>
+                      Thêm {importPreview.newEntries.length} dòng mới →
+                    </button>
+                  ) : (
+                    <button className="btn-secondary" onClick={closeImport}>Đóng</button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
