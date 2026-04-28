@@ -134,7 +134,10 @@ export const fromMELDate = (s) => {
   if (!s) return '';
   const p = s.split('-');
   if (p.length !== 3) return s;
-  return `${p[2]}-${MEL_MONTHS[p[1]] || '01'}-${p[0].padStart(2,'0')}`;
+  let year = p[2];
+  // Excel often saves 4-digit years as 2-digit (e.g. "26" → "2026")
+  if (year.length <= 2) year = (parseInt(year, 10) >= 50 ? '19' : '20') + year.padStart(2, '0');
+  return `${year}-${MEL_MONTHS[p[1]] || '01'}-${p[0].padStart(2,'0')}`;
 };
 
 export const fmtCad = (n) => {

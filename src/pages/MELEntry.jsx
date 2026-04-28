@@ -97,14 +97,14 @@ export default function MELEntry() {
 
   // ── Export CSV ────────────────────────────────────────────────
   const exportCSV = () => {
-    const header = ',± Người,Code,Sub_Code,Date,Partner,Activities,Type,Indicator,Baseline,Target,Source of Data,Target Vietnam,Method,Frequency,Responsability,Actual,Q1_M,Q1_F,Q1_T,Q2_M,Q2_F,Q2_T,Q3_M,Q3_F,Q3_T,Q4_M,Q4_F,Q4_T';
+    const header = 'ID,± Người,Code,Sub_Code,Date,Partner,Activities,Type,Indicator,Baseline,Target,Source of Data,Target Vietnam,Method,Frequency,Responsability,Actual,Q1_M,Q1_F,Q1_T,Q2_M,Q2_F,Q2_T,Q3_M,Q3_F,Q3_T,Q4_M,Q4_F,Q4_T';
     const rows = filtered.map(e => {
       const partner = partnerMap[e.partnerId];
       const q1t = (e.q1_m||0)+(e.q1_f||0), q2t = (e.q2_m||0)+(e.q2_f||0);
       const q3t = (e.q3_m||0)+(e.q3_f||0), q4t = (e.q4_m||0)+(e.q4_f||0);
       const total = q1t+q2t+q3t+q4t;
       return [
-        '','', e.indicatorGroup, e.subCode, toMELDate(e.date),
+        e.id,'', e.indicatorGroup, e.subCode, toMELDate(e.date),
         partner?.name || '', `"${(e.description||'').replace(/"/g,'""')}"`,
         '','','','','','','','','',
         total,
@@ -167,6 +167,7 @@ export default function MELEntry() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const lines = e.target.result.trim().split('\n');
+      const existingIds = new Set(melEntries.map(e => e.id));
       const existingFPs = new Set(melEntries.map(entryFingerprint));
       const newEntries = [];
       let skipCount = 0;
@@ -177,6 +178,9 @@ export default function MELEntry() {
         // Skip header row
         if (i === 0 && line.toLowerCase().includes('sub_code')) return;
         const cols = parseCSVLine(line);
+        // Primary dedup: match by exported id (col 0) — immune to Excel date reformatting
+        const importedId = cols[0]?.trim();
+        if (importedId && existingIds.has(importedId)) { skipCount++; return; }
         const group   = cols[2]?.trim();
         const subCode = cols[3]?.trim();
         if (!group || !subCode || !INDICATOR_GROUP_MAP[group]) { errorCount++; return; }
@@ -199,6 +203,7 @@ export default function MELEntry() {
           q3_m: n(cols[23]), q3_f: n(cols[24]),
           q4_m: n(cols[26]), q4_f: n(cols[27]),
         };
+        // Fallback dedup: fingerprint (for files exported before ID column was added)
         if (existingFPs.has(entryFingerprint(entry))) {
           skipCount++;
         } else {
