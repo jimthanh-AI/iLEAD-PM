@@ -144,12 +144,8 @@ const Dashboard = () => {
   const monthsElapsed  = Math.min(totalMonths, Math.floor(elapsedDays / 30.44) + 1);
   const daysRemaining  = Math.max(0, Math.ceil((PROJECT_END - now) / 86400000));
 
-  // ── Reach Projection ─────────────────────────────────────────
-  const doneActivities   = activities.filter(a => a.status === 'done');
-  const doneReach        = doneActivities.reduce((s, a) => s + (Number(a.reachTotal) || 0), 0);
-  const avgReachPerDone  = doneActivities.length > 0 ? doneReach / doneActivities.length : 0;
-  const projectedReach   = total > 0 ? Math.round(avgReachPerDone * total) : 0;
-  const reachGapPct      = melTotalTarget > 0 ? Math.round(projectedReach / melTotalTarget * 100) : 0;
+  // ── Reach vs Target (Kế hoạch vs GAC target) ─────────────────
+  const reachGapPct = melTotalTarget > 0 ? Math.round(totalReach / melTotalTarget * 100) : 0;
 
   // ── RAG status helpers ────────────────────────────────────────
   // Timeline health: activities done % vs time elapsed %
@@ -187,11 +183,11 @@ const Dashboard = () => {
           <div className="phb-sub">{timeElapsedPct}% thời gian · {actDonePct}% HĐ xong · còn {daysRemaining} ngày</div>
         </div>
 
-        {/* Reach projection */}
+        {/* Reach — Kế hoạch ước lượng */}
         <div className="proj-health-item">
-          <div className="phb-label">Dự báo Reach</div>
+          <div className="phb-label">Số người ước lượng (KH)</div>
           <div className="phb-main">
-            <span className="phb-val">{projectedReach > 0 ? projectedReach.toLocaleString() : '—'}</span>
+            <span className="phb-val">{totalReach > 0 ? totalReach.toLocaleString() : '—'}</span>
             <span className="phb-badge" style={{ background:`var(--${reachRag}-bg,var(--bg2))`, color:`var(--${reachRag})` }}>
               {reachGapPct}% target
             </span>
@@ -199,7 +195,7 @@ const Dashboard = () => {
           <div className="phb-track">
             <div className="phb-fill" style={{ width:`${Math.min(reachGapPct,100)}%`, background:`var(--${reachRag})` }} />
           </div>
-          <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · avg {Math.round(avgReachPerDone)} người/HĐ</div>
+          <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · Kế hoạch dự kiến từ các HĐ</div>
         </div>
 
         {/* Budget */}
@@ -258,9 +254,9 @@ const Dashboard = () => {
           <div className="kpi-val">{over}</div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc':'var(--orange)'}}>
-          <div className="kpi-label">Tổng Reach</div>
-          <div className="kpi-val">{totalReach.toLocaleString()}</div>
-          <div className="kpi-sub">người tham gia</div>
+          <div className="kpi-label">Actual Reach</div>
+          <div className="kpi-val">{melTotalActual.toLocaleString()}</div>
+          <div className="kpi-sub">người tham gia (MEL thực tế)</div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc': pctWomen >= 50 ? 'var(--green)' : 'var(--orange)'}}>
           <div className="kpi-label">Tỷ lệ phụ nữ</div>
