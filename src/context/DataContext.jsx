@@ -92,25 +92,32 @@ const SEED = {
 // Supabase helpers
 // ─────────────────────────────────────────────────────────────────────────────
 const fetchAll = async () => {
-  const [p, a, t, m, ai, pb] = await Promise.all([
-    supabase.from('partners').select('*'),
-    supabase.from('activities').select('*').order('pos'),
-    supabase.from('tasks').select('*').order('pos'),
-    supabase.from('mel_entries').select('*').order('id'),
-    supabase.from('activity_indicators').select('*').order('id'),
-    supabase.from('partner_budgets').select('*'),
-  ]);
-  // Check ALL responses — partial errors must not silently return [] and overwrite local
-  const errs = [p, a, t, m, ai, pb].map((r, i) => r.error && `${['partners','activities','tasks','mel_entries','activity_indicators','partner_budgets'][i]}: ${r.error.message}`).filter(Boolean);
-  if (errs.length) throw new Error('Supabase fetch failed → ' + errs.join('; '));
-  return {
-    partners:           p.data  || [],
-    activities:         a.data  || [],
-    tasks:              t.data  || [],
-    melEntries:         m.data  || [],
-    activityIndicators: ai.data || [],
-    partnerBudgets:     pb.data || [],
-  };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const [p, a, t, m, ai, pb] = await Promise.all([
+        supabase.from('partners').select('*'),
+        supabase.from('activities').select('*').order('pos'),
+        supabase.from('tasks').select('*').order('pos'),
+        supabase.from('mel_entries').select('*').order('id'),
+        supabase.from('activity_indicators').select('*').order('id'),
+        supabase.from('partner_budgets').select('*'),
+      ]);
+      // Check ALL responses — partial errors must not silently return [] and overwrite local
+      const errs = [p, a, t, m, ai, pb].map((r, i) => r.error && `${['partners','activities','tasks','mel_entries','activity_indicators','partner_budgets'][i]}: ${r.error.message}`).filter(Boolean);
+      if (errs.length) throw new Error('Supabase fetch failed → ' + errs.join('; '));
+      return {
+        partners:           p.data  || [],
+        activities:         a.data  || [],
+        tasks:              t.data  || [],
+        melEntries:         m.data  || [],
+        activityIndicators: ai.data || [],
+        partnerBudgets:     pb.data || [],
+      };
+    } catch (e) {
+      if (attempt === 2) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
 };
 
 // Guard empty arrays — Supabase upsert([]) can error/no-op inconsistently
@@ -151,6 +158,18 @@ const pushToSupabase = async (data) => {
   ]);
 };
 
+const clearSupabase = async () => {
+  // Delete children first (FK order), then parents
+  await Promise.all([
+    supabase.from('tasks').delete().neq('id', ''),
+    supabase.from('activity_indicators').delete().neq('id', ''),
+    supabase.from('mel_entries').delete().neq('id', ''),
+    supabase.from('partner_budgets').delete().neq('partnerId', ''),
+  ]);
+  await supabase.from('activities').delete().neq('id', '');
+  await supabase.from('partners').delete().neq('id', '');
+};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Provider
@@ -159,6 +178,7 @@ export const DataProvider = ({ children }) => {
   const [data, setData] = useState(SEED);
   const [loading, setLoading] = useState(true);
   const [syncError, setSyncError] = useState(null);  // visible banner when Supabase fails
+  const [bootFailed, setBootFailed] = useState(false);
 
   // ── RBAC ──────────────────────────────────────────────────────
   const [userRole, setUserRole] = useState(
@@ -171,8 +191,8 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   const isAdmin   = userRole === 'admin';
-  const canEdit   = userRole !== 'viewer';
-  const canDelete = userRole === 'admin' || userRole === 'pm';
+  const canEdit   = userRole !== 'viewer' && !bootFailed;
+  const canDelete = (userRole === 'admin' || userRole === 'pm') && !bootFailed;
 
 // ── Boot: load from Supabase only ─────────────────────────────
   useEffect(() => {
@@ -188,6 +208,7 @@ export const DataProvider = ({ children }) => {
         }
       } catch (err) {
         setSyncError('Không kết nối được Supabase: ' + err.message);
+        setBootFailed(true);
       } finally {
         setLoading(false);
       }
@@ -265,8 +286,17 @@ export const DataProvider = ({ children }) => {
     sb(() => supabase.from('activities').upsert(item), 'addActivity');
   };
   const updateActivity = (id, u) => {
+    const prev = data.activities.find(a => a.id === id);
     setData(d => ({ ...d, activities: d.activities.map(a => a.id === id ? { ...a, ...u } : a) }));
-    sb(() => supabase.from('activities').update(sanitizeActivity(u)).eq('id', id), 'updateActivity');
+    Promise.resolve()
+      .then(() => supabase.from('activities').update(sanitizeActivity(u)).eq('id', id))
+      .then(res => {
+        if (res?.error) {
+          if (prev) setData(d => ({ ...d, activities: d.activities.map(a => a.id === id ? prev : a) }));
+          setSyncError('[updateActivity] ' + res.error.message);
+        }
+      })
+      .catch(err => setSyncError('[updateActivity] ' + err.message));
   };
   const deleteActivity = (id) => {
     setData(d => ({
@@ -282,8 +312,9 @@ export const DataProvider = ({ children }) => {
         supabase.from('activity_indicators').delete().eq('activityId', id),
         supabase.from('mel_entries').delete().eq('activityId', id),
       ]);
-      await supabase.from('activities').delete().eq('id', id);
-    });
+      const { error } = await supabase.from('activities').delete().eq('id', id);
+      if (error) throw error;
+    }, 'deleteActivity');
   };
 
   // ── Mutations: Tasks ───────────────────────────────────────────
@@ -294,8 +325,27 @@ export const DataProvider = ({ children }) => {
     sb(() => supabase.from('tasks').upsert(item), 'addTask');
   };
   const updateTask = (id, u) => {
+    const prev = data.tasks.find(t => t.id === id);
     setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? { ...t, ...u } : t) }));
-    sb(() => supabase.from('tasks').update(sanitizeTask(u)).eq('id', id), 'updateTask');
+    Promise.resolve()
+      .then(() => supabase.from('tasks').update(sanitizeTask(u)).eq('id', id))
+      .then(res => {
+        if (res?.error) {
+          if (prev) setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? prev : t) }));
+          setSyncError('[updateTask] ' + res.error.message);
+        }
+      })
+      .catch(err => setSyncError('[updateTask] ' + err.message));
+  };
+
+  const bulkDeleteTasks = async (ids) => {
+    const results = await Promise.allSettled(
+      ids.map(id => supabase.from('tasks').delete().eq('id', id))
+    );
+    const succeeded = ids.filter((_, i) => !results[i].value?.error);
+    const failed    = ids.filter((_, i) =>  results[i].value?.error);
+    setData(d => ({ ...d, tasks: d.tasks.filter(t => !succeeded.includes(t.id)) }));
+    if (failed.length) setSyncError(`Xóa thất bại ${failed.length} task — thử lại sau.`);
   };
   const deleteTask = (id) => {
     setData(d => ({ ...d, tasks: d.tasks.filter(t => t.id !== id) }));
@@ -356,6 +406,12 @@ export const DataProvider = ({ children }) => {
     );
   }
 
+  const clearAndSeed = async () => {
+    await clearSupabase();
+    await pushToSupabase(SEED);
+    setData(SEED);
+  };
+
   const downloadBackupJSON = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -371,10 +427,13 @@ export const DataProvider = ({ children }) => {
       ...data, setData,
       partnerMap, activityMap,
       userRole, isAdmin, canEdit, canDelete,
+      bootFailed,
       syncError, setSyncError,
+      pushToSupabase,
+      clearAndSeed,
       addPartner, updatePartner, deletePartner,
       addActivity, updateActivity, deleteActivity,
-      addTask, updateTask, deleteTask,
+      addTask, updateTask, deleteTask, bulkDeleteTasks,
       addActivityIndicator, updateActivityIndicator, deleteActivityIndicator,
       addMelEntry, updateMelEntry, deleteMelEntry,
       updatePartnerBudget,
@@ -390,10 +449,20 @@ export const DataProvider = ({ children }) => {
           boxShadow:'0 1px 3px rgba(0,0,0,.06)',
         }}>
           <span>⚠️ {syncError}</span>
-          <button onClick={() => setSyncError(null)}
-            style={{ background:'transparent', border:'1px solid #fca5a5', color:'#991b1b', borderRadius:'6px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' }}>
-            Đóng
-          </button>
+          <div style={{ display:'flex', gap:'8px' }}>
+            {bootFailed && (
+              <button onClick={() => window.location.reload()}
+                style={{ background:'#dc2626', border:'none', color:'#fff', borderRadius:'6px', padding:'4px 12px', cursor:'pointer', fontSize:'12px', fontWeight:600 }}>
+                Thử lại
+              </button>
+            )}
+            {!bootFailed && (
+              <button onClick={() => setSyncError(null)}
+                style={{ background:'transparent', border:'1px solid #fca5a5', color:'#991b1b', borderRadius:'6px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' }}>
+                Đóng
+              </button>
+            )}
+          </div>
         </div>
       )}
       {children}

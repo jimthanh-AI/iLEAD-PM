@@ -22,4 +22,10 @@ const stubClient = {
 
 export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : (console.warn('[Supabase] env vars missing — using stub client (offline mode)'), stubClient);
+  : (() => {
+      if (import.meta.env.PROD) {
+        throw new Error('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set. Configure Vercel env vars.');
+      }
+      console.warn('[Supabase] env vars missing — using stub client (dev only)');
+      return stubClient;
+    })();

@@ -12,7 +12,7 @@ const FS = { padding:'5px 9px', border:'1px solid var(--border2)', borderRadius:
 
 const AllTasks = () => {
   const nav = useNavigate();
-  const { tasks, activityMap, partnerMap, partners, updateTask, deleteTask, userRole } = useData();
+  const { tasks, activityMap, partnerMap, partners, updateTask, deleteTask, bulkDeleteTasks, userRole } = useData();
 
   const [search,          setSearch]          = useState('');
   const [statusFilter,    setStatusFilter]    = useState('active'); // default: active only
@@ -110,10 +110,11 @@ const AllTasks = () => {
 
   const bulkDone = () => { selectedIds.forEach(id => updateTask(id, { status: 'done' })); clearSel(); };
   const bulkTodo = () => { selectedIds.forEach(id => updateTask(id, { status: 'todo' })); clearSel(); };
-  const bulkDelete = () => {
+  const bulkDelete = async () => {
     if (!window.confirm(`Xóa ${selectedIds.size} task đã chọn?`)) return;
-    selectedIds.forEach(id => deleteTask(id));
+    const ids = [...selectedIds];
     clearSel();
+    await bulkDeleteTasks(ids);
   };
 
   const openEdit = (e, t) => { e.stopPropagation(); setEditTask(t); setTaskFormOpen(true); };

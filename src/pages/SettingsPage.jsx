@@ -13,7 +13,7 @@ function storageSize() {
 }
 
 export default function SettingsPage() {
-  const { setData, userRole, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
+  const { setData, pushToSupabase, clearAndSeed, userRole, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
   const [theme, setTheme]       = useState(() => localStorage.getItem('ilead_theme') || 'light');
   const [role, setRole]         = useState(() => localStorage.getItem('ilead_user_role') || 'coordinator');
   const [importErr, setImportErr] = useState('');
@@ -73,6 +73,8 @@ export default function SettingsPage() {
           partnerBudgets: parsed.partnerBudgets || [],
         };
         setData(restored);
+        pushToSupabase(restored)
+          .catch(err => setImportErr('Lỗi đồng bộ Supabase: ' + err.message));
         setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries.`);
       } catch (err) {
         setImportErr('Lỗi: ' + err.message);
@@ -83,9 +85,14 @@ export default function SettingsPage() {
   };
 
   // ── Reset to SEED ──────────────────────────────────────────────
-  const handleReset = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    window.location.reload();
+  const handleReset = async () => {
+    try {
+      await clearAndSeed();
+      setResetConfirm(false);
+    } catch (err) {
+      setImportErr('Lỗi reset: ' + err.message);
+      setResetConfirm(false);
+    }
   };
 
   const kbUsed = storageSize();

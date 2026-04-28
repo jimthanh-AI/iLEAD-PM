@@ -7,7 +7,7 @@ const defaultForm = (activityId) => ({ name: '', status: 'todo', assignee: '', d
 
 const fromTask = (t, fallbackActivityId) => ({
   name:       t.name       || '',
-  status:     t.status === 'in_progress' ? 'todo' : (t.status || 'todo'),
+  status:     (['todo', 'done'].includes(t.status) ? t.status : 'todo'),
   assignee:   t.assignee   || '',
   dueDate:    t.dueDate    || '',
   activityId: t.activityId || fallbackActivityId || '',
