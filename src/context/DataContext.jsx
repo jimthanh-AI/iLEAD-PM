@@ -195,9 +195,9 @@ export const DataProvider = ({ children }) => {
       try {
         const remote = await fetchAll();
         if (remote.partners.length === 0) {
-          // First time: seed Supabase with default data
+          // No data found — show SEED in UI only, never write to DB automatically
+          // (auto-seeding caused data loss when auth token exchange raced fetchAll)
           setData(SEED);
-          await pushToSupabase(SEED);
         } else {
           setData(remote);
         }
