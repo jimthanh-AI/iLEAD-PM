@@ -408,6 +408,12 @@ export const DataProvider = ({ children }) => {
     setData(SEED);
   };
 
+  const restoreFromBackup = async (backupData) => {
+    await clearSupabase();
+    await pushToSupabase(backupData);
+    setData(backupData);
+  };
+
   const downloadBackupJSON = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -427,6 +433,7 @@ export const DataProvider = ({ children }) => {
       syncError, setSyncError,
       pushToSupabase,
       clearAndSeed,
+      restoreFromBackup,
       addPartner, updatePartner, deletePartner,
       addActivity, updateActivity, deleteActivity,
       addTask, updateTask, deleteTask, bulkDeleteTasks,

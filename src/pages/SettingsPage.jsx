@@ -13,7 +13,7 @@ function storageSize() {
 }
 
 export default function SettingsPage() {
-  const { setData, pushToSupabase, clearAndSeed, userRole, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
+  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
   const [theme, setTheme]       = useState(() => localStorage.getItem('ilead_theme') || 'light');
   const [role, setRole]         = useState(() => localStorage.getItem('ilead_user_role') || 'coordinator');
   const [importErr, setImportErr] = useState('');
@@ -59,7 +59,7 @@ export default function SettingsPage() {
     if (!file) return;
     setImportErr(''); setImportOk('');
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const parsed = JSON.parse(ev.target.result);
         if (!parsed.partners || !parsed.activities) throw new Error('Không tìm thấy dữ liệu hợp lệ (thiếu partners/activities)');
@@ -72,9 +72,8 @@ export default function SettingsPage() {
           melEntries:     parsed.melEntries     || [],
           partnerBudgets: parsed.partnerBudgets || [],
         };
-        setData(restored);
-        pushToSupabase(restored)
-          .catch(err => setImportErr('Lỗi đồng bộ Supabase: ' + err.message));
+        setImportOk('Đang đồng bộ lên Supabase...');
+        await restoreFromBackup(restored);
         setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries.`);
       } catch (err) {
         setImportErr('Lỗi: ' + err.message);
