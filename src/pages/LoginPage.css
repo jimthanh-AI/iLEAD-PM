@@ -140,3 +140,39 @@
   text-decoration: underline;
   padding: 4px;
 }
+
+/* OTP step */
+.login-otp-step { padding: 8px 0; }
+.login-otp-step h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text, #1a1a18);
+  margin: 0 0 8px;
+}
+.login-otp-step p {
+  font-size: 13px;
+  color: var(--text2, #6a6a66);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+/* OTP single input */
+.login-otp-input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid var(--border, #e5e5e0);
+  border-radius: 8px;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 6px;
+  color: var(--text, #1a1a18);
+  background: var(--bg, #f5f5f0);
+  outline: none;
+  transition: border-color 150ms;
+  box-sizing: border-box;
+}
+.login-otp-input:focus {
+  border-color: var(--accent, #2563eb);
+  background: var(--card, #fff);
+}

@@ -36,12 +36,16 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  /** Send magic link to email */
+  /** Send OTP code (6 digits) to email — no magic link */
   const signIn = (email) =>
     supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { shouldCreateUser: false },
     });
+
+  /** Verify the 6-digit OTP code entered by user */
+  const verifyOtp = (email, token) =>
+    supabase.auth.verifyOtp({ email, token, type: 'email' });
 
   /** Sign out and clear local state */
   const signOut = async () => {
@@ -75,6 +79,7 @@ export const AuthProvider = ({ children }) => {
       appUser,       // { email, display_name, role } | null
       authLoading,
       signIn,
+      verifyOtp,
       signOut,
       inviteUser,
       removeUser,
