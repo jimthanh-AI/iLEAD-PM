@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Search, Settings } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Search, Settings, LogOut } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import './Topbar.css';
 
@@ -9,6 +10,16 @@ const Topbar = ({ onHamburger }) => {
   const location   = useLocation();
   const nav        = useNavigate();
   const { partners, activities, tasks } = useData();
+  const { appUser, signOut } = useAuth();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -135,6 +146,35 @@ const Topbar = ({ onHamburger }) => {
         >
           <Settings size={18} />
         </button>
+
+        {/* User avatar + dropdown */}
+        {appUser && (
+          <div className="topbar-user" ref={menuRef}>
+            <button
+              className="topbar-user-btn"
+              onClick={() => setUserMenuOpen(o => !o)}
+              title={appUser.email}
+            >
+              <span className="topbar-avatar">
+                {appUser.display_name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+              <span className="topbar-user-name">{appUser.display_name}</span>
+            </button>
+            {userMenuOpen && (
+              <div className="topbar-user-menu">
+                <div className="topbar-user-info">
+                  <div className="topbar-user-fullname">{appUser.display_name}</div>
+                  <div className="topbar-user-email">{appUser.email}</div>
+                  <div className="topbar-user-role">{appUser.role}</div>
+                </div>
+                <button className="topbar-signout" onClick={signOut}>
+                  <LogOut size={14} />
+                  Đăng xuất
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

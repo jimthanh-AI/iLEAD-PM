@@ -14,8 +14,16 @@ const stubBuilder = () => {
   });
   return b;
 };
+const stubAuth = {
+  getSession:          () => Promise.resolve({ data: { session: null }, error: null }),
+  onAuthStateChange:   (cb) => { cb('INITIAL_SESSION', null); return { data: { subscription: { unsubscribe: () => {} } } }; },
+  signInWithOtp:       () => Promise.resolve({ error: null }),
+  signOut:             () => Promise.resolve({ error: null }),
+};
+
 const stubClient = {
   from: stubBuilder,
+  auth: stubAuth,
   channel: () => ({ on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }) }),
   removeChannel: () => {},
 };

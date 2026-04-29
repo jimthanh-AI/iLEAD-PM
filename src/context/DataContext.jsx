@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 export const useData = () => useContext(DataContext);
@@ -180,19 +181,13 @@ export const DataProvider = ({ children }) => {
   const [syncError, setSyncError] = useState(null);  // visible banner when Supabase fails
   const [bootFailed, setBootFailed] = useState(false);
 
-  // ── RBAC ──────────────────────────────────────────────────────
-  const [userRole, setUserRole] = useState(
-    () => localStorage.getItem('ilead_user_role') || 'coordinator'
-  );
-  useEffect(() => {
-    const handler = () => setUserRole(localStorage.getItem('ilead_user_role') || 'coordinator');
-    window.addEventListener('ilead_role_changed', handler);
-    return () => window.removeEventListener('ilead_role_changed', handler);
-  }, []);
-
+  // ── RBAC — driven by authenticated user from AuthContext ──────
+  const { appUser } = useAuth();
+  const userRole  = appUser?.role  || 'viewer';
+  const userName  = appUser?.display_name || appUser?.email || '';
   const isAdmin   = userRole === 'admin';
   const canEdit   = userRole !== 'viewer' && !bootFailed;
-  const canDelete = (userRole === 'admin' || userRole === 'pm') && !bootFailed;
+  const canDelete = (userRole === 'admin' || userRole === 'editor' || userRole === 'pm') && !bootFailed;
 
 // ── Boot: load from Supabase only ─────────────────────────────
   useEffect(() => {
@@ -281,7 +276,7 @@ export const DataProvider = ({ children }) => {
   // ── Mutations: Activities ──────────────────────────────────────
   const addActivity = (a) => {
     const pos = data.activities.filter(x => x.partnerId === a.partnerId).length;
-    const item = sanitizeActivity({ ...a, pos });
+    const item = sanitizeActivity({ ...a, pos, created_by: userName });
     setData(d => ({ ...d, activities: [...d.activities, item] }));
     sb(() => supabase.from('activities').upsert(item), 'addActivity');
   };
@@ -320,7 +315,7 @@ export const DataProvider = ({ children }) => {
   // ── Mutations: Tasks ───────────────────────────────────────────
   const addTask = (t) => {
     const pos = data.tasks.filter(x => x.activityId === t.activityId).length;
-    const item = sanitizeTask({ ...t, pos });
+    const item = sanitizeTask({ ...t, pos, created_by: userName });
     setData(d => ({ ...d, tasks: [...d.tasks, item] }));
     sb(() => supabase.from('tasks').upsert(item), 'addTask');
   };
@@ -354,8 +349,9 @@ export const DataProvider = ({ children }) => {
 
   // ── Mutations: MEL Entries ─────────────────────────────────────
   const addMelEntry = (e) => {
-    setData(d => ({ ...d, melEntries: [...d.melEntries, e] }));
-    sb(() => supabase.from('mel_entries').upsert(e));
+    const item = { ...e, created_by: userName };
+    setData(d => ({ ...d, melEntries: [...d.melEntries, item] }));
+    sb(() => supabase.from('mel_entries').upsert(item));
   };
   const updateMelEntry = (id, u) => {
     setData(d => ({ ...d, melEntries: d.melEntries.map(e => e.id === id ? { ...e, ...u } : e) }));
@@ -426,7 +422,7 @@ export const DataProvider = ({ children }) => {
     <DataContext.Provider value={{
       ...data, setData,
       partnerMap, activityMap,
-      userRole, isAdmin, canEdit, canDelete,
+      userRole, userName, isAdmin, canEdit, canDelete,
       bootFailed,
       syncError, setSyncError,
       pushToSupabase,
