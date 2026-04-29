@@ -145,18 +145,31 @@ const sanitizeTask = (t) => {
   return out;
 };
 
+const checkUpsertError = (result, table) => {
+  if (result && result.error) throw new Error(`[${table}] ${result.error.message || JSON.stringify(result.error)}`);
+};
+
 const pushToSupabase = async (data) => {
+  // Sanitize before upsert — backup JSON may have '' for numeric/date fields
+  const activities = (data.activities || []).map(sanitizeActivity);
+  const tasks      = (data.tasks      || []).map(sanitizeTask);
+
   // Sequential: partners first (FK parent), then children in parallel
-  await safeUpsert('partners', data.partners);
-  await Promise.all([
-    safeUpsert('activities', data.activities),
+  checkUpsertError(await safeUpsert('partners', data.partners), 'partners');
+  const [r1, r2] = await Promise.all([
+    safeUpsert('activities',     activities),
     safeUpsert('partner_budgets', data.partnerBudgets),
   ]);
-  await Promise.all([
-    safeUpsert('tasks', data.tasks),
-    safeUpsert('mel_entries', data.melEntries),
+  checkUpsertError(r1, 'activities');
+  checkUpsertError(r2, 'partner_budgets');
+  const [r3, r4, r5] = await Promise.all([
+    safeUpsert('tasks',               tasks),
+    safeUpsert('mel_entries',         data.melEntries),
     safeUpsert('activity_indicators', data.activityIndicators),
   ]);
+  checkUpsertError(r3, 'tasks');
+  checkUpsertError(r4, 'mel_entries');
+  checkUpsertError(r5, 'activity_indicators');
 };
 
 const clearSupabase = async () => {
@@ -409,9 +422,17 @@ export const DataProvider = ({ children }) => {
   };
 
   const restoreFromBackup = async (backupData) => {
-    await clearSupabase();
-    await pushToSupabase(backupData);
-    setData(backupData);
+    try {
+      await clearSupabase();
+      await pushToSupabase(backupData);
+      // Verify write succeeded by re-fetching from Supabase
+      const verified = await fetchAll();
+      setData(verified);
+      setSyncError(null);
+    } catch (err) {
+      setSyncError('Khôi phục thất bại: ' + (err.message || String(err)));
+      throw err;
+    }
   };
 
   const downloadBackupJSON = () => {
