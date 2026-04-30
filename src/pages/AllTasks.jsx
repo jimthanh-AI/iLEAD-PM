@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import { daysLeft, fmtDate, TEAM_MEMBERS } from '../utils/constants';
 import { TaskForm } from '../components/forms/TaskForm';
 import { generateTasksReport } from '../utils/reportGenerator';
@@ -8,11 +9,78 @@ import { FileText } from 'lucide-react';
 import './Dashboard.css';
 import './PartnerView.css';
 
+const MOBILE_ASSIGNEES = ['Tất cả', 'Jim Thanh', 'Hieu Phung', 'Yen Ton', 'Truc Nguyen', 'CR/Mnr', 'Partner', 'ICT team'];
+
+const MOBILE_TEAM_COLORS = {
+  'Jim Thanh':   '#2563eb',
+  'Hieu Phung':  '#7c3aed',
+  'Yen Ton':     '#16a34a',
+  'Truc Nguyen': '#d97706',
+};
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const in7Days  = () => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); };
+
+const getMobileGroup = (t) => {
+  if (!t.dueDate) return 'later';
+  const today = todayStr();
+  const week  = in7Days();
+  if (t.dueDate < today && t.status !== 'done') return 'overdue';
+  if (t.dueDate === today) return 'today';
+  if (t.dueDate <= week)   return 'week';
+  return 'later';
+};
+
+// Mobile task card
+const MobileTaskCard = ({ t, activityMap, partnerMap, onToggleDone, onOpen }) => {
+  const act = activityMap[t.activityId];
+  const pa  = partnerMap[act?.partnerId];
+  const dl  = daysLeft(t.dueDate);
+  const isOverdue = dl !== null && dl < 0 && t.status !== 'done';
+  const isDone    = t.status === 'done';
+  const color     = MOBILE_TEAM_COLORS[t.assignee];
+
+  return (
+    <div
+      className={`mobile-task-card${isDone ? ' mtc-done' : ''}${isOverdue ? ' mtc-overdue' : ''}`}
+      onClick={() => act && onOpen(`/activity/${act.id}`)}
+    >
+      <div
+        className={`mtc-check${isDone ? ' mtc-check-done' : ''}`}
+        onClick={e => { e.stopPropagation(); onToggleDone(t.id, t.status); }}
+      >
+        {isDone ? '✓' : ''}
+      </div>
+      <div className="mtc-body">
+        <div className="mtc-name">{t.name}</div>
+        <div className="mtc-meta">
+          {t.assignee && (
+            <span className="mtc-assignee" style={{ color: color || 'var(--text3)' }}>
+              {t.assignee}
+            </span>
+          )}
+          {t.dueDate && (
+            <span className={`mtc-date${isOverdue ? ' mtc-date-overdue' : ''}`}>
+              · {fmtDate(t.dueDate)}{isOverdue ? ' ⚠️' : ''}
+            </span>
+          )}
+          {pa && (
+            <span className="mtc-partner" style={{ background: pa.color + '22', color: pa.color }}>
+              {pa.name}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const FS = { padding:'5px 9px', border:'1px solid var(--border2)', borderRadius:'var(--radius)', background:'var(--surface-solid)', color:'var(--text)', fontSize:'12px', outline:'none', cursor:'pointer' };
 
 const AllTasks = () => {
   const nav = useNavigate();
   const { tasks, activityMap, partnerMap, partners, updateTask, deleteTask, bulkDeleteTasks, userRole } = useData();
+  const { appUser } = useAuth();
 
   const [search,          setSearch]          = useState('');
   const [statusFilter,    setStatusFilter]    = useState('active'); // default: active only
@@ -23,6 +91,11 @@ const AllTasks = () => {
   const [editTask,        setEditTask]         = useState(null);
   const [doneCollapsed,   setDoneCollapsed]    = useState(false);
   const [isMobile,        setIsMobile]         = useState(() => window.innerWidth < 640);
+  const [isMobileView,    setIsMobileView]     = useState(() => window.innerWidth < 768);
+
+  // Mobile-specific filter state
+  const [mobileTab,       setMobileTab]        = useState('all');   // all|mine|today|overdue
+  const [mobileAssignee,  setMobileAssignee]   = useState('Tất cả');
 
   useEffect(() => {
     const handler = () => setTaskFormOpen(true);
@@ -31,7 +104,10 @@ const AllTasks = () => {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 640);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 640);
+      setIsMobileView(window.innerWidth < 768);
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -88,6 +164,38 @@ const AllTasks = () => {
     return { activeTasks: active, doneTasks: done };
   }, [tasks, search, partnerFilter, assigneeFilter, statusFilter, activityMap]);
 
+  // ── Mobile filtered tasks ──────────────────────────────────
+  const mobileTasks = useMemo(() => {
+    const today = todayStr();
+    const currentUser = appUser?.display_name || '';
+    return tasks.filter(t => {
+      if (t.status === 'done') return false;
+      // Tab filter
+      if (mobileTab === 'mine')    return t.assignee && currentUser && t.assignee.includes(currentUser);
+      if (mobileTab === 'today')   return t.dueDate === today;
+      if (mobileTab === 'overdue') return t.dueDate && t.dueDate < today;
+      return true; // 'all'
+    }).filter(t => {
+      if (mobileAssignee === 'Tất cả') return true;
+      return t.assignee && t.assignee.includes(mobileAssignee);
+    }).sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+  }, [tasks, mobileTab, mobileAssignee, appUser]);
+
+  // Group mobile tasks by date category
+  const mobileGrouped = useMemo(() => {
+    const groups = { overdue: [], today: [], week: [], later: [] };
+    mobileTasks.forEach(t => {
+      const g = getMobileGroup(t);
+      groups[g].push(t);
+    });
+    return groups;
+  }, [mobileTasks]);
+
   const allActiveSelected = activeTasks.length > 0 && activeTasks.every(t => selectedIds.has(t.id));
   const canDelete = !userRole || userRole !== 'viewer';
 
@@ -119,6 +227,10 @@ const AllTasks = () => {
 
   const openEdit = (e, t) => { e.stopPropagation(); setEditTask(t); setTaskFormOpen(true); };
   const closeForm = () => { setTaskFormOpen(false); setEditTask(null); };
+
+  const mobileToggleDone = (id, status) => {
+    updateTask(id, { status: status === 'done' ? 'todo' : 'done' });
+  };
 
   // ── Row renderer ───────────────────────────────────────────
   const TaskRow = ({ t }) => {
@@ -201,6 +313,85 @@ const AllTasks = () => {
   };
 
   const openReport = () => generateTasksReport(tasks, activities, partners);
+
+  // ── Mobile view (< 768px) ─────────────────────────────────
+  if (isMobileView) {
+    const renderGroup = (label, color, items) => {
+      if (items.length === 0) return null;
+      return (
+        <div key={label} style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', color, padding: '4px 16px 6px', textTransform: 'uppercase' }}>
+            {label} — {items.length}
+          </div>
+          {items.map(t => (
+            <MobileTaskCard
+              key={t.id}
+              t={t}
+              activityMap={activityMap}
+              partnerMap={partnerMap}
+              onToggleDone={mobileToggleDone}
+              onOpen={(path) => nav(path)}
+            />
+          ))}
+        </div>
+      );
+    };
+
+    return (
+      <div className="mobile-tasks-view">
+        {/* Filter tabs */}
+        <div className="mt-tabs">
+          {[
+            { id: 'all',     label: 'Tất cả' },
+            { id: 'mine',    label: 'Của tôi' },
+            { id: 'today',   label: 'Hôm nay' },
+            { id: 'overdue', label: 'Quá hạn' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              className={`mt-tab${mobileTab === tab.id ? ' mt-tab-active' : ''}`}
+              onClick={() => setMobileTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Assignee chips */}
+        <div className="mt-chips">
+          {MOBILE_ASSIGNEES.map(name => (
+            <button
+              key={name}
+              className={`mt-chip${mobileAssignee === name ? ' mt-chip-active' : ''}`}
+              onClick={() => setMobileAssignee(name)}
+              style={mobileAssignee === name && MOBILE_TEAM_COLORS[name]
+                ? { background: MOBILE_TEAM_COLORS[name], borderColor: MOBILE_TEAM_COLORS[name], color: '#fff' }
+                : {}}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+
+        {/* Task groups */}
+        <div className="mt-list">
+          {renderGroup('🔴 Quá hạn',  'var(--red)',    mobileGrouped.overdue)}
+          {renderGroup('🟡 Hôm nay',  'var(--orange)', mobileGrouped.today)}
+          {renderGroup('🟢 Tuần này', 'var(--green)',  mobileGrouped.week)}
+          {renderGroup('⚪ Sau này',  'var(--text3)',  mobileGrouped.later)}
+          {mobileTasks.length === 0 && (
+            <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>
+              Không có task nào
+            </div>
+          )}
+        </div>
+
+        {taskFormOpen && (
+          <TaskForm isOpen={taskFormOpen} onClose={closeForm} editTask={editTask} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page-container animate-fade-in">

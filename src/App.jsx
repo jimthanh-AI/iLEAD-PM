@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
+import MobileBottomNav from './components/MobileBottomNav';
+import QuickTaskSheet from './components/QuickTaskSheet';
 import Dashboard from './pages/Dashboard';
 import PartnerView from './pages/PartnerView';
 import ActivityDetail from './pages/ActivityDetail';
@@ -73,7 +75,9 @@ function AuthGuard({ children }) {
 }
 
 function AppShell() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [quickTaskOpen,  setQuickTaskOpen]  = useState(false);
+
   return (
     <BrowserRouter>
       <div className="app-container">
@@ -102,6 +106,9 @@ function AppShell() {
             </Routes>
           </main>
         </div>
+        {/* Mobile-only: bottom nav + quick task sheet */}
+        <MobileBottomNav onQuickTask={() => setQuickTaskOpen(true)} />
+        <QuickTaskSheet isOpen={quickTaskOpen} onClose={() => setQuickTaskOpen(false)} />
       </div>
     </BrowserRouter>
   );
