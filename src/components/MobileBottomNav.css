@@ -3,7 +3,21 @@
   display: none;
 }
 
+/* Hide drawer + backdrop on desktop */
+.mbn-drawer,
+.mbn-drawer-backdrop {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  /* Re-enable inside mobile breakpoint */
+  .mbn-drawer-backdrop {
+    display: block;
+  }
+  .mbn-drawer {
+    display: flex;
+  }
+
   /* ── Bottom Nav Bar ──────────────────────────────────────────── */
   .mobile-bottom-nav {
     display: flex;

@@ -54,8 +54,8 @@ const MobileBottomNav = ({ onQuickTask }) => {
         <div className="mbn-fab-placeholder" />
 
         <button
-          className={`mbn-tab${isActive('/mel') ? ' mbn-active' : ''}`}
-          onClick={() => go('/mel-entries')}
+          className={`mbn-tab${isActive('/mel-entry') || isActive('/mel-dashboard') ? ' mbn-active' : ''}`}
+          onClick={() => go('/mel-entry')}
         >
           <span className="mbn-icon">📊</span>
           <span className="mbn-label">MEL</span>
