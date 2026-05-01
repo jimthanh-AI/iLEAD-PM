@@ -68,7 +68,7 @@ export const GanttTimeline = () => {
     const s = new Date(a.startDate + 'T00:00:00');
     const e = new Date((a.endDate || a.startDate) + 'T00:00:00');
     return s <= re && e >= rs;
-  });
+  }).sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
   const openReport = () => generateTimelineReport(visible, partners, rangeLabel);
 
