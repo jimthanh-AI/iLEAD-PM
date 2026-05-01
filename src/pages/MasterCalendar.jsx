@@ -434,37 +434,7 @@ export const MasterCalendar = () => {
         {/* Google Calendar Group */}
         <div className="mc-sb-group">
           <div className="mc-sb-group-hdr">📆 LỊCH GOOGLE</div>
-          {!gcalAuthToken ? (
-            <div className="mc-sb-auth-card">
-              <div style={{ fontSize:'11px', color:'var(--text2)', marginBottom:'2px', fontWeight:600 }}>Google Client ID</div>
-              <input
-                className="mc-sb-client-input"
-                placeholder="Dán Client ID vào đây..."
-                value={clientId.split('.apps.googleusercontent.com')[0]}
-                onChange={e => saveClientId(e.target.value + '.apps.googleusercontent.com')}
-                title="Lấy từ Google Cloud Console → Credentials → OAuth 2.0 Client ID"
-              />
-              {!clientId && (
-                <div style={{ fontSize:'10px', color:'var(--text3)', lineHeight:'1.4' }}>
-                  ↑ Nhập Client ID trước, sau đó bấm Kết nối
-                </div>
-              )}
-              <button className="btn btn-sm" onClick={handleAuthClick} style={{ width:'100%', background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', fontWeight:600 }}>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G" style={{ width:12, marginRight:6 }}/>
-                Kết nối GCal
-              </button>
-            </div>
-          ) : (
-            <>
-              <label className="mc-sb-item">
-                <input type="checkbox" checked={showGcalEvents} onChange={() => setShowGcalEvents(v=>!v)} />
-                <span className="mc-sb-swatch" style={{ background: '#4285F4' }}></span>
-                <span className="mc-sb-label">Primary Calendar</span>
-                {loadingGcal && <span style={{fontSize:'10px', color:'var(--text3)'}}>⏳</span>}
-              </label>
-              <div className="mc-sb-auth-info">Đã kết nối Google ☑</div>
-            </>
-          )}
+          <div style={{ fontSize:'11px', color:'var(--text3)', padding:'4px 0' }}>Dùng nút GCal trên thanh lọc phía trên.</div>
         </div>
 
       </div>
