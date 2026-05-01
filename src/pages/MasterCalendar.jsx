@@ -18,7 +18,7 @@ function getIcsUrlFromEmbedUrl(embedUrl) {
   try {
     const u = new URL(embedUrl);
     const src = u.searchParams.get('src');
-    if (src) return `https://calendar.google.com/calendar/ical/${encodeURIComponent(src)}/public/basic.ics`;
+    if (src) return `https://calendar.google.com/calendar/ical/${encodeURIComponent(src)}/public/full.ics`;
   } catch (e) { /* ignore */ }
   // If it already looks like an ICS URL, return as-is
   if (embedUrl.includes('/ical/')) return embedUrl;
