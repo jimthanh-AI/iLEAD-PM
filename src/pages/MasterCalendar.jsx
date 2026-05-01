@@ -505,13 +505,19 @@ export const MasterCalendar = () => {
           <div className="mc-sb-group-hdr">📆 LỊCH GOOGLE</div>
           {!gcalAuthToken ? (
             <div className="mc-sb-auth-card">
-              <input 
-                className="mc-sb-client-input" 
-                placeholder="Nhập phần đầu GCal Client ID..."
+              <div style={{ fontSize:'11px', color:'var(--text2)', marginBottom:'2px', fontWeight:600 }}>Google Client ID</div>
+              <input
+                className="mc-sb-client-input"
+                placeholder="Dán Client ID vào đây..."
                 value={clientId.split('.apps.googleusercontent.com')[0]}
                 onChange={e => saveClientId(e.target.value + '.apps.googleusercontent.com')}
-                title="Chỉ cần nhập phần Client ID trước đuôi .apps.googleusercontent.com"
+                title="Lấy từ Google Cloud Console → Credentials → OAuth 2.0 Client ID"
               />
+              {!clientId && (
+                <div style={{ fontSize:'10px', color:'var(--text3)', lineHeight:'1.4' }}>
+                  ↑ Nhập Client ID trước, sau đó bấm Kết nối
+                </div>
+              )}
               <button className="btn btn-sm" onClick={handleAuthClick} style={{ width:'100%', background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', fontWeight:600 }}>
                 <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G" style={{ width:12, marginRight:6 }}/>
                 Kết nối GCal
