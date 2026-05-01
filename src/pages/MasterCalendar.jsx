@@ -13,6 +13,52 @@ const CHIP_COLORS = {
   todo:        { bg: 'rgba(156,163,175,.13)', color: '#6b7280', border: '#9ca3af' },
 };
 
+// ── ICS helpers ──
+function getIcsUrlFromEmbedUrl(embedUrl) {
+  try {
+    const u = new URL(embedUrl);
+    const src = u.searchParams.get('src');
+    if (src) return `https://calendar.google.com/calendar/ical/${encodeURIComponent(src)}/public/basic.ics`;
+  } catch (e) { /* ignore */ }
+  // If it already looks like an ICS URL, return as-is
+  if (embedUrl.includes('/ical/')) return embedUrl;
+  return null;
+}
+
+function parseICS(icsText) {
+  const events = [];
+  // Unfold continuation lines (RFC 5545: CRLF followed by whitespace)
+  const unfolded = icsText.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '');
+  const lines = unfolded.split('\n');
+  let ev = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line === 'BEGIN:VEVENT') { ev = {}; continue; }
+    if (line === 'END:VEVENT') {
+      if (ev?.dtstart) events.push(ev);
+      ev = null; continue;
+    }
+    if (!ev) continue;
+    const colon = line.indexOf(':');
+    if (colon < 0) continue;
+    const key = line.slice(0, colon).toUpperCase();
+    const val = line.slice(colon + 1).replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
+    if (key === 'SUMMARY') ev.summary = val;
+    else if (key.startsWith('DTSTART')) { ev.dtstart = val; ev.allDay = !val.includes('T'); }
+    else if (key.startsWith('DTEND'))   ev.dtend = val;
+    else if (key === 'UID')             ev.uid = val;
+    else if (key === 'URL')             ev.url = val;
+  }
+  return events;
+}
+
+function icsValToIso(val) {
+  if (!val) return null;
+  // Strip TZID etc — just grab the raw date/time value after last ':'
+  const v = val.includes(':') ? val.split(':').pop() : val;
+  return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+}
+
 // Use local date parts to avoid UTC timezone shift (Vietnam = UTC+7)
 const toLocalIso = (d) => {
   const y = d.getFullYear();
@@ -249,15 +295,31 @@ export const MasterCalendar = () => {
   };
   const toggleTaskFilter = (k) => setShowTasks(p => ({ ...p, [k]: !p[k] }));
   
-  // Google Calendar — embed URL approach (no OAuth needed)
+  // Google Calendar — embed URL → ICS proxy → integrated grid events
   const [gcalEmbedUrl, setGcalEmbedUrl] = useState(() => localStorage.getItem('ilead_gcal_embed_url') || '');
   const [gcalInputVal, setGcalInputVal] = useState('');
   const [showGcalPanel, setShowGcalPanel] = useState(false);
+  const [gcalEvents, setGcalEvents] = useState([]);
+  const [gcalLoading, setGcalLoading] = useState(false);
+  const [gcalError, setGcalError] = useState('');
 
   const saveGcalEmbedUrl = (url) => {
     setGcalEmbedUrl(url);
     localStorage.setItem('ilead_gcal_embed_url', url);
   };
+
+  // Fetch ICS via server-side proxy whenever embed URL changes
+  useEffect(() => {
+    if (!gcalEmbedUrl) { setGcalEvents([]); return; }
+    const icsUrl = getIcsUrlFromEmbedUrl(gcalEmbedUrl);
+    if (!icsUrl) { setGcalError('Link không hợp lệ'); return; }
+    setGcalLoading(true);
+    setGcalError('');
+    fetch(`/api/gcal-proxy?url=${encodeURIComponent(icsUrl)}`)
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.text(); })
+      .then(text => { setGcalEvents(parseICS(text)); setGcalLoading(false); })
+      .catch(e => { setGcalError('Lịch không công khai hoặc lỗi kết nối'); setGcalLoading(false); });
+  }, [gcalEmbedUrl]);
 
   const today    = new Date();
   const todayIso = toLocalIso(today);
@@ -285,11 +347,15 @@ export const MasterCalendar = () => {
     });
   }, [tasks, showTasks, partnerActivityIds]);
 
-  // Events per day — iLEAD Tasks only (Google Calendar shown via iframe panel)
+  // Events per day — iLEAD Tasks + Google Calendar events
   const getUnifiedEventsForDay = (isoDate) => {
-    return filteredTasks
+    const dayTasks = filteredTasks
       .filter(t => t.dueDate === isoDate)
       .map(t => ({ type: 'task', data: t }));
+    const dayGcal = gcalEvents
+      .filter(ev => icsValToIso(ev.dtstart) === isoDate)
+      .map(ev => ({ type: 'gcal', data: ev }));
+    return [...dayTasks, ...dayGcal];
   };
 
   // ── Grid Helpers ──
@@ -382,16 +448,21 @@ export const MasterCalendar = () => {
   };
 
   const GCalChip = ({ ev, compact }) => {
-    // Format start time if available
-    const timeStr = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('vi-VN', { hour:'2-digit', minute:'2-digit' }) : '';
-    const color = ev.colorId ? '#4285F4' : '#039be5'; // simplified Gcal colors mapping
+    // Extract time from DTSTART if it's a datetime (e.g. 20260501T090000)
+    const rawStart = ev.dtstart || '';
+    let timeStr = '';
+    if (rawStart.includes('T') && rawStart.length >= 13) {
+      const h = rawStart.slice(9, 11);
+      const m = rawStart.slice(11, 13);
+      timeStr = `${h}:${m}`;
+    }
     return (
-      <div 
+      <div
         className={`uc-event uc-evt-gcal${compact ? ' compact' : ''}`}
         title={`GCal: ${ev.summary}`}
-        onClick={(e) => { e.stopPropagation(); window.open(ev.htmlLink, '_blank'); }}
+        onClick={(e) => { e.stopPropagation(); if (ev.url) window.open(ev.url, '_blank'); }}
       >
-        <div className="uc-evt-gcal-dot" style={{ background: color }}></div>
+        <div className="uc-evt-gcal-dot" style={{ background: '#4285F4' }}></div>
         {timeStr && !compact && <span className="uc-evt-time">{timeStr}</span>}
         <span className="uc-evt-name">{ev.summary || '(No title)'}</span>
       </div>
@@ -518,10 +589,13 @@ export const MasterCalendar = () => {
               </div>
             ) : (
               <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
+                {gcalLoading && <span style={{ fontSize:'11px', color:'var(--text3)' }}>⏳</span>}
+                {gcalError && <span style={{ fontSize:'11px', color:'#ef4444' }} title={gcalError}>⚠️</span>}
+                {!gcalError && !gcalLoading && gcalEvents.length > 0 && <span style={{ fontSize:'11px', color:'#4285F4' }}>●</span>}
                 <button className="btn btn-sm" onClick={() => setShowGcalPanel(v => !v)} style={{ background: showGcalPanel ? '#3b82f6' : '#fff', border:'1px solid var(--border)', color: showGcalPanel ? '#fff' : '#3b82f6', whiteSpace:'nowrap' }}>
                   📅 Google Cal
                 </button>
-                <button onClick={() => { saveGcalEmbedUrl(''); setShowGcalPanel(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'14px' }} title="Xóa lịch Google">✕</button>
+                <button onClick={() => { saveGcalEmbedUrl(''); setGcalEvents([]); setShowGcalPanel(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'14px' }} title="Xóa lịch Google">✕</button>
               </div>
             )}
           </div>
@@ -565,7 +639,9 @@ export const MasterCalendar = () => {
                     </div>
                     <div className="uc-events-list">
                       {events.slice(0, 4).map((evt) =>
-                        <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
+                        evt.type === 'task'
+                          ? <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
+                          : <GCalChip key={`g_${evt.data.uid || evt.data.summary}`} ev={evt.data} compact />
                       )}
                       {events.length > 4 && <div className="uc-more">+{events.length - 4} nữa</div>}
                     </div>
@@ -601,7 +677,9 @@ export const MasterCalendar = () => {
                       <div key={i} className={`uc-week-col${isToday?' is-today':''}`}>
                         <div className="uc-events-list" style={{ marginTop:'8px' }}>
                           {events.map((evt) =>
-                            <TaskChip key={`tw_${evt.data.id}`} task={evt.data} />
+                            evt.type === 'task'
+                              ? <TaskChip key={`tw_${evt.data.id}`} task={evt.data} />
+                              : <GCalChip key={`gw_${evt.data.uid || evt.data.summary}`} ev={evt.data} />
                           )}
                         </div>
                       </div>
