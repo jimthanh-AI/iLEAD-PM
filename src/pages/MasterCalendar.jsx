@@ -27,7 +27,6 @@ function getIcsUrlFromEmbedUrl(embedUrl) {
 
 function parseICS(icsText) {
   const events = [];
-  // Unfold continuation lines (RFC 5545: CRLF followed by whitespace)
   const unfolded = icsText.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '');
   const lines = unfolded.split('\n');
   let ev = null;
@@ -41,22 +40,93 @@ function parseICS(icsText) {
     if (!ev) continue;
     const colon = line.indexOf(':');
     if (colon < 0) continue;
-    const key = line.slice(0, colon).toUpperCase();
+    const keyFull = line.slice(0, colon).toUpperCase();
     const val = line.slice(colon + 1).replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
-    if (key === 'SUMMARY') ev.summary = val;
-    else if (key.startsWith('DTSTART')) { ev.dtstart = val; ev.allDay = !val.includes('T'); }
-    else if (key.startsWith('DTEND'))   ev.dtend = val;
-    else if (key === 'UID')             ev.uid = val;
-    else if (key === 'URL')             ev.url = val;
+    const key = keyFull.split(';')[0]; // strip params like TZID
+    if (key === 'SUMMARY')      ev.summary = val;
+    else if (key === 'DTSTART') { ev.dtstart = val; ev.allDay = !val.includes('T'); }
+    else if (key === 'DTEND')   ev.dtend = val;
+    else if (key === 'UID')     ev.uid = val;
+    else if (key === 'URL')     ev.url = val;
+    else if (key === 'RRULE')   ev.rrule = val;
+    else if (key === 'DURATION') ev.duration = val;
   }
   return events;
 }
 
+// Parse ICS datetime string to JS Date (treats local time as Vietnam UTC+7)
+function icsToDate(val) {
+  if (!val) return null;
+  const v = val.replace(/[^0-9T]/g, ''); // strip non-numeric except T
+  const y = +v.slice(0,4), mo = +v.slice(4,6)-1, d = +v.slice(6,8);
+  if (!v.includes('T')) return new Date(y, mo, d);
+  const h = +v.slice(9,11), m = +v.slice(11,13);
+  // Z suffix = UTC, else treat as local Vietnam time (UTC+7)
+  if (val.endsWith('Z')) return new Date(Date.UTC(y,mo,d,h,m));
+  return new Date(y, mo, d, h, m);
+}
+
+function dateToIcsDt(date, allDay) {
+  const p = (n,l=2) => String(n).padStart(l,'0');
+  if (allDay) return `${date.getFullYear()}${p(date.getMonth()+1)}${p(date.getDate())}`;
+  return `${date.getFullYear()}${p(date.getMonth()+1)}${p(date.getDate())}T${p(date.getHours())}${p(date.getMinutes())}00`;
+}
+
+// Expand recurring events (RRULE) within a date window
+function expandEvents(rawEvents, windowStart, windowEnd) {
+  const result = [];
+  for (const ev of rawEvents) {
+    if (!ev.rrule) { result.push(ev); continue; }
+    // Parse RRULE
+    const parts = {};
+    ev.rrule.split(';').forEach(p => { const [k,v]=p.split('='); parts[k]=v; });
+    const freq = parts.FREQ;
+    const interval = parseInt(parts.INTERVAL||'1');
+    const until = parts.UNTIL ? icsToDate(parts.UNTIL) : null;
+    const count = parts.COUNT ? parseInt(parts.COUNT) : null;
+    const byDay = parts.BYDAY ? parts.BYDAY.split(',').map(d => d.slice(-2)) : null;
+    const DAY_MAP = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+
+    let cur = icsToDate(ev.dtstart);
+    if (!cur) continue;
+    const endLimit = until || windowEnd;
+    let n = 0, maxN = count || 500;
+
+    while (cur <= endLimit && n < maxN) {
+      if (cur >= windowStart) {
+        result.push({ ...ev, dtstart: dateToIcsDt(cur, ev.allDay), _expanded: true });
+      }
+      // Advance
+      if (freq === 'DAILY')        cur = new Date(cur.getTime() + interval*86400000);
+      else if (freq === 'WEEKLY')  cur = new Date(cur.getTime() + interval*7*86400000);
+      else if (freq === 'MONTHLY') { cur = new Date(cur); cur.setMonth(cur.getMonth() + interval); }
+      else if (freq === 'YEARLY')  { cur = new Date(cur); cur.setFullYear(cur.getFullYear() + interval); }
+      else break;
+      n++;
+    }
+  }
+  return result;
+}
+
 function icsValToIso(val) {
   if (!val) return null;
-  // Strip TZID etc — just grab the raw date/time value after last ':'
-  const v = val.includes(':') ? val.split(':').pop() : val;
+  const v = val.replace(/[^0-9T]/g, '');
   return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+}
+
+// Extract HH:MM display string from ICS datetime value
+function icsValToTime(val) {
+  if (!val || !val.includes('T')) return '';
+  const v = val.replace(/[^0-9T]/g, '');
+  const h = v.slice(9,11), m = v.slice(11,13);
+  if (!h) return '';
+  // If ends with Z (UTC), convert to UTC+7
+  if (val.endsWith('Z')) {
+    const utcH = parseInt(h);
+    const localH = (utcH + 7) % 24;
+    return `${String(localH).padStart(2,'0')}:${m}`;
+  }
+  return `${h}:${m}`;
 }
 
 // Use local date parts to avoid UTC timezone shift (Vietnam = UTC+7)
@@ -315,10 +385,16 @@ export const MasterCalendar = () => {
     if (!icsUrl) { setGcalError('Link không hợp lệ'); return; }
     setGcalLoading(true);
     setGcalError('');
+    const winStart = new Date(); winStart.setMonth(winStart.getMonth() - 1);
+    const winEnd   = new Date(); winEnd.setMonth(winEnd.getMonth() + 6);
     fetch(`/api/gcal-proxy?url=${encodeURIComponent(icsUrl)}`)
       .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.text(); })
-      .then(text => { setGcalEvents(parseICS(text)); setGcalLoading(false); })
-      .catch(e => { setGcalError('Lịch không công khai hoặc lỗi kết nối'); setGcalLoading(false); });
+      .then(text => {
+        const raw = parseICS(text);
+        setGcalEvents(expandEvents(raw, winStart, winEnd));
+        setGcalLoading(false);
+      })
+      .catch(() => { setGcalError('Lịch không công khai hoặc lỗi kết nối'); setGcalLoading(false); });
   }, [gcalEmbedUrl]);
 
   const today    = new Date();
@@ -448,22 +524,17 @@ export const MasterCalendar = () => {
   };
 
   const GCalChip = ({ ev, compact }) => {
-    // Extract time from DTSTART if it's a datetime (e.g. 20260501T090000)
-    const rawStart = ev.dtstart || '';
-    let timeStr = '';
-    if (rawStart.includes('T') && rawStart.length >= 13) {
-      const h = rawStart.slice(9, 11);
-      const m = rawStart.slice(11, 13);
-      timeStr = `${h}:${m}`;
-    }
+    const timeStr = icsValToTime(ev.dtstart);
+    const gcalLink = ev.url || `https://calendar.google.com/calendar/r`;
     return (
       <div
         className={`uc-event uc-evt-gcal${compact ? ' compact' : ''}`}
-        title={`GCal: ${ev.summary}`}
-        onClick={(e) => { e.stopPropagation(); if (ev.url) window.open(ev.url, '_blank'); }}
+        title={`${timeStr ? timeStr + ' ' : ''}${ev.summary}`}
+        onClick={(e) => { e.stopPropagation(); window.open(gcalLink, '_blank'); }}
+        style={{ cursor: 'pointer' }}
       >
         <div className="uc-evt-gcal-dot" style={{ background: '#4285F4' }}></div>
-        {timeStr && !compact && <span className="uc-evt-time">{timeStr}</span>}
+        {timeStr && <span className="uc-evt-time" style={{ fontSize:'10px', opacity:0.8, marginRight:'2px' }}>{timeStr}</span>}
         <span className="uc-evt-name">{ev.summary || '(No title)'}</span>
       </div>
     );
