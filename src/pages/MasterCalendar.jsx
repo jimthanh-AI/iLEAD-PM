@@ -603,9 +603,19 @@ export const MasterCalendar = () => {
               <span style={{ fontSize:'12px', color:'var(--red)' }}>Quá hạn</span>
             </label>
             {!gcalAuthToken ? (
-              <button className="btn btn-sm" onClick={handleAuthClick} style={{ marginLeft:'auto', background:'#fff', border:'1px solid var(--border)', color:'#3b82f6' }}>
-                📅 GCal
-              </button>
+              <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
+                <input
+                  className="mc-sb-client-input"
+                  style={{ width:180, fontSize:'12px' }}
+                  placeholder="Dán Google Client ID..."
+                  value={clientId.split('.apps.googleusercontent.com')[0]}
+                  onChange={e => saveClientId(e.target.value + '.apps.googleusercontent.com')}
+                  title="OAuth Client ID từ Google Cloud Console"
+                />
+                <button className="btn btn-sm" onClick={handleAuthClick} style={{ background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', whiteSpace:'nowrap' }}>
+                  📅 Kết nối GCal
+                </button>
+              </div>
             ) : (
               <label className="mc-sb-item" style={{ margin:0, marginLeft:'auto' }}>
                 <input type="checkbox" checked={showGcalEvents} onChange={() => setShowGcalEvents(v=>!v)} />
