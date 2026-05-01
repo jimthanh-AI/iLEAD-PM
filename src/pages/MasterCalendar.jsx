@@ -249,65 +249,15 @@ export const MasterCalendar = () => {
   };
   const toggleTaskFilter = (k) => setShowTasks(p => ({ ...p, [k]: !p[k] }));
   
-  // Google API State
-  const [clientId, setClientId] = useState(() => localStorage.getItem('ilead_gcal_client_id') || '');
-  const [gcalAuthToken, setGcalAuthToken] = useState(null);
-  const [gcalEvents, setGcalEvents] = useState([]);
-  const [loadingGcal, setLoadingGcal] = useState(false);
-  const [showGcalEvents, setShowGcalEvents] = useState(true);
+  // Google Calendar — embed URL approach (no OAuth needed)
+  const [gcalEmbedUrl, setGcalEmbedUrl] = useState(() => localStorage.getItem('ilead_gcal_embed_url') || '');
+  const [gcalInputVal, setGcalInputVal] = useState('');
+  const [showGcalPanel, setShowGcalPanel] = useState(false);
 
-  // Auth & Fetch Google Calendar
-  const saveClientId = (id) => {
-    setClientId(id);
-    localStorage.setItem('ilead_gcal_client_id', id);
+  const saveGcalEmbedUrl = (url) => {
+    setGcalEmbedUrl(url);
+    localStorage.setItem('ilead_gcal_embed_url', url);
   };
-
-  const handleAuthClick = () => {
-    if (!clientId) {
-      alert("Vui lòng nhập Google Client ID trước.");
-      return;
-    }
-    if (!window.google) {
-      alert("Google Identity Services script chưa được tải. Đang tải lại trang...");
-      window.location.reload();
-      return;
-    }
-    
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/calendar.events.readonly',
-      callback: (tokenResponse) => {
-        if (tokenResponse && tokenResponse.access_token) {
-          setGcalAuthToken(tokenResponse.access_token);
-          fetchGoogleEvents(tokenResponse.access_token);
-        }
-      },
-    });
-    client.requestAccessToken();
-  };
-
-  const fetchGoogleEvents = async (token) => {
-    setLoadingGcal(true);
-    try {
-      // Calculate start & end of current view window approx (just fetch a wide range, e.g. -1 month to +2 months)
-      const timeMin = new Date(); timeMin.setMonth(timeMin.getMonth() - 2);
-      const timeMax = new Date(); timeMax.setMonth(timeMax.getMonth() + 3);
-
-      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}&singleEvents=true&orderBy=startTime`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.items) {
-        setGcalEvents(data.items);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Lỗi khi tải sự kiện Google Calendar.");
-    }
-    setLoadingGcal(false);
-  };
-
-  // Re-fetch if view changes significantly? For simplicity we fetched a 5 month window.
 
   const today    = new Date();
   const todayIso = toLocalIso(today);
@@ -335,30 +285,11 @@ export const MasterCalendar = () => {
     });
   }, [tasks, showTasks, partnerActivityIds]);
 
-  // Combine unified events — Tasks + GCal only (no activities)
+  // Events per day — iLEAD Tasks only (Google Calendar shown via iframe panel)
   const getUnifiedEventsForDay = (isoDate) => {
-    // 1. iLEAD Tasks by deadline
-    const dayTasks = filteredTasks
+    return filteredTasks
       .filter(t => t.dueDate === isoDate)
-      .map(t => ({ type: 'task', data: t, sortTime: '00:00:00' }));
-
-    // 2. Google Calendar Events
-    let dayGcal = [];
-    if (showGcalEvents) {
-      dayGcal = gcalEvents
-        .filter(ev => {
-          if (ev.start?.date) return ev.start.date === isoDate;
-          if (ev.start?.dateTime) return ev.start.dateTime.startsWith(isoDate);
-          return false;
-        })
-        .map(ev => ({
-          type: 'gcal',
-          data: ev,
-          sortTime: ev.start?.dateTime ? ev.start.dateTime.substring(11, 19) : '00:00:00'
-        }));
-    }
-
-    return [...dayTasks, ...dayGcal];
+      .map(t => ({ type: 'task', data: t }));
   };
 
   // ── Grid Helpers ──
@@ -602,26 +533,26 @@ export const MasterCalendar = () => {
               <span className="mc-sb-swatch" style={{ background:'rgba(239,68,68,0.1)', border:'1px solid #ef4444' }}></span>
               <span style={{ fontSize:'12px', color:'var(--red)' }}>Quá hạn</span>
             </label>
-            {!gcalAuthToken ? (
+            {!gcalEmbedUrl ? (
               <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
                 <input
                   className="mc-sb-client-input"
-                  style={{ width:180, fontSize:'12px' }}
-                  placeholder="Dán Google Client ID..."
-                  value={clientId.split('.apps.googleusercontent.com')[0]}
-                  onChange={e => saveClientId(e.target.value + '.apps.googleusercontent.com')}
-                  title="OAuth Client ID từ Google Cloud Console"
+                  style={{ width:220, fontSize:'12px' }}
+                  placeholder="Dán link Google Calendar embed..."
+                  value={gcalInputVal}
+                  onChange={e => setGcalInputVal(e.target.value)}
                 />
-                <button className="btn btn-sm" onClick={handleAuthClick} style={{ background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', whiteSpace:'nowrap' }}>
-                  📅 Kết nối GCal
+                <button className="btn btn-sm" onClick={() => { if (gcalInputVal.trim()) saveGcalEmbedUrl(gcalInputVal.trim()); }} style={{ background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', whiteSpace:'nowrap' }}>
+                  📅 Lưu
                 </button>
               </div>
             ) : (
-              <label className="mc-sb-item" style={{ margin:0, marginLeft:'auto' }}>
-                <input type="checkbox" checked={showGcalEvents} onChange={() => setShowGcalEvents(v=>!v)} />
-                <span className="mc-sb-swatch" style={{ background:'#4285F4' }}></span>
-                <span style={{ fontSize:'12px' }}>Google Cal ☑</span>
-              </label>
+              <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
+                <button className="btn btn-sm" onClick={() => setShowGcalPanel(v => !v)} style={{ background: showGcalPanel ? '#3b82f6' : '#fff', border:'1px solid var(--border)', color: showGcalPanel ? '#fff' : '#3b82f6', whiteSpace:'nowrap' }}>
+                  📅 Google Cal
+                </button>
+                <button onClick={() => { saveGcalEmbedUrl(''); setShowGcalPanel(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'14px' }} title="Xóa lịch Google">✕</button>
+              </div>
             )}
           </div>
         </div>
@@ -664,8 +595,7 @@ export const MasterCalendar = () => {
                     </div>
                     <div className="uc-events-list">
                       {events.slice(0, 4).map((evt) =>
-                        evt.type === 'task' ? <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
-                                            : <GCalChip key={`g_${evt.data.id}`} ev={evt.data} compact />
+                        <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
                       )}
                       {events.length > 4 && <div className="uc-more">+{events.length - 4} nữa</div>}
                     </div>
@@ -701,8 +631,7 @@ export const MasterCalendar = () => {
                       <div key={i} className={`uc-week-col${isToday?' is-today':''}`}>
                         <div className="uc-events-list" style={{ marginTop:'8px' }}>
                           {events.map((evt) =>
-                            evt.type === 'task' ? <TaskChip key={`tw_${evt.data.id}`} task={evt.data} />
-                                                : <GCalChip key={`gw_${evt.data.id}`} ev={evt.data} />
+                            <TaskChip key={`tw_${evt.data.id}`} task={evt.data} />
                           )}
                         </div>
                       </div>
@@ -726,6 +655,23 @@ export const MasterCalendar = () => {
           onClose={() => setSelectedTask(null)}
           updateTask={updateTask}
         />
+      )}
+
+      {/* Google Calendar iframe panel */}
+      {showGcalPanel && gcalEmbedUrl && (
+        <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowGcalPanel(false)}>
+          <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', width:'min(900px, 95vw)', height:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid #e5e7eb' }}>
+              <span style={{ fontWeight:600, fontSize:'14px' }}>📅 Google Calendar</span>
+              <button onClick={() => setShowGcalPanel(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'18px', color:'#6b7280' }}>✕</button>
+            </div>
+            <iframe
+              src={gcalEmbedUrl}
+              style={{ flex:1, border:'none', width:'100%' }}
+              title="Google Calendar"
+            />
+          </div>
+        </div>
       )}
     </div>
   );
