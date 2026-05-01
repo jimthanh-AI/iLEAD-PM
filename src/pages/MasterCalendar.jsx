@@ -54,53 +54,54 @@ function parseICS(icsText) {
   return events;
 }
 
-// Parse ICS datetime string to JS Date (treats local time as Vietnam UTC+7)
-function icsToDate(val) {
-  if (!val) return null;
-  const v = val.replace(/[^0-9T]/g, ''); // strip non-numeric except T
+// Advance an ICS dtstart string by N days (pure date arithmetic, no timezone conversion)
+function advanceIcsDtstart(dtstart, days) {
+  const v = dtstart.replace(/[^0-9T]/g, '');
   const y = +v.slice(0,4), mo = +v.slice(4,6)-1, d = +v.slice(6,8);
-  if (!v.includes('T')) return new Date(y, mo, d);
-  const h = +v.slice(9,11), m = +v.slice(11,13);
-  // Z suffix = UTC, else treat as local Vietnam time (UTC+7)
-  if (val.endsWith('Z')) return new Date(Date.UTC(y,mo,d,h,m));
-  return new Date(y, mo, d, h, m);
+  const next = new Date(y, mo, d + days); // local date, no UTC
+  const ny = next.getFullYear();
+  const nm = String(next.getMonth()+1).padStart(2,'0');
+  const nd = String(next.getDate()).padStart(2,'0');
+  return `${ny}${nm}${nd}${dtstart.slice(8)}`; // preserve time portion exactly
 }
 
-function dateToIcsDt(date, allDay) {
-  const p = (n,l=2) => String(n).padStart(l,'0');
-  if (allDay) return `${date.getFullYear()}${p(date.getMonth()+1)}${p(date.getDate())}`;
-  return `${date.getFullYear()}${p(date.getMonth()+1)}${p(date.getDate())}T${p(date.getHours())}${p(date.getMinutes())}00`;
+function advanceIcsDtstartMonths(dtstart, months) {
+  const v = dtstart.replace(/[^0-9T]/g, '');
+  const y = +v.slice(0,4), mo = +v.slice(4,6)-1, d = +v.slice(6,8);
+  const next = new Date(y, mo + months, d);
+  const ny = next.getFullYear();
+  const nm = String(next.getMonth()+1).padStart(2,'0');
+  const nd = String(next.getDate()).padStart(2,'0');
+  return `${ny}${nm}${nd}${dtstart.slice(8)}`;
 }
 
-// Expand recurring events (RRULE) within a date window
-function expandEvents(rawEvents, windowStart, windowEnd) {
+// Expand recurring events (RRULE) within an ISO date window
+function expandEvents(rawEvents, winStartIso, winEndIso) {
   const result = [];
   for (const ev of rawEvents) {
     if (!ev.rrule) { result.push(ev); continue; }
-    // Parse RRULE
     const parts = {};
-    ev.rrule.split(';').forEach(p => { const [k,v]=p.split('='); parts[k]=v; });
+    ev.rrule.split(';').forEach(p => { const [k,v]=p.split('='); if(k) parts[k]=v; });
     const freq = parts.FREQ;
     const interval = parseInt(parts.INTERVAL||'1');
-    const until = parts.UNTIL ? icsToDate(parts.UNTIL) : null;
     const count = parts.COUNT ? parseInt(parts.COUNT) : null;
-    const byDay = parts.BYDAY ? parts.BYDAY.split(',').map(d => d.slice(-2)) : null;
-    const DAY_MAP = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+    const until = parts.UNTIL ? icsValToIso(parts.UNTIL) : null;
+    const endIso = until && until < winEndIso ? until : winEndIso;
 
-    let cur = icsToDate(ev.dtstart);
-    if (!cur) continue;
-    const endLimit = until || windowEnd;
+    let cur = ev.dtstart;
     let n = 0, maxN = count || 500;
 
-    while (cur <= endLimit && n < maxN) {
-      if (cur >= windowStart) {
-        result.push({ ...ev, dtstart: dateToIcsDt(cur, ev.allDay), _expanded: true });
+    while (n < maxN) {
+      const isoDate = icsValToIso(cur);
+      if (!isoDate || isoDate > endIso) break;
+      if (isoDate >= winStartIso) {
+        result.push({ ...ev, dtstart: cur, _expanded: n > 0 });
       }
       // Advance
-      if (freq === 'DAILY')        cur = new Date(cur.getTime() + interval*86400000);
-      else if (freq === 'WEEKLY')  cur = new Date(cur.getTime() + interval*7*86400000);
-      else if (freq === 'MONTHLY') { cur = new Date(cur); cur.setMonth(cur.getMonth() + interval); }
-      else if (freq === 'YEARLY')  { cur = new Date(cur); cur.setFullYear(cur.getFullYear() + interval); }
+      if      (freq === 'DAILY')   cur = advanceIcsDtstart(cur, interval);
+      else if (freq === 'WEEKLY')  cur = advanceIcsDtstart(cur, 7 * interval);
+      else if (freq === 'MONTHLY') cur = advanceIcsDtstartMonths(cur, interval);
+      else if (freq === 'YEARLY')  cur = advanceIcsDtstartMonths(cur, 12 * interval);
       else break;
       n++;
     }
@@ -114,18 +115,12 @@ function icsValToIso(val) {
   return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
 }
 
-// Extract HH:MM display string from ICS datetime value
+// Extract HH:MM display — show raw time as stored in ICS (no timezone conversion)
 function icsValToTime(val) {
   if (!val || !val.includes('T')) return '';
   const v = val.replace(/[^0-9T]/g, '');
   const h = v.slice(9,11), m = v.slice(11,13);
   if (!h) return '';
-  // If ends with Z (UTC), convert to UTC+7
-  if (val.endsWith('Z')) {
-    const utcH = parseInt(h);
-    const localH = (utcH + 7) % 24;
-    return `${String(localH).padStart(2,'0')}:${m}`;
-  }
   return `${h}:${m}`;
 }
 
@@ -385,13 +380,16 @@ export const MasterCalendar = () => {
     if (!icsUrl) { setGcalError('Link không hợp lệ'); return; }
     setGcalLoading(true);
     setGcalError('');
-    const winStart = new Date(); winStart.setMonth(winStart.getMonth() - 1);
-    const winEnd   = new Date(); winEnd.setMonth(winEnd.getMonth() + 6);
+    const now = new Date();
+    const winStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const winEnd   = new Date(now.getFullYear(), now.getMonth() + 7, 0);
+    const winStartIso = toLocalIso(winStart);
+    const winEndIso   = toLocalIso(winEnd);
     fetch(`/api/gcal-proxy?url=${encodeURIComponent(icsUrl)}`)
       .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.text(); })
       .then(text => {
         const raw = parseICS(text);
-        setGcalEvents(expandEvents(raw, winStart, winEnd));
+        setGcalEvents(expandEvents(raw, winStartIso, winEndIso));
         setGcalLoading(false);
       })
       .catch(() => { setGcalError('Lịch không công khai hoặc lỗi kết nối'); setGcalLoading(false); });
