@@ -75,6 +75,20 @@ function advanceIcsDtstartMonths(dtstart, months) {
   return `${ny}${nm}${nd}${dtstart.slice(8)}`;
 }
 
+const BYDAY_MAP = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+
+// For WEEKLY+BYDAY: snap dtstart forward to the first matching weekday
+function snapToByDay(dtstart, byDays) {
+  const v = dtstart.replace(/[^0-9T]/g, '');
+  const y = +v.slice(0,4), mo = +v.slice(4,6)-1, d = +v.slice(6,8);
+  const base = new Date(y, mo, d);
+  const targetDow = BYDAY_MAP[byDays[0]]; // use first BYDAY
+  if (targetDow === undefined) return dtstart;
+  let diff = (targetDow - base.getDay() + 7) % 7;
+  if (diff === 0) return dtstart; // already on correct day
+  return advanceIcsDtstart(dtstart, diff);
+}
+
 // Expand recurring events (RRULE) within an ISO date window
 function expandEvents(rawEvents, winStartIso, winEndIso) {
   const result = [];
@@ -87,8 +101,10 @@ function expandEvents(rawEvents, winStartIso, winEndIso) {
     const count = parts.COUNT ? parseInt(parts.COUNT) : null;
     const until = parts.UNTIL ? icsValToIso(parts.UNTIL) : null;
     const endIso = until && until < winEndIso ? until : winEndIso;
+    const byDays = parts.BYDAY ? parts.BYDAY.split(',').map(d => d.replace(/[^A-Z]/g,'')) : null;
 
-    let cur = ev.dtstart;
+    // For WEEKLY+BYDAY: snap start to the correct weekday first
+    let cur = (freq === 'WEEKLY' && byDays) ? snapToByDay(ev.dtstart, byDays) : ev.dtstart;
     let n = 0, maxN = count || 500;
 
     while (n < maxN) {
