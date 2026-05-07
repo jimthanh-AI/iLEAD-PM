@@ -60,53 +60,65 @@ function parseICS(icsText) {
   return events;
 }
 
-// Static UTC offset map — covers Catalyste+ team timezones (DST: Northern Hemisphere Apr–Oct)
-function tzidToUtcOffset(tzid, dateStr) {
-  if (!tzid) return null;
-  const tz = tzid.toUpperCase().replace(/\s/g, '_');
-  const month = dateStr ? parseInt(String(dateStr).slice(4, 6), 10) - 1 : new Date().getMonth();
-  const dst = month >= 3 && month <= 9; // Apr–Oct = DST for Northern Hemisphere
-  if (tz === 'ASIA/HO_CHI_MINH' || tz === 'ASIA/SAIGON') return 7;
-  if (tz === 'UTC') return 0;
-  if (['AMERICA/TORONTO','AMERICA/NEW_YORK','AMERICA/DETROIT','AMERICA/INDIANA/INDIANAPOLIS'].includes(tz)) return dst ? -4 : -5;
-  if (['AMERICA/CHICAGO','AMERICA/WINNIPEG'].includes(tz)) return dst ? -5 : -6;
-  if (['AMERICA/DENVER','AMERICA/EDMONTON'].includes(tz)) return dst ? -6 : -7;
-  if (['AMERICA/LOS_ANGELES','AMERICA/VANCOUVER'].includes(tz)) return dst ? -7 : -8;
-  if (tz === 'EUROPE/LONDON') return dst ? 1 : 0;
-  if (['EUROPE/PARIS','EUROPE/BERLIN','EUROPE/ROME','EUROPE/AMSTERDAM'].includes(tz)) return dst ? 2 : 1;
-  if (['ASIA/SINGAPORE','ASIA/KUALA_LUMPUR'].includes(tz)) return 8;
-  if (['ASIA/TOKYO','ASIA/SEOUL'].includes(tz)) return 9;
-  if (['AUSTRALIA/SYDNEY','AUSTRALIA/MELBOURNE'].includes(tz)) return (month <= 2 || month >= 9) ? 11 : 10;
-  return null; // unknown TZID → treat as local Vietnam
-}
-
 // Convert raw ICS datetime + TZID → Vietnam time {dateIso, timeStr}
+// Uses Intl.DateTimeFormat for dynamic timezone conversion — handles any IANA timezone name.
 // timeStr format: "8:30am", "9pm" (12h like Google Calendar), "" for all-day
 function toVietnamTime(val, tzid) {
   if (!val) return { dateIso: null, timeStr: '' };
   const hasTime = val.includes('T');
-  const isUtcZ  = val.endsWith('Z');
+  const isUtcZ = val.endsWith('Z');
   const v = val.replace(/[^0-9T]/g, '');
   const y = +v.slice(0, 4), mo = +v.slice(4, 6) - 1, d = +v.slice(6, 8);
   if (!hasTime) {
     return { dateIso: `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`, timeStr: '' };
   }
   const h = +v.slice(9, 11), min = +v.slice(11, 13);
-  let srcOffset;
+
+  let utcMs;
+
   if (isUtcZ) {
-    srcOffset = 0;
+    // Value is already in UTC
+    utcMs = Date.UTC(y, mo, d, h, min);
+  } else if (tzid) {
+    try {
+      // h:min is the local time in tzid. Derive its UTC offset dynamically:
+      // Treat h:min as UTC, format in tzid → see what tzid clock shows at that UTC moment.
+      const refUTC = Date.UTC(y, mo, d, h, min);
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tzid, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date(refUTC));
+      const tzH = +parts.find(p => p.type === 'hour').value;
+      const tzMin = +parts.find(p => p.type === 'minute').value;
+      // srcOffsetMin = UTC offset of tzid (e.g. -240 for EDT, +420 for Vietnam)
+      let srcOffsetMin = (tzH * 60 + tzMin) - (h * 60 + min);
+      // Normalize for day-boundary wrap (covers UTC-11 to UTC+13)
+      if (srcOffsetMin > 13 * 60) srcOffsetMin -= 24 * 60;
+      if (srcOffsetMin < -11 * 60) srcOffsetMin += 24 * 60;
+      // UTC = local_in_tzid − srcOffset
+      utcMs = refUTC - srcOffsetMin * 60 * 1000;
+    } catch (e) {
+      utcMs = null; // invalid TZID → treat as floating
+    }
   } else {
-    srcOffset = tzidToUtcOffset(tzid, val);
-    if (srcOffset === null) srcOffset = 7; // unknown TZID → assume local Vietnam
+    utcMs = null; // floating (no Z, no TZID) → treat as Vietnam local
   }
-  const delta = 7 - srcOffset; // hours to add to reach Vietnam time
-  const dt = new Date(y, mo, d, h + delta, min); // JS handles day/month rollover
-  const ny = dt.getFullYear(), nm = String(dt.getMonth() + 1).padStart(2, '0'), nd = String(dt.getDate()).padStart(2, '0');
-  const nh = dt.getHours(), nmin = dt.getMinutes();
-  const period = nh >= 12 ? 'pm' : 'am';
-  const h12 = nh % 12 || 12;
-  const timeStr = nmin === 0 ? `${h12}${period}` : `${h12}:${String(nmin).padStart(2, '0')}${period}`;
-  return { dateIso: `${ny}-${nm}-${nd}`, timeStr };
+
+  let vnY, vnMo, vnD, vnH, vnMin;
+  if (utcMs != null) {
+    // UTC → Vietnam (+7h)
+    const dt = new Date(utcMs + 7 * 3600 * 1000);
+    vnY = dt.getUTCFullYear(); vnMo = dt.getUTCMonth() + 1; vnD = dt.getUTCDate();
+    vnH = dt.getUTCHours(); vnMin = dt.getUTCMinutes();
+  } else {
+    // Treat as Vietnam local time (no conversion)
+    vnY = y; vnMo = mo + 1; vnD = d; vnH = h; vnMin = min;
+  }
+
+  const dateIso = `${vnY}-${String(vnMo).padStart(2,'0')}-${String(vnD).padStart(2,'0')}`;
+  const period = vnH >= 12 ? 'pm' : 'am';
+  const h12 = vnH % 12 || 12;
+  const timeStr = vnMin === 0 ? `${h12}${period}` : `${h12}:${String(vnMin).padStart(2,'0')}${period}`;
+  return { dateIso, timeStr };
 }
 
 // Advance an ICS dtstart string by N days (pure date arithmetic, no timezone conversion)
