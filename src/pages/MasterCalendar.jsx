@@ -40,11 +40,17 @@ function parseICS(icsText) {
     if (!ev) continue;
     const colon = line.indexOf(':');
     if (colon < 0) continue;
-    const keyFull = line.slice(0, colon).toUpperCase();
+    const keyFullOrig = line.slice(0, colon);              // original case — needed for TZID extraction
+    const keyFull = keyFullOrig.toUpperCase();
     const val = line.slice(colon + 1).replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
     const key = keyFull.split(';')[0]; // strip params like TZID
     if (key === 'SUMMARY')      ev.summary = val;
-    else if (key === 'DTSTART') { ev.dtstart = val; ev.allDay = !val.includes('T'); }
+    else if (key === 'DTSTART') {
+      ev.dtstart = val;
+      ev.allDay = !val.includes('T');
+      const tzidMatch = keyFullOrig.match(/TZID=([^;:]+)/i);
+      ev.dtstart_tz = tzidMatch ? tzidMatch[1] : null;
+    }
     else if (key === 'DTEND')   ev.dtend = val;
     else if (key === 'UID')     ev.uid = val;
     else if (key === 'URL')     ev.url = val;
@@ -52,6 +58,55 @@ function parseICS(icsText) {
     else if (key === 'DURATION') ev.duration = val;
   }
   return events;
+}
+
+// Static UTC offset map — covers Catalyste+ team timezones (DST: Northern Hemisphere Apr–Oct)
+function tzidToUtcOffset(tzid, dateStr) {
+  if (!tzid) return null;
+  const tz = tzid.toUpperCase().replace(/\s/g, '_');
+  const month = dateStr ? parseInt(String(dateStr).slice(4, 6), 10) - 1 : new Date().getMonth();
+  const dst = month >= 3 && month <= 9; // Apr–Oct = DST for Northern Hemisphere
+  if (tz === 'ASIA/HO_CHI_MINH' || tz === 'ASIA/SAIGON') return 7;
+  if (tz === 'UTC') return 0;
+  if (['AMERICA/TORONTO','AMERICA/NEW_YORK','AMERICA/DETROIT','AMERICA/INDIANA/INDIANAPOLIS'].includes(tz)) return dst ? -4 : -5;
+  if (['AMERICA/CHICAGO','AMERICA/WINNIPEG'].includes(tz)) return dst ? -5 : -6;
+  if (['AMERICA/DENVER','AMERICA/EDMONTON'].includes(tz)) return dst ? -6 : -7;
+  if (['AMERICA/LOS_ANGELES','AMERICA/VANCOUVER'].includes(tz)) return dst ? -7 : -8;
+  if (tz === 'EUROPE/LONDON') return dst ? 1 : 0;
+  if (['EUROPE/PARIS','EUROPE/BERLIN','EUROPE/ROME','EUROPE/AMSTERDAM'].includes(tz)) return dst ? 2 : 1;
+  if (['ASIA/SINGAPORE','ASIA/KUALA_LUMPUR'].includes(tz)) return 8;
+  if (['ASIA/TOKYO','ASIA/SEOUL'].includes(tz)) return 9;
+  if (['AUSTRALIA/SYDNEY','AUSTRALIA/MELBOURNE'].includes(tz)) return (month <= 2 || month >= 9) ? 11 : 10;
+  return null; // unknown TZID → treat as local Vietnam
+}
+
+// Convert raw ICS datetime + TZID → Vietnam time {dateIso, timeStr}
+// timeStr format: "8:30am", "9pm" (12h like Google Calendar), "" for all-day
+function toVietnamTime(val, tzid) {
+  if (!val) return { dateIso: null, timeStr: '' };
+  const hasTime = val.includes('T');
+  const isUtcZ  = val.endsWith('Z');
+  const v = val.replace(/[^0-9T]/g, '');
+  const y = +v.slice(0, 4), mo = +v.slice(4, 6) - 1, d = +v.slice(6, 8);
+  if (!hasTime) {
+    return { dateIso: `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`, timeStr: '' };
+  }
+  const h = +v.slice(9, 11), min = +v.slice(11, 13);
+  let srcOffset;
+  if (isUtcZ) {
+    srcOffset = 0;
+  } else {
+    srcOffset = tzidToUtcOffset(tzid, val);
+    if (srcOffset === null) srcOffset = 7; // unknown TZID → assume local Vietnam
+  }
+  const delta = 7 - srcOffset; // hours to add to reach Vietnam time
+  const dt = new Date(y, mo, d, h + delta, min); // JS handles day/month rollover
+  const ny = dt.getFullYear(), nm = String(dt.getMonth() + 1).padStart(2, '0'), nd = String(dt.getDate()).padStart(2, '0');
+  const nh = dt.getHours(), nmin = dt.getMinutes();
+  const period = nh >= 12 ? 'pm' : 'am';
+  const h12 = nh % 12 || 12;
+  const timeStr = nmin === 0 ? `${h12}${period}` : `${h12}:${String(nmin).padStart(2, '0')}${period}`;
+  return { dateIso: `${ny}-${nm}-${nd}`, timeStr };
 }
 
 // Advance an ICS dtstart string by N days (pure date arithmetic, no timezone conversion)
@@ -89,31 +144,63 @@ function snapToByDay(dtstart, byDays) {
   return advanceIcsDtstart(dtstart, diff);
 }
 
-// Expand recurring events (RRULE) within an ISO date window
+// Expand recurring events (RRULE) within an ISO date window.
+// Each event in result has _isoDate (Vietnam date) and _timeStr (Vietnam time, 12h am/pm).
 function expandEvents(rawEvents, winStartIso, winEndIso) {
   const result = [];
+  const seen = new Set(); // dedup key: `${uid||summary}_${isoDate}`
+
+  // Push one occurrence with pre-computed Vietnam date/time
+  function pushEvent(ev, dtstart) {
+    const { dateIso, timeStr } = toVietnamTime(dtstart, ev.dtstart_tz);
+    if (!dateIso) return;
+    const key = `${ev.uid || ev.summary}_${dateIso}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push({ ...ev, dtstart, _isoDate: dateIso, _timeStr: timeStr });
+  }
+
   for (const ev of rawEvents) {
-    if (!ev.rrule) { result.push(ev); continue; }
+    if (!ev.rrule) {
+      // Multi-day all-day event: render a chip on every day it spans
+      if (ev.allDay && ev.dtend) {
+        const startIso = icsValToIso(ev.dtstart, ev.dtstart_tz);
+        const endIso   = icsValToIso(ev.dtend,   ev.dtstart_tz); // DTEND is exclusive per RFC
+        if (startIso && endIso && endIso > startIso) {
+          let cur = ev.dtstart;
+          while (true) {
+            const curIso = icsValToIso(cur, ev.dtstart_tz);
+            if (!curIso || curIso >= endIso || curIso > winEndIso) break;
+            if (curIso >= winStartIso) pushEvent({ ...ev, _multiday: true }, cur);
+            cur = advanceIcsDtstart(cur, 1);
+          }
+          continue;
+        }
+      }
+      // Single-day or timed event
+      pushEvent(ev, ev.dtstart);
+      continue;
+    }
+
+    // RRULE expansion
     const parts = {};
     ev.rrule.split(';').forEach(p => { const [k,v]=p.split('='); if(k) parts[k]=v; });
-    const freq = parts.FREQ;
-    const interval = parseInt(parts.INTERVAL||'1');
-    const count = parts.COUNT ? parseInt(parts.COUNT) : null;
-    const until = parts.UNTIL ? icsValToIso(parts.UNTIL) : null;
-    const endIso = until && until < winEndIso ? until : winEndIso;
-    const byDays = parts.BYDAY ? parts.BYDAY.split(',').map(d => d.replace(/[^A-Z]/g,'')) : null;
+    const freq     = parts.FREQ;
+    const interval = parseInt(parts.INTERVAL || '1');
+    const count    = parts.COUNT ? parseInt(parts.COUNT) : null;
+    const until    = parts.UNTIL ? icsValToIso(parts.UNTIL, null) : null;
+    const endIso   = until && until < winEndIso ? until : winEndIso;
+    const byDays   = parts.BYDAY ? parts.BYDAY.split(',').map(d => d.replace(/[^A-Z]/g, '')) : null;
 
     // For WEEKLY+BYDAY: snap start to the correct weekday first
     let cur = (freq === 'WEEKLY' && byDays) ? snapToByDay(ev.dtstart, byDays) : ev.dtstart;
     let n = 0, maxN = count || 500;
 
     while (n < maxN) {
-      const isoDate = icsValToIso(cur);
+      const isoDate = icsValToIso(cur, ev.dtstart_tz);
       if (!isoDate || isoDate > endIso) break;
-      if (isoDate >= winStartIso) {
-        result.push({ ...ev, dtstart: cur, _expanded: n > 0 });
-      }
-      // Advance
+      if (isoDate >= winStartIso) pushEvent(ev, cur);
+      // Advance by one interval
       if      (freq === 'DAILY')   cur = advanceIcsDtstart(cur, interval);
       else if (freq === 'WEEKLY')  cur = advanceIcsDtstart(cur, 7 * interval);
       else if (freq === 'MONTHLY') cur = advanceIcsDtstartMonths(cur, interval);
@@ -125,19 +212,16 @@ function expandEvents(rawEvents, winStartIso, winEndIso) {
   return result;
 }
 
-function icsValToIso(val) {
+// Returns Vietnam date ISO string (YYYY-MM-DD), handling UTC-Z and TZID conversion
+function icsValToIso(val, tzid) {
   if (!val) return null;
-  const v = val.replace(/[^0-9T]/g, '');
-  return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+  return toVietnamTime(val, tzid).dateIso;
 }
 
-// Extract HH:MM display — show raw time as stored in ICS (no timezone conversion)
-function icsValToTime(val) {
+// Returns Vietnam time string in 12h format ("8:30am", "9pm"), "" for all-day
+function icsValToTime(val, tzid) {
   if (!val || !val.includes('T')) return '';
-  const v = val.replace(/[^0-9T]/g, '');
-  const h = v.slice(9,11), m = v.slice(11,13);
-  if (!h) return '';
-  return `${h}:${m}`;
+  return toVietnamTime(val, tzid).timeStr;
 }
 
 // Use local date parts to avoid UTC timezone shift (Vietnam = UTC+7)
@@ -438,12 +522,13 @@ export const MasterCalendar = () => {
   }, [tasks, showTasks, partnerActivityIds]);
 
   // Events per day — iLEAD Tasks + Google Calendar events
+  // gcalEvents have pre-computed _isoDate (Vietnam date) set by expandEvents
   const getUnifiedEventsForDay = (isoDate) => {
     const dayTasks = filteredTasks
       .filter(t => t.dueDate === isoDate)
       .map(t => ({ type: 'task', data: t }));
     const dayGcal = gcalEvents
-      .filter(ev => icsValToIso(ev.dtstart) === isoDate)
+      .filter(ev => ev._isoDate === isoDate)
       .map(ev => ({ type: 'gcal', data: ev }));
     return [...dayTasks, ...dayGcal];
   };
@@ -538,7 +623,7 @@ export const MasterCalendar = () => {
   };
 
   const GCalChip = ({ ev, compact }) => {
-    const timeStr = icsValToTime(ev.dtstart);
+    const timeStr = ev._timeStr || '';   // pre-computed Vietnam time (12h am/pm)
     const gcalLink = ev.url || `https://calendar.google.com/calendar/r`;
     return (
       <div
@@ -726,7 +811,7 @@ export const MasterCalendar = () => {
                       {events.slice(0, 4).map((evt) =>
                         evt.type === 'task'
                           ? <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
-                          : <GCalChip key={`g_${evt.data.uid || evt.data.summary}`} ev={evt.data} compact />
+                          : <GCalChip key={`g_${evt.data.uid || evt.data.summary}_${evt.data._isoDate}`} ev={evt.data} compact />
                       )}
                       {events.length > 4 && <div className="uc-more">+{events.length - 4} nữa</div>}
                     </div>
@@ -764,7 +849,7 @@ export const MasterCalendar = () => {
                           {events.map((evt) =>
                             evt.type === 'task'
                               ? <TaskChip key={`tw_${evt.data.id}`} task={evt.data} />
-                              : <GCalChip key={`gw_${evt.data.uid || evt.data.summary}`} ev={evt.data} />
+                              : <GCalChip key={`gw_${evt.data.uid || evt.data.summary}_${evt.data._isoDate}`} ev={evt.data} />
                           )}
                         </div>
                       </div>
