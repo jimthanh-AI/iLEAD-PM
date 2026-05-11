@@ -199,8 +199,9 @@ export const DataProvider = ({ children }) => {
   const userRole  = appUser?.role  || 'viewer';
   const userName  = appUser?.display_name || appUser?.email || '';
   const isAdmin   = userRole === 'admin';
-  const canEdit   = userRole !== 'viewer' && !bootFailed;
-  const canDelete = (userRole === 'admin' || userRole === 'editor' || userRole === 'pm') && !bootFailed;
+  // coordinator: edit only (no delete) | pm: edit + delete | admin: full
+  const canEdit   = (userRole !== 'viewer') && !bootFailed;
+  const canDelete = (userRole === 'admin' || userRole === 'pm') && !bootFailed;
 
 // ── Boot: load from Supabase only ─────────────────────────────
   useEffect(() => {

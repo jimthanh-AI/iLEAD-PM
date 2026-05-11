@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import { INDICATOR_GROUPS } from '../utils/constants';
 import './SettingsPage.css';
 
@@ -12,14 +13,33 @@ function storageSize() {
   } catch { return '?'; }
 }
 
+const ROLES = [
+  { v: 'admin',       label: 'Admin',       desc: 'Toàn quyền' },
+  { v: 'pm',          label: 'PM',          desc: 'Chỉnh sửa & xóa' },
+  { v: 'coordinator', label: 'Coordinator', desc: 'Chỉnh sửa, không xóa' },
+  { v: 'viewer',      label: 'Viewer',      desc: 'Chỉ xem' },
+];
+
 export default function SettingsPage() {
-  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
+  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
+  const { fetchAllUsers, updateUserRole, removeUser, appUser } = useAuth();
   const [theme, setTheme]       = useState(() => localStorage.getItem('ilead_theme') || 'light');
-  const [role, setRole]         = useState(() => localStorage.getItem('ilead_user_role') || 'coordinator');
   const [importErr, setImportErr] = useState('');
   const [importOk, setImportOk]   = useState('');
   const [resetConfirm, setResetConfirm] = useState(false);
   const fileRef = useRef();
+
+  // User management (admin only)
+  const [users,      setUsers]      = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userMsg,    setUserMsg]    = useState('');
+  const [pendingRoles, setPendingRoles] = useState({});
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    setUsersLoading(true);
+    fetchAllUsers().then(data => { setUsers(data); setUsersLoading(false); });
+  }, [isAdmin]);
 
   // ── Theme ──────────────────────────────────────────────────────
   const applyTheme = (t) => {
@@ -28,11 +48,20 @@ export default function SettingsPage() {
     document.documentElement.dataset.theme = t;
   };
 
-  // ── Role ───────────────────────────────────────────────────────
-  const applyRole = (r) => {
-    setRole(r);
-    localStorage.setItem('ilead_user_role', r);
-    window.dispatchEvent(new Event('ilead_role_changed'));
+  // ── User management ────────────────────────────────────────────
+  const handleRoleChange = (email, newRole) => {
+    setPendingRoles(p => ({ ...p, [email]: newRole }));
+  };
+
+  const handleSaveRole = async (email) => {
+    const newRole = pendingRoles[email];
+    if (!newRole) return;
+    setUserMsg('');
+    const { error } = await updateUserRole(email, newRole);
+    if (error) { setUserMsg('Lỗi: ' + error.message); return; }
+    setUsers(us => us.map(u => u.email === email ? { ...u, role: newRole } : u));
+    setPendingRoles(p => { const n = { ...p }; delete n[email]; return n; });
+    setUserMsg('Đã cập nhật quyền cho ' + email);
   };
 
   // ── Export JSON ────────────────────────────────────────────────
@@ -158,26 +187,56 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ── Role ── */}
+        {/* ── My Role ── */}
         <div className="settings-card">
-          <h2>Quyền truy cập</h2>
-          <p className="card-hint">Thay đổi role sẽ reload trang. PM có thể chỉnh sửa, Viewer chỉ xem.</p>
+          <h2>Quyền của bạn</h2>
+          <p className="card-hint">Role được gán bởi Admin. Liên hệ Jim Thanh để thay đổi.</p>
           <div className="role-switcher">
-            {[
-              { v:'coordinator', label:'Coordinator', desc:'Chỉnh sửa, không xóa' },
-              { v:'pm',          label:'PM',           desc:'Chỉnh sửa & xóa' },
-              { v:'admin',       label:'Admin',        desc:'Toàn quyền' },
-              { v:'viewer',      label:'Viewer',       desc:'Chỉ xem' },
-            ].map(r => (
-              <button key={r.v}
-                className={`role-btn ${role === r.v ? 'active' : ''}`}
-                onClick={() => applyRole(r.v)}>
+            {ROLES.map(r => (
+              <div key={r.v} className={`role-btn ${userRole === r.v ? 'active' : ''}`} style={{ cursor: 'default' }}>
                 <strong>{r.label}</strong>
                 <span>{r.desc}</span>
-              </button>
+              </div>
             ))}
           </div>
         </div>
+
+        {/* ── User Management (Admin only) ── */}
+        {isAdmin && (
+          <div className="settings-card">
+            <h2>Quản lý người dùng</h2>
+            <p className="card-hint">Ai đăng nhập lần đầu sẽ tự động thành Viewer. Admin có thể đổi role ở đây.</p>
+            {userMsg && <div className="msg-ok" style={{ marginBottom: 12 }}>{userMsg}</div>}
+            {usersLoading ? (
+              <div style={{ color: 'var(--text2)', fontSize: 13 }}>Đang tải...</div>
+            ) : (
+              <div className="user-mgmt-list">
+                {users.map(u => (
+                  <div key={u.email} className="user-mgmt-row">
+                    <div className="user-mgmt-info">
+                      <strong>{u.display_name || u.email}</strong>
+                      <span>{u.email}</span>
+                    </div>
+                    <select
+                      className="user-role-select"
+                      value={pendingRoles[u.email] ?? u.role}
+                      onChange={e => handleRoleChange(u.email, e.target.value)}
+                    >
+                      {ROLES.map(r => (
+                        <option key={r.v} value={r.v}>{r.label}</option>
+                      ))}
+                    </select>
+                    {pendingRoles[u.email] && (
+                      <button className="btn-save-role" onClick={() => handleSaveRole(u.email)}>
+                        Lưu
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Danger Zone ── */}
         <div className="settings-card danger-zone">

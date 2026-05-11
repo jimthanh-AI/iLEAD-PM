@@ -15,7 +15,17 @@ export const AuthProvider = ({ children }) => {
       .select('*')
       .eq('email', email)
       .single();
-    setAppUser(data || null);
+    if (data) {
+      setAppUser(data);
+      return data;
+    }
+    // First login: auto-create as viewer
+    const newUser = { email, display_name: email.split('@')[0], role: 'viewer' };
+    const { data: created } = await supabase
+      .from('app_users').insert(newUser).select().single();
+    const resolved = created || newUser;
+    setAppUser(resolved);
+    return resolved;
   };
 
   useEffect(() => {
@@ -36,11 +46,11 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  /** Send OTP code (6 digits) to email — no magic link */
+  /** Send OTP code (6 digits) to any email — auto-create viewer on first login */
   const signIn = (email) =>
     supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: false },
+      options: { shouldCreateUser: true },
     });
 
   /** Verify the 6-digit OTP code entered by user */
@@ -54,20 +64,21 @@ export const AuthProvider = ({ children }) => {
     await supabase.auth.signOut();
   };
 
-  /** Admin: add a new user to the whitelist and send them a magic link */
-  const inviteUser = async (email, displayName, role) => {
-    const { error } = await supabase
-      .from('app_users')
-      .insert({ email, display_name: displayName, role });
-    if (error) return { error };
-    // Send magic link (acts as invite email)
-    return supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
+  /** Admin: load all users */
+  const fetchAllUsers = async () => {
+    const { data } = await supabase.from('app_users').select('*').order('created_at');
+    return data || [];
   };
 
-  /** Admin: remove a user from the whitelist */
+  /** Admin: update a user's role */
+  const updateUserRole = async (email, role) => {
+    const { error } = await supabase.from('app_users').update({ role }).eq('email', email);
+    // Refresh own appUser if editing self
+    if (!error && appUser?.email === email) setAppUser(u => ({ ...u, role }));
+    return { error };
+  };
+
+  /** Admin: remove a user */
   const removeUser = (email) =>
     supabase.from('app_users').delete().eq('email', email);
 
@@ -81,7 +92,8 @@ export const AuthProvider = ({ children }) => {
       signIn,
       verifyOtp,
       signOut,
-      inviteUser,
+      fetchAllUsers,
+      updateUserRole,
       removeUser,
     }}>
       {children}

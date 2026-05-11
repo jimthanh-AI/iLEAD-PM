@@ -67,7 +67,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 className="login-input"
-                placeholder="email@catalysteplus.org"
+                placeholder="Nhập email của bạn"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 autoFocus
@@ -80,7 +80,7 @@ export default function LoginPage() {
             </form>
 
             <p className="login-note">
-              Chỉ email trong danh sách team mới được truy cập.
+              Nhập email → nhận mã 6 số → đăng nhập. Lần đầu tự động thành Viewer.
             </p>
           </>
         )}
