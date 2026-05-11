@@ -5,7 +5,6 @@ import './LoginPage.css';
 export default function LoginPage() {
   const { signIn } = useAuth();
   const [email,   setEmail]   = useState('');
-  const [sent,    setSent]    = useState(false);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
 
@@ -18,7 +17,7 @@ export default function LoginPage() {
     const { error } = await signIn(trimmed);
     setLoading(false);
     if (error) setError(error.message);
-    else setSent(true);
+    // On success, AuthGuard will automatically render the app
   };
 
   return (
@@ -32,50 +31,28 @@ export default function LoginPage() {
         </div>
         <p className="login-tagline">Project Management · Catalyste+ Vietnam</p>
 
-        {sent ? (
-          /* ── Sent state ── */
-          <div className="login-sent">
-            <div className="login-sent-icon">📬</div>
-            <h3>Kiểm tra email của bạn</h3>
-            <p>
-              Chúng tôi đã gửi liên kết đăng nhập đến<br />
-              <strong>{email}</strong>
-            </p>
-            <p className="login-sent-note">
-              Click vào liên kết trong email để vào app.<br />
-              Liên kết có hiệu lực trong <strong>60 phút</strong>.
-            </p>
-            <button className="login-retry" onClick={() => { setSent(false); setEmail(''); }}>
-              Thử email khác
-            </button>
-          </div>
-        ) : (
-          /* ── Form state ── */
-          <>
-            <h2 className="login-heading">Chào mừng trở lại</h2>
-            <p className="login-sub">Nhập email để nhận liên kết đăng nhập</p>
+        <h2 className="login-heading">Chào mừng trở lại</h2>
+        <p className="login-sub">Nhập email để đăng nhập</p>
 
-            <form onSubmit={handleSubmit} className="login-form">
-              <input
-                type="email"
-                className="login-input"
-                placeholder="email@catalysteplus.org"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoFocus
-                required
-              />
-              {error && <div className="login-error">{error}</div>}
-              <button type="submit" className="login-btn" disabled={loading}>
-                {loading ? 'Đang gửi...' : 'Gửi Magic Link'}
-              </button>
-            </form>
+        <form onSubmit={handleSubmit} className="login-form">
+          <input
+            type="email"
+            className="login-input"
+            placeholder="email@catalysteplus.org"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            autoFocus
+            required
+          />
+          {error && <div className="login-error">{error}</div>}
+          <button type="submit" className="login-btn" disabled={loading}>
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          </button>
+        </form>
 
-            <p className="login-note">
-              Chỉ email trong danh sách team mới được truy cập.
-            </p>
-          </>
-        )}
+        <p className="login-note">
+          Lần đầu đăng nhập sẽ tự động được thêm vào với quyền Viewer.
+        </p>
       </div>
     </div>
   );

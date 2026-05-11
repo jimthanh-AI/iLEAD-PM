@@ -4,70 +4,74 @@ import { supabase } from '../utils/supabaseClient';
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider = ({ children }) => {
-  // undefined = still loading, null = no session
-  const [session, setSession]   = useState(undefined);
-  const [appUser, setAppUser]   = useState(null);
+const STORAGE_KEY = 'ilead_user';
 
-  const fetchAppUser = async (email) => {
-    const { data } = await supabase
-      .from('app_users')
-      .select('*')
-      .eq('email', email)
-      .single();
-    setAppUser(data || null);
-  };
+export const AuthProvider = ({ children }) => {
+  // undefined = still loading from localStorage, null = not logged in
+  const [appUser, setAppUser] = useState(undefined);
 
   useEffect(() => {
-    // 1. Get existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session ?? null);
-      if (session?.user?.email) fetchAppUser(session.user.email);
-      else setSession(null);
-    });
-
-    // 2. Listen for sign-in / sign-out / token refresh
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session ?? null);
-      if (session?.user?.email) fetchAppUser(session.user.email);
-      else setAppUser(null);
-    });
-
-    return () => subscription.unsubscribe();
+    const saved = localStorage.getItem(STORAGE_KEY);
+    setAppUser(saved ? JSON.parse(saved) : null);
   }, []);
 
-  /** Send magic link to email */
-  const signIn = (email) =>
-    supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
+  /** Login by email only — no OTP, no magic link */
+  const signIn = async (email) => {
+    const trimmed = email.trim().toLowerCase();
 
-  /** Sign out and clear local state */
-  const signOut = async () => {
-    setAppUser(null);
-    setSession(null);
-    await supabase.auth.signOut();
+    // Look up in app_users table
+    const { data, error } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('email', trimmed)
+      .single();
+
+    // PGRST116 = no rows found (not a real error)
+    if (error && error.code !== 'PGRST116') {
+      return { error };
+    }
+
+    let user = data;
+
+    if (!user) {
+      // Auto-create as viewer
+      const displayName = trimmed.split('@')[0];
+      const { data: newUser, error: insertError } = await supabase
+        .from('app_users')
+        .insert({ email: trimmed, display_name: displayName, role: 'viewer' })
+        .select()
+        .single();
+      if (insertError) return { error: insertError };
+      user = newUser;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    setAppUser(user);
+    return { data: user };
   };
 
-  /** Admin: add a new user to the whitelist and send them a magic link */
+  /** Sign out and clear local state */
+  const signOut = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setAppUser(null);
+  };
+
+  /** Admin: add a new user with a specific role */
   const inviteUser = async (email, displayName, role) => {
     const { error } = await supabase
       .from('app_users')
       .insert({ email, display_name: displayName, role });
-    if (error) return { error };
-    // Send magic link (acts as invite email)
-    return supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
+    return { error };
   };
 
-  /** Admin: remove a user from the whitelist */
+  /** Admin: remove a user */
   const removeUser = (email) =>
     supabase.from('app_users').delete().eq('email', email);
 
-  const authLoading = session === undefined;
+  const authLoading = appUser === undefined;
+
+  // Keep `session` shape for backward compat with any code that reads session.user.email
+  const session = appUser ? { user: { email: appUser.email } } : null;
 
   return (
     <AuthContext.Provider value={{

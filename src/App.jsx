@@ -33,7 +33,7 @@ const NotFound = () => (
   </div>
 );
 
-// Loading spinner shown while Supabase resolves the session
+// Loading spinner shown while resolving saved session
 const AuthLoading = () => (
   <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg,#f5f5f0)' }}>
     <div style={{ textAlign:'center', color:'var(--text2,#6a6a66)' }}>
@@ -45,30 +45,11 @@ const AuthLoading = () => (
   </div>
 );
 
-// Access denied: email exists in auth but not in app_users whitelist
-const AccessDenied = () => {
-  const { signOut, session } = useAuth();
-  return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg,#f5f5f0)', padding:'24px' }}>
-      <div style={{ background:'var(--card,#fff)', borderRadius:'16px', padding:'40px 32px', maxWidth:'360px', textAlign:'center', boxShadow:'0 4px 24px rgba(0,0,0,.10)' }}>
-        <div style={{ fontSize:'40px', marginBottom:'12px' }}>🔒</div>
-        <h2 style={{ margin:'0 0 8px', fontSize:'18px' }}>Không có quyền truy cập</h2>
-        <p style={{ color:'var(--text2,#6a6a66)', fontSize:'13px', margin:'0 0 20px', lineHeight:1.6 }}>
-          Email <strong>{session?.user?.email}</strong> chưa được cấp quyền truy cập.<br />
-          Liên hệ Admin để được thêm vào danh sách.
-        </p>
-        <button className="btn btn-secondary" onClick={signOut}>Đăng xuất</button>
-      </div>
-    </div>
-  );
-};
-
-// Guard: show login / loading / access-denied before rendering the app
+// Guard: show login / loading before rendering the app
 function AuthGuard({ children }) {
-  const { session, appUser, authLoading } = useAuth();
-  if (authLoading)           return <AuthLoading />;
-  if (!session)              return <LoginPage />;
-  if (!appUser)              return <AccessDenied />;
+  const { appUser, authLoading } = useAuth();
+  if (authLoading) return <AuthLoading />;
+  if (!appUser)    return <LoginPage />;
   return children;
 }
 
