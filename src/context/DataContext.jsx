@@ -262,6 +262,8 @@ export const DataProvider = ({ children }) => {
     logAudit('updated', 'partners', id, u.name || id);
   };
   const deletePartner = (id) => {
+    const partnerName = data.partners.find(p => p.id === id)?.name;
+    logAudit('deleted', 'partners', id, partnerName);
     setData(d => {
       const aIds = d.activities.filter(a => a.partnerId === id).map(a => a.id);
       return {
@@ -274,7 +276,6 @@ export const DataProvider = ({ children }) => {
         partnerBudgets:     d.partnerBudgets.filter(b => b.partnerId !== id),
       };
     });
-    logAudit('deleted', 'partners', id);
     sb(async () => {
       const { data: acts } = await supabase.from('activities').select('id').eq('partnerId', id);
       const aIds = (acts || []).map(a => a.id);
@@ -317,6 +318,8 @@ export const DataProvider = ({ children }) => {
       .catch(err => setSyncError('[updateActivity] ' + err.message));
   };
   const deleteActivity = (id) => {
+    const actName = data.activities.find(a => a.id === id)?.name;
+    logAudit('deleted', 'activities', id, actName);
     setData(d => ({
       ...d,
       activities:         d.activities.filter(a => a.id !== id),
@@ -324,7 +327,6 @@ export const DataProvider = ({ children }) => {
       activityIndicators: d.activityIndicators.filter(ai => ai.activityId !== id),
       melEntries:         d.melEntries.filter(e => e.activityId !== id),
     }));
-    logAudit('deleted', 'activities', id);
     sb(async () => {
       await Promise.all([
         supabase.from('tasks').delete().eq('activityId', id),
@@ -369,7 +371,8 @@ export const DataProvider = ({ children }) => {
     if (failed.length) setSyncError(`Xóa thất bại ${failed.length} task — thử lại sau.`);
   };
   const deleteTask = (id) => {
-    logAudit('deleted', 'tasks', id);
+    const taskName = data.tasks.find(t => t.id === id)?.name;
+    logAudit('deleted', 'tasks', id, taskName);
     setData(d => ({ ...d, tasks: d.tasks.filter(t => t.id !== id) }));
     sb(() => supabase.from('tasks').delete().eq('id', id));
   };
@@ -387,7 +390,8 @@ export const DataProvider = ({ children }) => {
     logAudit('updated', 'mel_entries', id, u.description || id);
   };
   const deleteMelEntry = (id) => {
-    logAudit('deleted', 'mel_entries', id);
+    const melName = data.melEntries.find(e => e.id === id)?.description || id;
+    logAudit('deleted', 'mel_entries', id, melName);
     setData(d => ({ ...d, melEntries: d.melEntries.filter(e => e.id !== id) }));
     sb(() => supabase.from('mel_entries').delete().eq('id', id));
   };
