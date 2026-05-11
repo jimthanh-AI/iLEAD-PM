@@ -4,64 +4,64 @@ import { supabase } from '../utils/supabaseClient';
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider = ({ children }) => {
-  // undefined = still loading, null = no session
-  const [session, setSession]   = useState(undefined);
-  const [appUser, setAppUser]   = useState(null);
+const STORAGE_KEY = 'ilead_user';
 
-  const fetchAppUser = async (email) => {
-    const { data } = await supabase
-      .from('app_users')
-      .select('*')
-      .eq('email', email)
-      .single();
-    if (data) {
-      setAppUser(data);
-      return data;
-    }
-    // First login: auto-create as viewer
-    const newUser = { email, display_name: email.split('@')[0], role: 'viewer' };
-    const { data: created } = await supabase
-      .from('app_users').insert(newUser).select().single();
-    const resolved = created || newUser;
-    setAppUser(resolved);
-    return resolved;
-  };
+export const AuthProvider = ({ children }) => {
+  // undefined = still loading from localStorage, null = not logged in
+  const [appUser, setAppUser] = useState(undefined);
 
   useEffect(() => {
-    // 1. Get existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session ?? null);
-      if (session?.user?.email) fetchAppUser(session.user.email);
-      else setSession(null);
-    });
-
-    // 2. Listen for sign-in / sign-out / token refresh
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session ?? null);
-      if (session?.user?.email) fetchAppUser(session.user.email);
-      else setAppUser(null);
-    });
-
-    return () => subscription.unsubscribe();
+    const saved = localStorage.getItem(STORAGE_KEY);
+    setAppUser(saved ? JSON.parse(saved) : null);
   }, []);
 
-  /** Send OTP code (6 digits) to any email — auto-create viewer on first login */
-  const signIn = (email) =>
-    supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
+  /** Login by email only — no OTP, no magic link */
+  const signIn = async (email) => {
+    const trimmed = email.trim().toLowerCase();
 
-  /** Verify the 6-digit OTP code entered by user */
-  const verifyOtp = (email, token) =>
-    supabase.auth.verifyOtp({ email, token, type: 'email' });
+    // Look up in app_users table
+    const { data, error } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('email', trimmed)
+      .single();
+
+    // PGRST116 = no rows found (not a real error)
+    if (error && error.code !== 'PGRST116') {
+      return { error };
+    }
+
+    let user = data;
+
+    if (!user) {
+      // Auto-create as viewer
+      const displayName = trimmed.split('@')[0];
+      const { data: newUser, error: insertError } = await supabase
+        .from('app_users')
+        .insert({ email: trimmed, display_name: displayName, role: 'viewer' })
+        .select()
+        .single();
+      if (insertError) return { error: insertError };
+      user = newUser;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    setAppUser(user);
+    return { data: user };
+  };
 
   /** Sign out and clear local state */
-  const signOut = async () => {
+  const signOut = () => {
+    localStorage.removeItem(STORAGE_KEY);
     setAppUser(null);
-    setSession(null);
-    await supabase.auth.signOut();
+  };
+
+  /** Admin: add a new user with a specific role */
+  const inviteUser = async (email, displayName, role) => {
+    const { error } = await supabase
+      .from('app_users')
+      .insert({ email, display_name: displayName, role });
+    return { error };
   };
 
   /** Admin: load all users */
@@ -73,7 +73,6 @@ export const AuthProvider = ({ children }) => {
   /** Admin: update a user's role */
   const updateUserRole = async (email, role) => {
     const { error } = await supabase.from('app_users').update({ role }).eq('email', email);
-    // Refresh own appUser if editing self
     if (!error && appUser?.email === email) setAppUser(u => ({ ...u, role }));
     return { error };
   };
@@ -82,7 +81,10 @@ export const AuthProvider = ({ children }) => {
   const removeUser = (email) =>
     supabase.from('app_users').delete().eq('email', email);
 
-  const authLoading = session === undefined;
+  const authLoading = appUser === undefined;
+
+  // Keep `session` shape for backward compat with any code that reads session.user.email
+  const session = appUser ? { user: { email: appUser.email } } : null;
 
   return (
     <AuthContext.Provider value={{
@@ -90,8 +92,8 @@ export const AuthProvider = ({ children }) => {
       appUser,       // { email, display_name, role } | null
       authLoading,
       signIn,
-      verifyOtp,
       signOut,
+      inviteUser,
       fetchAllUsers,
       updateUserRole,
       removeUser,
