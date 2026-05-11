@@ -19,6 +19,7 @@ import MELDashboard from './pages/MELDashboard';
 import MELEntry from './pages/MELEntry';
 import WeeklyPlan from './pages/WeeklyPlan';
 import SettingsPage from './pages/SettingsPage';
+import ActivityLogPage from './pages/ActivityLogPage';
 
 const NotFound = () => (
   <div style={{ padding: '48px 32px', textAlign: 'center' }}>
@@ -79,6 +80,7 @@ function AppShell() {
               <Route path="/mel-dashboard" element={<MELDashboard />} />
               <Route path="/mel-entry"     element={<MELEntry />} />
               <Route path="/settings"      element={<SettingsPage />} />
+              <Route path="/activity-log"  element={<ActivityLogPage />} />
               <Route path="*"              element={<NotFound />} />
             </Routes>
           </main>

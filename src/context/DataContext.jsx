@@ -185,9 +185,27 @@ export const DataProvider = ({ children }) => {
   const { appUser } = useAuth();
   const userRole  = appUser?.role  || 'viewer';
   const userName  = appUser?.display_name || appUser?.email || '';
+  const userEmail = appUser?.email || '';
   const isAdmin   = userRole === 'admin';
   const canEdit   = userRole !== 'viewer' && !bootFailed;
   const canDelete = (userRole === 'admin' || userRole === 'editor' || userRole === 'pm') && !bootFailed;
+
+  // ── Audit log helper — writes one row per action ──────────────
+  const logAudit = (action, tbl, record_id, itemName = null) => {
+    if (!userEmail) return;
+    supabase.from('audit_logs').insert({
+      action,
+      tbl,
+      record_id: String(record_id),
+      field: null,
+      old_val: null,
+      new_val: itemName ? String(itemName).substring(0, 200) : null,
+      changed_by: userName || userEmail,
+      changed_at: new Date().toISOString(),
+    }).then(({ error }) => {
+      if (error) console.warn('audit_logs:', error.message);
+    });
+  };
 
 // ── Boot: load from Supabase only ─────────────────────────────
   useEffect(() => {
@@ -236,10 +254,12 @@ export const DataProvider = ({ children }) => {
   const addPartner = (p) => {
     setData(d => ({ ...d, partners: [...d.partners, p] }));
     sb(() => supabase.from('partners').upsert(p));
+    logAudit('created', 'partners', p.id, p.name);
   };
   const updatePartner = (id, u) => {
     setData(d => ({ ...d, partners: d.partners.map(p => p.id === id ? { ...p, ...u } : p) }));
     sb(() => supabase.from('partners').update(u).eq('id', id));
+    logAudit('updated', 'partners', id, u.name || id);
   };
   const deletePartner = (id) => {
     setData(d => {
@@ -254,6 +274,7 @@ export const DataProvider = ({ children }) => {
         partnerBudgets:     d.partnerBudgets.filter(b => b.partnerId !== id),
       };
     });
+    logAudit('deleted', 'partners', id);
     sb(async () => {
       const { data: acts } = await supabase.from('activities').select('id').eq('partnerId', id);
       const aIds = (acts || []).map(a => a.id);
@@ -279,10 +300,12 @@ export const DataProvider = ({ children }) => {
     const item = sanitizeActivity({ ...a, pos, created_by: userName });
     setData(d => ({ ...d, activities: [...d.activities, item] }));
     sb(() => supabase.from('activities').upsert(item), 'addActivity');
+    logAudit('created', 'activities', item.id, item.name);
   };
   const updateActivity = (id, u) => {
     const prev = data.activities.find(a => a.id === id);
     setData(d => ({ ...d, activities: d.activities.map(a => a.id === id ? { ...a, ...u } : a) }));
+    logAudit('updated', 'activities', id, u.name || prev?.name || id);
     Promise.resolve()
       .then(() => supabase.from('activities').update(sanitizeActivity(u)).eq('id', id))
       .then(res => {
@@ -301,6 +324,7 @@ export const DataProvider = ({ children }) => {
       activityIndicators: d.activityIndicators.filter(ai => ai.activityId !== id),
       melEntries:         d.melEntries.filter(e => e.activityId !== id),
     }));
+    logAudit('deleted', 'activities', id);
     sb(async () => {
       await Promise.all([
         supabase.from('tasks').delete().eq('activityId', id),
@@ -318,10 +342,12 @@ export const DataProvider = ({ children }) => {
     const item = sanitizeTask({ ...t, pos, created_by: userName });
     setData(d => ({ ...d, tasks: [...d.tasks, item] }));
     sb(() => supabase.from('tasks').upsert(item), 'addTask');
+    logAudit('created', 'tasks', item.id, item.name);
   };
   const updateTask = (id, u) => {
     const prev = data.tasks.find(t => t.id === id);
     setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? { ...t, ...u } : t) }));
+    logAudit('updated', 'tasks', id, u.name || prev?.name || id);
     Promise.resolve()
       .then(() => supabase.from('tasks').update(sanitizeTask(u)).eq('id', id))
       .then(res => {
@@ -343,6 +369,7 @@ export const DataProvider = ({ children }) => {
     if (failed.length) setSyncError(`Xóa thất bại ${failed.length} task — thử lại sau.`);
   };
   const deleteTask = (id) => {
+    logAudit('deleted', 'tasks', id);
     setData(d => ({ ...d, tasks: d.tasks.filter(t => t.id !== id) }));
     sb(() => supabase.from('tasks').delete().eq('id', id));
   };
@@ -352,12 +379,15 @@ export const DataProvider = ({ children }) => {
     const item = { ...e, created_by: userName };
     setData(d => ({ ...d, melEntries: [...d.melEntries, item] }));
     sb(() => supabase.from('mel_entries').upsert(item));
+    logAudit('created', 'mel_entries', item.id, item.description || item.subCode || item.id);
   };
   const updateMelEntry = (id, u) => {
     setData(d => ({ ...d, melEntries: d.melEntries.map(e => e.id === id ? { ...e, ...u } : e) }));
     sb(() => supabase.from('mel_entries').update(u).eq('id', id));
+    logAudit('updated', 'mel_entries', id, u.description || id);
   };
   const deleteMelEntry = (id) => {
+    logAudit('deleted', 'mel_entries', id);
     setData(d => ({ ...d, melEntries: d.melEntries.filter(e => e.id !== id) }));
     sb(() => supabase.from('mel_entries').delete().eq('id', id));
   };
