@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../utils/supabaseClient';
 import { INDICATOR_GROUPS } from '../utils/constants';
 import './SettingsPage.css';
 
@@ -21,7 +22,7 @@ const ROLES = [
 ];
 
 export default function SettingsPage() {
-  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
+  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators, budgetLineItems } = useData();
   const { fetchAllUsers, updateUserRole, removeUser, appUser } = useAuth();
   const [theme, setTheme]       = useState(() => localStorage.getItem('ilead_theme') || 'light');
   const [importErr, setImportErr] = useState('');
@@ -65,12 +66,28 @@ export default function SettingsPage() {
   };
 
   // ── Export JSON ────────────────────────────────────────────────
-  const handleExport = () => {
+  const handleExport = async () => {
+    // Fetch app_users + audit_logs from Supabase (not in React state)
+    let appUsers = [], auditLogs = [];
+    try {
+      const [u, l] = await Promise.all([
+        supabase.from('app_users').select('*'),
+        supabase.from('audit_logs').select('*').order('changed_at', { ascending: false }).limit(5000),
+      ]);
+      appUsers  = u.data || [];
+      auditLogs = l.data || [];
+    } catch (e) {
+      console.warn('Backup: không tải được app_users/audit_logs', e);
+    }
+
     const snapshot = {
-      __v: 4,
+      __v: 5,
       partners, activities, tasks,
       activityIndicators: activityIndicators || [],
+      budgetLineItems: budgetLineItems || [],
       melEntries, partnerBudgets,
+      appUsers,
+      auditLogs,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
@@ -93,17 +110,33 @@ export default function SettingsPage() {
         const parsed = JSON.parse(ev.target.result);
         if (!parsed.partners || !parsed.activities) throw new Error('Không tìm thấy dữ liệu hợp lệ (thiếu partners/activities)');
         const restored = {
-          __v:            parsed.__v            || 4,
+          __v:            parsed.__v            || 5,
           partners:       parsed.partners       || [],
           activities:     parsed.activities     || [],
           tasks:          parsed.tasks          || [],
           activityIndicators: parsed.activityIndicators || [],
+          budgetLineItems: parsed.budgetLineItems || [],
           melEntries:     parsed.melEntries     || [],
           partnerBudgets: parsed.partnerBudgets || [],
         };
         setImportOk('Đang đồng bộ lên Supabase...');
         await restoreFromBackup(restored);
-        setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries.`);
+
+        // Restore app_users + audit_logs nếu có trong backup
+        if (parsed.appUsers?.length) {
+          await supabase.from('app_users').upsert(parsed.appUsers);
+        }
+        if (parsed.auditLogs?.length) {
+          // Insert in batches of 500 to avoid payload limits
+          for (let i = 0; i < parsed.auditLogs.length; i += 500) {
+            await supabase.from('audit_logs').upsert(parsed.auditLogs.slice(i, i + 500));
+          }
+        }
+
+        const extras = [];
+        if (parsed.appUsers?.length)  extras.push(`${parsed.appUsers.length} users`);
+        if (parsed.auditLogs?.length) extras.push(`${parsed.auditLogs.length} audit logs`);
+        setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries${extras.length ? ', ' + extras.join(', ') : ''}.`);
       } catch (err) {
         setImportErr('Lỗi: ' + err.message);
       }

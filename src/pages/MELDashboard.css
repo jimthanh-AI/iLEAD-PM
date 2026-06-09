@@ -50,6 +50,11 @@
 .bsum-item.remain strong { color: #10b981; }
 .bsum-item.remain em { font-size: .8rem; color: var(--muted); font-style: normal; margin-left: 4px; }
 
+/* Indicator Summary Table */
+.mel-indicator-table-wrap { margin-bottom: 32px; }
+.mel-indicator-table-wrap h3 { font-size: .95rem; font-weight: 600; margin: 0 0 12px; }
+.mel-indicator-table-wrap .total-row td { background: var(--bg); font-weight: 700; border-top: 2px solid var(--border); }
+
 .mel-budget-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 16px; margin-bottom: 24px; }
 .donut-card { display: flex; flex-direction: column; }
 
@@ -65,6 +70,24 @@
 .mel-budget-table td.negative { color: #ef4444; }
 .mel-budget-table .total-row td { background: var(--bg); font-weight: 700; border-top: 2px solid var(--border); }
 .partner-dot-sm { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; vertical-align: middle; }
+
+/* Expandable Budget Rows */
+.mel-budget-table tr.clickable { cursor: pointer; }
+.mel-budget-table tr.clickable:hover { background: var(--hover); }
+.mel-budget-table tr.expanded { background: var(--hover); }
+.expand-icon { display: inline-block; width: 16px; font-size: .7rem; color: var(--muted); }
+.budget-expand-row td { padding: 0 !important; background: var(--bg); }
+.budget-expand-box { padding: 12px 16px 16px; }
+.budget-line-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.budget-line-table th { padding: 4px 8px; text-align: left; font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.budget-line-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.budget-line-table td.num { text-align: right; }
+.budget-line-table th.num { text-align: right; }
+.btn-xs { padding: 2px 6px; font-size: .72rem; border: 1px solid var(--border); border-radius: 4px; background: var(--card); cursor: pointer; line-height: 1.2; }
+.btn-xs:hover { background: var(--hover); }
+.btn-xs.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-xs.btn-danger { color: #ef4444; border-color: #fca5a5; }
+.btn-xs.btn-danger:hover { background: #fee2e2; }
 
 /* ═══════════════════════════════════════════════════════════════
    LAYER 3 — Tabs, Modules A / B / C

@@ -455,12 +455,15 @@ function ModuleForecast({ forecasts }) {
 export default function MELDashboard() {
   const {
     melEntries, partnerBudgets, partners, partnerMap, activityMap,
-    activities, activityIndicators,
-    updatePartnerBudget, canEdit,
+    activities, activityIndicators, budgetLineItems,
+    updatePartnerBudget, addBudgetLineItem, updateBudgetLineItem, deleteBudgetLineItem,
+    canEdit,
   } = useData();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [editBudget, setEditBudget] = useState(null);
+  const [expandedPartner, setExpandedPartner] = useState(null);
+  const [editLineItem, setEditLineItem] = useState(null);
 
   // ── Layer 3 computed data ─────────────────────────────────────
   const riskMatrix = useMemo(
@@ -511,15 +514,22 @@ export default function MELDashboard() {
   }));
 
   const budgetWithPartner = useMemo(() => {
+    const lineItems = budgetLineItems || [];
     return partners.map(p => {
       const b = partnerBudgets.find(pb => pb.partnerId === p.id) || { allocated: 0, spent: 0 };
+      // Auto-sum spent from budget_line_items if any exist for this partner
+      const partnerLines = lineItems.filter(li => li.partnerId === p.id);
+      const lineSpent = partnerLines.reduce((s, li) => s + (parseFloat(li.amount) || 0), 0);
+      const spent = partnerLines.length > 0 ? lineSpent : (b.spent || 0);
       return {
         ...b, partnerId: p.id, name: p.name, color: p.color,
-        remaining: (b.allocated || 0) - (b.spent || 0),
-        pct: b.allocated > 0 ? Math.round(((b.allocated - b.spent) / b.allocated) * 100) : 100,
+        spent,
+        remaining: (b.allocated || 0) - spent,
+        pct: b.allocated > 0 ? Math.round(((b.allocated - spent) / b.allocated) * 100) : 100,
+        lineItems: partnerLines,
       };
     }).filter(b => b.allocated > 0);
-  }, [partners, partnerBudgets]);
+  }, [partners, partnerBudgets, budgetLineItems]);
 
   const totalAllocated  = budgetWithPartner.reduce((s, b) => s + (b.allocated || 0), 0);
   const totalSpent      = budgetWithPartner.reduce((s, b) => s + (b.spent    || 0), 0);
@@ -616,6 +626,62 @@ export default function MELDashboard() {
             </div>
           </div>
 
+          {/* ── Indicator Summary Table ── */}
+          <div className="mel-indicator-table-wrap">
+            <h3>Tiến độ theo Indicator Group</h3>
+            <table className="l3-table">
+              <thead>
+                <tr>
+                  <th>Indicator</th>
+                  <th>Label</th>
+                  <th className="num">Target</th>
+                  <th className="num">Actual</th>
+                  <th style={{ width: 140 }}>Progress</th>
+                  <th className="num">%</th>
+                  <th>Female %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {indicatorStats.map(g => {
+                  const pct = g.targetVietnam > 0 ? (g.actual / g.targetVietnam * 100) : 0;
+                  const femalePct = g.actual > 0 ? (g.female / g.actual * 100) : null;
+                  const progColor = pct >= 80 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626';
+                  return (
+                    <tr key={g.code}>
+                      <td><strong>{g.code}</strong></td>
+                      <td style={{ fontSize: '0.82rem', maxWidth: 280 }}>{g.label}</td>
+                      <td className="num">{g.targetVietnam.toLocaleString()}</td>
+                      <td className="num">{g.actual.toLocaleString()}</td>
+                      <td>
+                        <ProgressBar pct={pct / 100} color={progColor} />
+                      </td>
+                      <td className="num" style={{ color: progColor, fontWeight: 600 }}>
+                        {pct.toFixed(1)}%
+                      </td>
+                      <td>
+                        {femalePct !== null ? (
+                          <span style={{ color: femalePct < 50 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                            {femalePct.toFixed(0)}%
+                          </span>
+                        ) : (
+                          <span className="l3-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="total-row" style={{ fontWeight: 600 }}>
+                  <td colSpan={2}><strong>TOTAL</strong></td>
+                  <td className="num">{totalTarget.toLocaleString()}</td>
+                  <td className="num">{totalActual.toLocaleString()}</td>
+                  <td><ProgressBar pct={totalTarget > 0 ? totalActual / totalTarget : 0} color="#2563eb" /></td>
+                  <td className="num" style={{ color: '#2563eb' }}>{overallPct}%</td>
+                  <td style={{ color: femaleRatio < 50 ? '#dc2626' : '#16a34a' }}>{femaleRatio}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <div className="mel-budget-section">
             <div className="mel-budget-header">
               <h2>Ngân sách dự án</h2>
@@ -662,36 +728,125 @@ export default function MELDashboard() {
             </div>
 
             <div className="mel-budget-table-wrap">
-              <h3>Chi tiết ngân sách <span className="hint">— click ô để chỉnh sửa</span></h3>
+              <h3>Chi tiết ngân sách <span className="hint">— click partner để xem chi tiết · click ô để chỉnh sửa</span></h3>
               <table className="mel-budget-table">
                 <thead>
                   <tr><th>Partner</th><th>Allocated (CAD)</th><th>Spent (CAD)</th><th>Remaining</th><th>Remain %</th></tr>
                 </thead>
                 <tbody>
                   {partners.map((p) => {
+                    const bwp = budgetWithPartner.find(b => b.partnerId === p.id);
                     const b = partnerBudgets.find(pb => pb.partnerId === p.id) || { allocated:0, spent:0 };
-                    const rem = (b.allocated||0) - (b.spent||0);
+                    const spent = bwp ? bwp.spent : (b.spent || 0);
+                    const rem = (b.allocated||0) - spent;
                     const pct = b.allocated > 0 ? ((rem / b.allocated)*100).toFixed(0) : '—';
+                    const isExpanded = expandedPartner === p.id;
+                    const partnerActivities = activities.filter(a => a.partnerId === p.id);
+                    const partnerLines = (budgetLineItems || []).filter(li => li.partnerId === p.id);
+
                     return (
-                      <tr key={p.id}>
-                        <td><span className="partner-dot-sm" style={{ background: p.color }} />{p.name}</td>
-                        <td className="editable" onClick={() => canEdit && setEditBudget({ partnerId:p.id, field:'allocated', value: b.allocated||0 })}>
-                          {editBudget?.partnerId===p.id && editBudget.field==='allocated'
-                            ? <input autoFocus type="number" defaultValue={b.allocated||0}
-                                onBlur={e => handleBudgetEdit(p.id,'allocated',e.target.value)}
-                                onKeyDown={e => e.key==='Enter' && handleBudgetEdit(p.id,'allocated',e.target.value)} />
-                            : (b.allocated||0).toLocaleString()}
-                        </td>
-                        <td className="editable" onClick={() => canEdit && setEditBudget({ partnerId:p.id, field:'spent', value: b.spent||0 })}>
-                          {editBudget?.partnerId===p.id && editBudget.field==='spent'
-                            ? <input autoFocus type="number" defaultValue={b.spent||0}
-                                onBlur={e => handleBudgetEdit(p.id,'spent',e.target.value)}
-                                onKeyDown={e => e.key==='Enter' && handleBudgetEdit(p.id,'spent',e.target.value)} />
-                            : (b.spent||0).toLocaleString()}
-                        </td>
-                        <td className={rem < 0 ? 'negative' : ''}>{rem.toLocaleString()}</td>
-                        <td className={rem < 0 ? 'negative' : ''}>{pct}%</td>
-                      </tr>
+                      <React.Fragment key={p.id}>
+                        <tr className={`clickable ${isExpanded ? 'expanded' : ''}`}
+                            onClick={() => setExpandedPartner(isExpanded ? null : p.id)}>
+                          <td>
+                            <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                            <span className="partner-dot-sm" style={{ background: p.color }} />{p.name}
+                          </td>
+                          <td className="editable" onClick={(e) => { e.stopPropagation(); canEdit && setEditBudget({ partnerId:p.id, field:'allocated', value: b.allocated||0 }); }}>
+                            {editBudget?.partnerId===p.id && editBudget.field==='allocated'
+                              ? <input autoFocus type="number" defaultValue={b.allocated||0}
+                                  onClick={e => e.stopPropagation()}
+                                  onBlur={e => handleBudgetEdit(p.id,'allocated',e.target.value)}
+                                  onKeyDown={e => e.key==='Enter' && handleBudgetEdit(p.id,'allocated',e.target.value)} />
+                              : (b.allocated||0).toLocaleString()}
+                          </td>
+                          <td style={{ fontWeight: 600, color: '#ef4444' }}>{spent.toLocaleString()}</td>
+                          <td className={rem < 0 ? 'negative' : ''}>{rem.toLocaleString()}</td>
+                          <td className={rem < 0 ? 'negative' : ''}>{pct}%</td>
+                        </tr>
+
+                        {isExpanded && (
+                          <tr className="budget-expand-row">
+                            <td colSpan={5}>
+                              <div className="budget-expand-box">
+                                <table className="budget-line-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Activity / Mô tả</th>
+                                      <th className="num">Spent (CAD)</th>
+                                      <th style={{ width: 60 }}></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {partnerLines.map(li => {
+                                      const act = li.activityId ? activityMap[li.activityId] : null;
+                                      const isEditing = editLineItem?.id === li.id;
+                                      return (
+                                        <tr key={li.id}>
+                                          <td>
+                                            {isEditing ? (
+                                              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                                <select defaultValue={li.activityId || ''} style={{ flex:1, fontSize:'.82rem' }}
+                                                  onChange={e => setEditLineItem(prev => ({ ...prev, activityId: e.target.value || null }))}>
+                                                  <option value="">— Chọn activity —</option>
+                                                  {partnerActivities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                                </select>
+                                                <input type="text" defaultValue={li.description} placeholder="Mô tả..."
+                                                  style={{ flex:1, fontSize:'.82rem' }}
+                                                  onChange={e => setEditLineItem(prev => ({ ...prev, description: e.target.value }))} />
+                                              </div>
+                                            ) : (
+                                              <span>{act ? act.name : ''}{li.description ? (act ? ' — ' : '') + li.description : ''}</span>
+                                            )}
+                                          </td>
+                                          <td className="num">
+                                            {isEditing ? (
+                                              <input type="number" defaultValue={li.amount} style={{ width:100, fontSize:'.82rem' }}
+                                                onChange={e => setEditLineItem(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))} />
+                                            ) : (
+                                              (parseFloat(li.amount) || 0).toLocaleString()
+                                            )}
+                                          </td>
+                                          <td>
+                                            {canEdit && (
+                                              isEditing ? (
+                                                <div style={{ display:'flex', gap:4 }}>
+                                                  <button className="btn-xs btn-primary" onClick={() => {
+                                                    const { id, ...updates } = editLineItem;
+                                                    updateBudgetLineItem(li.id, updates);
+                                                    setEditLineItem(null);
+                                                  }}>✓</button>
+                                                  <button className="btn-xs" onClick={() => setEditLineItem(null)}>✕</button>
+                                                </div>
+                                              ) : (
+                                                <div style={{ display:'flex', gap:4 }}>
+                                                  <button className="btn-xs" onClick={() => setEditLineItem({ id: li.id, activityId: li.activityId, description: li.description, amount: li.amount })}>✎</button>
+                                                  <button className="btn-xs btn-danger" onClick={() => deleteBudgetLineItem(li.id)}>✕</button>
+                                                </div>
+                                              )
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                    {partnerLines.length === 0 && (
+                                      <tr><td colSpan={3} style={{ color:'#9ca3af', fontSize:'.82rem', textAlign:'center' }}>
+                                        Chưa có dòng chi tiết. Nhấn + để thêm.
+                                      </td></tr>
+                                    )}
+                                  </tbody>
+                                </table>
+                                {canEdit && (
+                                  <button className="btn btn-sm btn-secondary" style={{ marginTop: 8 }}
+                                    onClick={() => addBudgetLineItem({ partnerId: p.id, activityId: null, description: '', amount: 0 })}>
+                                    + Thêm dòng chi tiết
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                   <tr className="total-row">

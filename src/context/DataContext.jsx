@@ -86,6 +86,7 @@ const SEED = {
     { id:'ai8', activityId:'a9',  indicatorCode:'1221.3', targetCount:100, actualCount:0,  femaleCount:0 },
     { id:'ai9', activityId:'a13', indicatorCode:'1221.4', targetCount:40,  actualCount:40, femaleCount:0 },
   ],
+  budgetLineItems: [],
 };
 
 
@@ -95,24 +96,31 @@ const SEED = {
 const fetchAll = async () => {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const [p, a, t, m, ai, pb] = await Promise.all([
+      const [p, a, t, m, ai, pb, bli] = await Promise.all([
         supabase.from('partners').select('*'),
         supabase.from('activities').select('*').order('pos'),
         supabase.from('tasks').select('*').order('pos'),
         supabase.from('mel_entries').select('*').order('id'),
         supabase.from('activity_indicators').select('*').order('id'),
         supabase.from('partner_budgets').select('*'),
+        supabase.from('budget_line_items').select('*').order('created_at').then(
+          r => r,  // table exists
+          () => ({ data: [], error: null }), // table doesn't exist yet
+        ),
       ]);
-      // Check ALL responses — partial errors must not silently return [] and overwrite local
-      const errs = [p, a, t, m, ai, pb].map((r, i) => r.error && `${['partners','activities','tasks','mel_entries','activity_indicators','partner_budgets'][i]}: ${r.error.message}`).filter(Boolean);
+      // Check core tables — partial errors must not silently return [] and overwrite local
+      const tables = [p, a, t, m, ai, pb];
+      const names  = ['partners','activities','tasks','mel_entries','activity_indicators','partner_budgets'];
+      const errs = tables.map((r, i) => r.error && `${names[i]}: ${r.error.message}`).filter(Boolean);
       if (errs.length) throw new Error('Supabase fetch failed → ' + errs.join('; '));
       return {
-        partners:           p.data  || [],
-        activities:         a.data  || [],
-        tasks:              t.data  || [],
-        melEntries:         m.data  || [],
-        activityIndicators: ai.data || [],
-        partnerBudgets:     pb.data || [],
+        partners:           p.data   || [],
+        activities:         a.data   || [],
+        tasks:              t.data   || [],
+        melEntries:         m.data   || [],
+        activityIndicators: ai.data  || [],
+        partnerBudgets:     pb.data  || [],
+        budgetLineItems:    bli?.data || [],
       };
     } catch (e) {
       if (attempt === 2) throw e;
@@ -170,6 +178,10 @@ const pushToSupabase = async (data) => {
   checkUpsertError(r3, 'tasks');
   checkUpsertError(r4, 'mel_entries');
   checkUpsertError(r5, 'activity_indicators');
+  // budget_line_items — optional table, ignore errors if not yet created
+  if (data.budgetLineItems?.length) {
+    await safeUpsert('budget_line_items', data.budgetLineItems).catch(() => {});
+  }
 };
 
 const clearSupabase = async () => {
@@ -179,6 +191,7 @@ const clearSupabase = async () => {
     supabase.from('activity_indicators').delete().neq('id', ''),
     supabase.from('mel_entries').delete().neq('id', ''),
     supabase.from('partner_budgets').delete().neq('partnerId', ''),
+    supabase.from('budget_line_items').delete().neq('id', '').catch(() => {}),
   ]);
   await supabase.from('activities').delete().neq('id', '');
   await supabase.from('partners').delete().neq('id', '');
@@ -436,6 +449,24 @@ export const DataProvider = ({ children }) => {
     sb(() => supabase.from('activity_indicators').delete().eq('id', id));
   };
 
+  // ── Mutations: Budget Line Items ──────────────────────────────
+  const addBudgetLineItem = (item) => {
+    const row = { ...item, id: item.id || crypto.randomUUID() };
+    setData(d => ({ ...d, budgetLineItems: [...d.budgetLineItems, row] }));
+    sb(() => supabase.from('budget_line_items').upsert(row), 'addBudgetLineItem');
+    logAudit('created', 'budget_line_items', row.id, row.description || `${row.amount}`);
+  };
+  const updateBudgetLineItem = (id, u) => {
+    setData(d => ({ ...d, budgetLineItems: d.budgetLineItems.map(b => b.id === id ? { ...b, ...u } : b) }));
+    sb(() => supabase.from('budget_line_items').update(u).eq('id', id), 'updateBudgetLineItem');
+  };
+  const deleteBudgetLineItem = (id) => {
+    const item = data.budgetLineItems.find(b => b.id === id);
+    logAudit('deleted', 'budget_line_items', id, item?.description || `${item?.amount}`);
+    setData(d => ({ ...d, budgetLineItems: d.budgetLineItems.filter(b => b.id !== id) }));
+    sb(() => supabase.from('budget_line_items').delete().eq('id', id), 'deleteBudgetLineItem');
+  };
+
   // ── O(1) Lookup Maps ──────────────────────────────────────────
   const partnerMap  = useMemo(() => Object.fromEntries(data.partners.map(p  => [p.id,  p])),  [data.partners]);
   const activityMap = useMemo(() => Object.fromEntries(data.activities.map(a => [a.id, a])), [data.activities]);
@@ -496,6 +527,7 @@ export const DataProvider = ({ children }) => {
       addActivityIndicator, updateActivityIndicator, deleteActivityIndicator,
       addMelEntry, updateMelEntry, deleteMelEntry,
       updatePartnerBudget,
+      addBudgetLineItem, updateBudgetLineItem, deleteBudgetLineItem,
       downloadBackupJSON,
     }}>
       {syncError && (
