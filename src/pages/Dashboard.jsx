@@ -11,7 +11,7 @@ const PRIO_CLASS = { urgent:'pU', high:'pH', medium:'pM', low:'pL' };
 
 const Dashboard = () => {
   const nav = useNavigate();
-  const { activities, partners, tasks, partnerMap, melEntries, partnerBudgets } = useData();
+  const { activities, partners, tasks, partnerMap, melEntries, partnerBudgets, budgetLineItems } = useData();
 
   // ── KPI totals ────────────────────────────────────────────────
   const total  = activities.length;
@@ -27,9 +27,13 @@ const Dashboard = () => {
 
   // ── Budget ────────────────────────────────────────────────────
   // Source of truth: partnerBudgets (high-level GAC allocation per partner).
-  // Falls back to summing activity-level budgets if partnerBudgets is empty.
+  // If budget_line_items exist for a partner, sum those instead of partnerBudgets.spent
   const partnerBudgetKH = (partnerBudgets || []).reduce((s, b) => s + (Number(b.allocated) || 0), 0);
-  const partnerBudgetTT = (partnerBudgets || []).reduce((s, b) => s + (Number(b.spent)     || 0), 0);
+  const partnerBudgetTT = (partnerBudgets || []).reduce((s, b) => {
+    const lines = (budgetLineItems || []).filter(li => li.partnerId === b.partnerId);
+    const lineSpent = lines.reduce((ls, li) => ls + (parseFloat(li.amount) || 0), 0);
+    return s + (lines.length > 0 ? lineSpent : (Number(b.spent) || 0));
+  }, 0);
   const actBudgetKH     = activities.reduce((s, a) => s + (Number(a.budget_planned) || 0), 0);
   const actBudgetTT     = activities.reduce((s, a) => s + (Number(a.budget_actual)  || 0), 0);
   const totalBudgetKH   = partnerBudgetKH > 0 ? partnerBudgetKH : actBudgetKH;
@@ -127,9 +131,8 @@ const Dashboard = () => {
     return s + m + f;
   }, 0);
   const melPct = melTotalTarget > 0 ? Math.round(melTotalActual / melTotalTarget * 100) : 0;
-  const melTotalAllocated = partnerBudgets.reduce((s, b) => s + (b.allocated || 0), 0);
-  const melTotalSpent     = partnerBudgets.reduce((s, b) => s + (b.spent    || 0), 0);
-  const melRemainPct = melTotalAllocated > 0 ? Math.round((melTotalAllocated - melTotalSpent) / melTotalAllocated * 100) : 0;
+  const melTotalFemale = melEntries.reduce((s, e) => s + (e.q1_f||0)+(e.q2_f||0)+(e.q3_f||0)+(e.q4_f||0), 0);
+  const melFemaleRatio = melTotalActual > 0 ? Math.round(melTotalFemale / melTotalActual * 100) : 0;
 
   const today = new Date().toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
@@ -382,10 +385,10 @@ const Dashboard = () => {
             <div className="mel-stat-sub">{melEntries.length} MEL entries đã ghi nhận</div>
           </div>
           <div className="mel-stat-cell">
-            <div className="mel-stat-label">Budget Còn lại</div>
-            <div className="mel-stat-val" style={{ color: melRemainPct > 30 ? 'var(--green)' : 'var(--orange)' }}>{melRemainPct}%</div>
-            <div className="mel-stat-bar"><div className="mel-stat-bar-fill" style={{ width:`${melRemainPct}%`, background: melRemainPct > 30 ? 'var(--green)' : 'var(--orange)' }} /></div>
-            <div className="mel-stat-sub">{fmtCad(melTotalAllocated - melTotalSpent)} / {fmtCad(melTotalAllocated)} · theo đối tác</div>
+            <div className="mel-stat-label">Tỉ lệ Nữ</div>
+            <div className="mel-stat-val" style={{ color: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }}>{melFemaleRatio}%</div>
+            <div className="mel-stat-bar"><div className="mel-stat-bar-fill" style={{ width:`${Math.min(melFemaleRatio,100)}%`, background: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }} /></div>
+            <div className="mel-stat-sub">{melTotalFemale.toLocaleString()} / {melTotalActual.toLocaleString()} người · Target: ≥50%</div>
           </div>
         </div>
       </div>
