@@ -38,6 +38,8 @@ export default function MELEntry() {
 
   // ── Derived ───────────────────────────────────────────────────
   const autoQuarter  = useMemo(() => getQuarter(form.date), [form.date]);
+  const linkedActivity = form.activityId ? activityMap[form.activityId] : null;
+  const activityNotDone = linkedActivity && linkedActivity.status !== 'done';
   const validSubCodes = useMemo(() => {
     const g = INDICATOR_GROUP_MAP[form.indicatorGroup];
     if (!g) return INDICATOR_CODES;
@@ -429,6 +431,11 @@ export default function MELEntry() {
                       : activities
                     ).map(a => <option key={a.id} value={a.id}>{a.name.slice(0,50)}</option>)}
                   </select>
+                  {activityNotDone && (
+                    <div style={{marginTop:'4px',color:'var(--orange)',fontSize:'12px'}}>
+                      ⚠ Activity chưa Done ({linkedActivity.status}) — hoàn thành activity trước khi nhập MEL
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -479,7 +486,7 @@ export default function MELEntry() {
             <div className="mel-modal-footer">
               <button className="btn-secondary" onClick={closeForm}>Hủy</button>
               <button className="btn-primary"
-                disabled={!form.indicatorGroup || !form.subCode || !form.date}
+                disabled={!form.indicatorGroup || !form.subCode || !form.date || !!activityNotDone}
                 onClick={submitForm}>
                 {editId ? 'Cập nhật' : 'Thêm Entry'}
               </button>
