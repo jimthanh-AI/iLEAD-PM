@@ -22,7 +22,7 @@ const ROLES = [
 ];
 
 export default function SettingsPage() {
-  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, canEdit, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators, budgetLineItems, activityTypes = [], addActivityType, updateActivityType, deleteActivityType } = useData();
+  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, canEdit, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators, budgetLineItems, activityTypes = [], addActivityType, updateActivityType, deleteActivityType, partnerMap } = useData();
   const { fetchAllUsers, updateUserRole, removeUser, appUser } = useAuth();
   const [theme, setTheme]       = useState(() => localStorage.getItem('ilead_theme') || 'light');
   const [importErr, setImportErr] = useState('');
@@ -318,6 +318,11 @@ export default function SettingsPage() {
               </button>
             )}
           </div>
+          {!canEdit && (
+            <div style={{ background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'8px 12px', marginBottom:'10px', fontSize:'12px', color:'var(--text2)' }}>
+              🔒 Bạn đang ở chế độ chỉ xem (role: <strong>{userRole}</strong>). Liên hệ Admin để chỉnh sửa loại hoạt động.
+            </div>
+          )}
           {atMsg && <div className="msg-ok" style={{ marginBottom:10 }}>{atMsg}</div>}
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px' }}>
@@ -358,13 +363,29 @@ export default function SettingsPage() {
                         <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--text3)' }}>{t.sort_order ?? idx}</td>
                         {canEdit && (
                           <td style={{ padding:'8px 10px', textAlign:'right' }}>
-                            {deleteTypeId === t.id ? (
-                              <>
-                                <span style={{ fontSize:'11px', color:'var(--red)', marginRight:'6px' }}>Xác nhận?</span>
-                                <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => confirmDeleteType(t.id)}>Xóa</button>
-                                <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(null)}>Hủy</button>
-                              </>
-                            ) : (
+                            {deleteTypeId === t.id ? (() => {
+                              const used = activities.filter(a => a.activityTypeCode === t.code);
+                              return (
+                                <div style={{ textAlign:'right' }}>
+                                  {used.length > 0 ? (
+                                    <div style={{ fontSize:'11px', color:'var(--red)', marginBottom:'4px', maxWidth:'280px', marginLeft:'auto', lineHeight:'1.5' }}>
+                                      ⚠ <strong>{used.length} activity đang dùng loại này</strong>:<br/>
+                                      {used.slice(0,3).map((a,i) => (
+                                        <span key={a.id}>{i>0 ? '; ' : ''}{partnerMap[a.partnerId]?.name ? `[${partnerMap[a.partnerId].name}] ` : ''}{a.name}</span>
+                                      ))}
+                                      {used.length > 3 && <span> và {used.length - 3} khác</span>}
+                                      <br/>Xóa sẽ không mất activity, nhưng chúng sẽ mất liên kết loại.
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize:'11px', color:'var(--text3)', marginBottom:'4px' }}>Xác nhận xóa loại "{t.code}"?</div>
+                                  )}
+                                  <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => confirmDeleteType(t.id)}>
+                                    {used.length > 0 ? 'Vẫn xóa' : 'Xóa'}
+                                  </button>
+                                  <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(null)}>Hủy</button>
+                                </div>
+                              );
+                            })() : (
                               <>
                                 <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => startEditType(t)}>Sửa</button>
                                 <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(t.id)}>Xóa</button>

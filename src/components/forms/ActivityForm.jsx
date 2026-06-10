@@ -223,6 +223,16 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
               {selectedType && selectedType.code !== 'X' && ` · Target: ${selectedType.standardReach} người`}
             </div>
           )}
+          {(Number(form.reachWomen) + Number(form.reachMen)) > Number(form.reachTotal) && Number(form.reachTotal) > 0 && (
+            <div style={{ fontSize:'11px', color:'var(--red)', marginTop:'4px' }}>
+              ⚠ Phụ nữ + Nam ({Number(form.reachWomen) + Number(form.reachMen)}) vượt Tổng ({form.reachTotal}) — kiểm tra lại số liệu.
+            </div>
+          )}
+          {Number(form.reachWomen) > Number(form.reachTotal) && Number(form.reachTotal) > 0 && (
+            <div style={{ fontSize:'11px', color:'var(--red)', marginTop:'4px' }}>
+              ⚠ Số phụ nữ ({form.reachWomen}) không thể lớn hơn Tổng ({form.reachTotal}).
+            </div>
+          )}
         </div>
       )}
 
@@ -246,6 +256,13 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
           </div>
         )}
       </div>
+
+      {/* Budget over-planned warning */}
+      {editActivity && form.budget_actual > 0 && form.budget_planned > 0 && Number(form.budget_actual) > Number(form.budget_planned) && (
+        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'var(--radius)', padding:'8px 12px', fontSize:'12px', color:'#92400e', marginTop:'-4px', marginBottom:'4px' }}>
+          ⚠ Thực tế (<strong>${Number(form.budget_actual).toLocaleString()}</strong>) vượt kế hoạch (<strong>${Number(form.budget_planned).toLocaleString()}</strong>) — chênh lệch ${(Number(form.budget_actual) - Number(form.budget_planned)).toLocaleString()} CAD. Cần báo cáo PM.
+        </div>
+      )}
 
       {/* Ghi chú / Blocker */}
       <div className="form-group">
