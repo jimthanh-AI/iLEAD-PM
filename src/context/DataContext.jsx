@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useAuth } from './AuthContext';
+import { ACTIVITY_TYPES } from '../utils/constants';
 
 const DataContext = createContext();
 export const useData = () => useContext(DataContext);
@@ -87,6 +88,7 @@ const SEED = {
     { id:'ai9', activityId:'a13', indicatorCode:'1221.4', targetCount:40,  actualCount:40, femaleCount:0 },
   ],
   budgetLineItems: [],
+  activityTypes: [],
 };
 
 
@@ -96,7 +98,7 @@ const SEED = {
 const fetchAll = async () => {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const [p, a, t, m, ai, pb, bli] = await Promise.all([
+      const [p, a, t, m, ai, pb, bli, atyp] = await Promise.all([
         supabase.from('partners').select('*'),
         supabase.from('activities').select('*').order('pos'),
         supabase.from('tasks').select('*').order('pos'),
@@ -104,8 +106,12 @@ const fetchAll = async () => {
         supabase.from('activity_indicators').select('*').order('id'),
         supabase.from('partner_budgets').select('*'),
         supabase.from('budget_line_items').select('*').order('created_at').then(
-          r => r,  // table exists
-          () => ({ data: [], error: null }), // table doesn't exist yet
+          r => r,
+          () => ({ data: [], error: null }),
+        ),
+        supabase.from('activity_types').select('*').order('sort_order').then(
+          r => r,
+          () => ({ data: null, error: null }), // table not created yet
         ),
       ]);
       // Check core tables — partial errors must not silently return [] and overwrite local
@@ -113,6 +119,14 @@ const fetchAll = async () => {
       const names  = ['partners','activities','tasks','mel_entries','activity_indicators','partner_budgets'];
       const errs = tables.map((r, i) => r.error && `${names[i]}: ${r.error.message}`).filter(Boolean);
       if (errs.length) throw new Error('Supabase fetch failed → ' + errs.join('; '));
+      // Convert DB snake_case → camelCase for activityTypes
+      const fromDb = (t) => ({
+        id: t.id, code: t.code,
+        nameVi: t.name_vi, nameEn: t.name_en,
+        standardReach: t.standard_reach || 0,
+        standardBudgetCad: t.standard_budget_cad || 0,
+        sort_order: t.sort_order ?? 99,
+      });
       return {
         partners:           p.data   || [],
         activities:         a.data   || [],
@@ -121,6 +135,7 @@ const fetchAll = async () => {
         activityIndicators: ai.data  || [],
         partnerBudgets:     pb.data  || [],
         budgetLineItems:    bli?.data || [],
+        activityTypes:      atyp?.data?.length ? atyp.data.map(fromDb) : null,
       };
     } catch (e) {
       if (attempt === 2) throw e;
@@ -239,12 +254,16 @@ export const DataProvider = ({ children }) => {
     const boot = async () => {
       try {
         const remote = await fetchAll();
+        // Fallback: if activity_types table not yet created, use constants
+        const defaultActivityTypes = ACTIVITY_TYPES.map((t, i) => ({
+          id: t.code, code: t.code, nameVi: t.nameVi, nameEn: t.nameEn,
+          standardReach: t.standardReach, standardBudgetCad: t.standardBudgetCad, sort_order: i,
+        }));
+        const activityTypes = remote.activityTypes || defaultActivityTypes;
         if (remote.partners.length === 0) {
-          // No data found — show SEED in UI only, never write to DB automatically
-          // (auto-seeding caused data loss when auth token exchange raced fetchAll)
-          setData(SEED);
+          setData({ ...SEED, activityTypes });
         } else {
-          setData(remote);
+          setData({ ...remote, activityTypes });
         }
       } catch (err) {
         setSyncError('Không kết nối được Supabase: ' + err.message);
@@ -467,6 +486,32 @@ export const DataProvider = ({ children }) => {
     sb(() => supabase.from('budget_line_items').delete().eq('id', id), 'deleteBudgetLineItem');
   };
 
+  // ── Mutations: Activity Types ─────────────────────────────────
+  const toDb = (t) => ({
+    id: t.id, code: t.code,
+    name_vi: t.nameVi || '', name_en: t.nameEn || '',
+    standard_reach: t.standardReach || 0,
+    standard_budget_cad: t.standardBudgetCad || 0,
+    sort_order: t.sort_order ?? 99,
+  });
+  const addActivityType = (at) => {
+    const row = { ...at, id: at.id || at.code || crypto.randomUUID(), sort_order: at.sort_order ?? data.activityTypes.length };
+    setData(d => ({ ...d, activityTypes: [...d.activityTypes, row] }));
+    sb(() => supabase.from('activity_types').upsert(toDb(row)), 'addActivityType');
+    logAudit('created', 'activity_types', row.id, row.nameVi || row.code);
+  };
+  const updateActivityType = (id, u) => {
+    const row = data.activityTypes.find(t => t.id === id);
+    setData(d => ({ ...d, activityTypes: d.activityTypes.map(t => t.id === id ? { ...t, ...u } : t) }));
+    if (row) sb(() => supabase.from('activity_types').update(toDb({ ...row, ...u })).eq('id', id), 'updateActivityType');
+  };
+  const deleteActivityType = (id) => {
+    const name = data.activityTypes.find(t => t.id === id)?.nameVi;
+    logAudit('deleted', 'activity_types', id, name);
+    setData(d => ({ ...d, activityTypes: d.activityTypes.filter(t => t.id !== id) }));
+    sb(() => supabase.from('activity_types').delete().eq('id', id), 'deleteActivityType');
+  };
+
   // ── O(1) Lookup Maps ──────────────────────────────────────────
   const partnerMap  = useMemo(() => Object.fromEntries(data.partners.map(p  => [p.id,  p])),  [data.partners]);
   const activityMap = useMemo(() => Object.fromEntries(data.activities.map(a => [a.id, a])), [data.activities]);
@@ -528,6 +573,7 @@ export const DataProvider = ({ children }) => {
       addMelEntry, updateMelEntry, deleteMelEntry,
       updatePartnerBudget,
       addBudgetLineItem, updateBudgetLineItem, deleteBudgetLineItem,
+      addActivityType, updateActivityType, deleteActivityType,
       downloadBackupJSON,
     }}>
       {syncError && (

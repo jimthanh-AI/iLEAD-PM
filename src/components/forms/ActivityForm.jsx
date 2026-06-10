@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
-import { STAGES, STAGE_LABELS, STATUS_LABELS, ACTIVITY_TYPES, ACTIVITY_TYPE_MAP, generateId, BALL_OWNERS } from '../../utils/constants';
+import { STAGES, STAGE_LABELS, STATUS_LABELS, generateId, BALL_OWNERS } from '../../utils/constants';
 import { Modal } from '../Modal';
 
 const defaultForm = {
@@ -32,7 +32,8 @@ const fromActivity = (a) => ({
 });
 
 export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
-  const { addActivity, updateActivity } = useData();
+  const { addActivity, updateActivity, activityTypes = [] } = useData();
+  const activityTypeMap = Object.fromEntries(activityTypes.map(t => [t.code, t]));
   const bodyRef = useRef(null);
   const openSignatureRef = useRef(null);
 
@@ -62,7 +63,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
   const handleTypeChange = (code) => {
     set('activityTypeCode', code);
     if (!editActivity && code) {
-      const t = ACTIVITY_TYPE_MAP[code];
+      const t = activityTypeMap[code];
       if (t && !form.budget_planned) set('budget_planned', t.standardBudgetCad);
     }
   };
@@ -92,7 +93,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
 
   const handleClose = () => { setForm(defaultForm); setError(''); onClose(); };
 
-  const selectedType = form.activityTypeCode ? ACTIVITY_TYPE_MAP[form.activityTypeCode] : null;
+  const selectedType = form.activityTypeCode ? activityTypeMap[form.activityTypeCode] : null;
 
   return (
     <Modal
@@ -107,7 +108,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         <label className="form-label">Loại hoạt động (Activity Type)</label>
         <select className="form-select" value={form.activityTypeCode} onChange={e => handleTypeChange(e.target.value)}>
           <option value="">— Chọn loại —</option>
-          {ACTIVITY_TYPES.map(t => (
+          {activityTypes.map(t => (
             <option key={t.code} value={t.code}>
               {t.code} · {t.nameVi}
             </option>
