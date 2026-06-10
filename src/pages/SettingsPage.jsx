@@ -22,7 +22,7 @@ const ROLES = [
 ];
 
 export default function SettingsPage() {
-  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators, budgetLineItems } = useData();
+  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, canEdit, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators, budgetLineItems, activityTypes = [], addActivityType, updateActivityType, deleteActivityType } = useData();
   const { fetchAllUsers, updateUserRole, removeUser, appUser } = useAuth();
   const [theme, setTheme]       = useState(() => localStorage.getItem('ilead_theme') || 'light');
   const [importErr, setImportErr] = useState('');
@@ -47,6 +47,40 @@ export default function SettingsPage() {
     setTheme(t);
     localStorage.setItem('ilead_theme', t);
     document.documentElement.dataset.theme = t;
+  };
+
+  // ── Activity Types CRUD ────────────────────────────────────────
+  const [editingTypeId, setEditingTypeId] = useState(null);
+  const [editTypeForm, setEditTypeForm]   = useState({});
+  const [deleteTypeId, setDeleteTypeId]   = useState(null);
+  const [showNewType, setShowNewType]     = useState(false);
+  const [newTypeForm, setNewTypeForm]     = useState({ code:'', nameVi:'', nameEn:'', standardReach:0, standardBudgetCad:0, sort_order:99 });
+  const [atMsg, setAtMsg] = useState('');
+
+  const startEditType = (t) => {
+    setEditingTypeId(t.id);
+    setEditTypeForm({ code: t.code, nameVi: t.nameVi, nameEn: t.nameEn, standardReach: t.standardReach, standardBudgetCad: t.standardBudgetCad, sort_order: t.sort_order ?? 99 });
+  };
+  const saveEditType = async () => {
+    if (!editTypeForm.code.trim()) { setAtMsg('Code không được trống'); return; }
+    await updateActivityType(editingTypeId, editTypeForm);
+    setEditingTypeId(null);
+    setAtMsg('Đã cập nhật');
+    setTimeout(() => setAtMsg(''), 2000);
+  };
+  const saveNewType = async () => {
+    if (!newTypeForm.code.trim() || !newTypeForm.nameVi.trim()) { setAtMsg('Cần nhập Code và Tên VN'); return; }
+    await addActivityType({ id: newTypeForm.code, ...newTypeForm });
+    setShowNewType(false);
+    setNewTypeForm({ code:'', nameVi:'', nameEn:'', standardReach:0, standardBudgetCad:0, sort_order:99 });
+    setAtMsg('Đã thêm loại mới');
+    setTimeout(() => setAtMsg(''), 2000);
+  };
+  const confirmDeleteType = async (id) => {
+    await deleteActivityType(id);
+    setDeleteTypeId(null);
+    setAtMsg('Đã xóa');
+    setTimeout(() => setAtMsg(''), 2000);
   };
 
   // ── User management ────────────────────────────────────────────
@@ -270,6 +304,96 @@ export default function SettingsPage() {
             )}
           </div>
         )}
+
+        {/* ── Activity Types CRUD ── */}
+        <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
+            <div>
+              <h2 style={{ margin:0 }}>Loại Hoạt Động</h2>
+              <p className="card-hint" style={{ margin:'4px 0 0' }}>Thêm, sửa, xóa các loại activity (dùng trong dropdown khi tạo activity).</p>
+            </div>
+            {canEdit && (
+              <button className="btn-settings primary" style={{ whiteSpace:'nowrap' }} onClick={() => { setShowNewType(true); setEditingTypeId(null); }}>
+                + Thêm loại mới
+              </button>
+            )}
+          </div>
+          {atMsg && <div className="msg-ok" style={{ marginBottom:10 }}>{atMsg}</div>}
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px' }}>
+              <thead>
+                <tr style={{ background:'var(--bg2)', textAlign:'left' }}>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Code</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Tên VN</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Tên EN</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Reach KH</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Budget CAD</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Thứ tự</th>
+                  {canEdit && <th style={{ padding:'8px 10px', width:'100px' }}></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {activityTypes.map((t, idx) => (
+                  <tr key={t.id} style={{ borderTop:'1px solid var(--border)' }}>
+                    {editingTypeId === t.id ? (
+                      <>
+                        <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'60px', padding:'4px 6px' }} value={editTypeForm.code} onChange={e => setEditTypeForm(f => ({...f, code: e.target.value}))} /></td>
+                        <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} value={editTypeForm.nameVi} onChange={e => setEditTypeForm(f => ({...f, nameVi: e.target.value}))} /></td>
+                        <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} value={editTypeForm.nameEn} onChange={e => setEditTypeForm(f => ({...f, nameEn: e.target.value}))} /></td>
+                        <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'80px', padding:'4px 6px' }} value={editTypeForm.standardReach} onChange={e => setEditTypeForm(f => ({...f, standardReach: Number(e.target.value)||0}))} /></td>
+                        <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'90px', padding:'4px 6px' }} value={editTypeForm.standardBudgetCad} onChange={e => setEditTypeForm(f => ({...f, standardBudgetCad: Number(e.target.value)||0}))} /></td>
+                        <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'60px', padding:'4px 6px' }} value={editTypeForm.sort_order} onChange={e => setEditTypeForm(f => ({...f, sort_order: Number(e.target.value)||0}))} /></td>
+                        <td style={{ padding:'6px 8px', textAlign:'right' }}>
+                          <button className="btn-save-role" onClick={saveEditType}>Lưu</button>
+                          <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setEditingTypeId(null)}>Hủy</button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ padding:'8px 10px', fontWeight:600 }}>{t.code}</td>
+                        <td style={{ padding:'8px 10px' }}>{t.nameVi}</td>
+                        <td style={{ padding:'8px 10px', color:'var(--text2)' }}>{t.nameEn}</td>
+                        <td style={{ padding:'8px 10px', textAlign:'right' }}>{(t.standardReach||0).toLocaleString()}</td>
+                        <td style={{ padding:'8px 10px', textAlign:'right' }}>${(t.standardBudgetCad||0).toLocaleString()}</td>
+                        <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--text3)' }}>{t.sort_order ?? idx}</td>
+                        {canEdit && (
+                          <td style={{ padding:'8px 10px', textAlign:'right' }}>
+                            {deleteTypeId === t.id ? (
+                              <>
+                                <span style={{ fontSize:'11px', color:'var(--red)', marginRight:'6px' }}>Xác nhận?</span>
+                                <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => confirmDeleteType(t.id)}>Xóa</button>
+                                <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(null)}>Hủy</button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => startEditType(t)}>Sửa</button>
+                                <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(t.id)}>Xóa</button>
+                              </>
+                            )}
+                          </td>
+                        )}
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {showNewType && (
+                  <tr style={{ borderTop:'2px solid var(--accent)', background:'var(--bg2)' }}>
+                    <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'60px', padding:'4px 6px' }} placeholder="Code" value={newTypeForm.code} onChange={e => setNewTypeForm(f => ({...f, code: e.target.value}))} /></td>
+                    <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="Tên tiếng Việt" value={newTypeForm.nameVi} onChange={e => setNewTypeForm(f => ({...f, nameVi: e.target.value}))} /></td>
+                    <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="English name" value={newTypeForm.nameEn} onChange={e => setNewTypeForm(f => ({...f, nameEn: e.target.value}))} /></td>
+                    <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'80px', padding:'4px 6px' }} value={newTypeForm.standardReach} onChange={e => setNewTypeForm(f => ({...f, standardReach: Number(e.target.value)||0}))} /></td>
+                    <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'90px', padding:'4px 6px' }} value={newTypeForm.standardBudgetCad} onChange={e => setNewTypeForm(f => ({...f, standardBudgetCad: Number(e.target.value)||0}))} /></td>
+                    <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'60px', padding:'4px 6px' }} value={newTypeForm.sort_order} onChange={e => setNewTypeForm(f => ({...f, sort_order: Number(e.target.value)||0}))} /></td>
+                    <td style={{ padding:'6px 8px', textAlign:'right' }}>
+                      <button className="btn-save-role" onClick={saveNewType}>Thêm</button>
+                      <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setShowNewType(false)}>Hủy</button>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {/* ── Danger Zone ── */}
         <div className="settings-card danger-zone">
