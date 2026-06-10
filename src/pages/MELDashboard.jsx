@@ -591,61 +591,25 @@ export default function MELDashboard() {
             <KPICard label="Female Ratio"      value={`${femaleRatio}%`}            color="#16a34a" sub={`${totalFemale} / ${totalActual}`} />
           </div>
 
-          <div className="mel-charts-row">
-            <div className="mel-chart-card">
-              <h3>Target vs Actual by Indicator</h3>
-              <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={targetActualData} layout="vertical" margin={{ left: 10, right: 50 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={55} tick={{ fontSize: 11 }} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend />
-                  <Bar dataKey="Target" fill="#2563eb" radius={[0,3,3,0]} />
-                  <Bar dataKey="Actual" fill="#10b981" radius={[0,3,3,0]} />
-                  <Bar dataKey="Gap"    fill="#fbbf24" radius={[0,3,3,0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="mel-chart-card">
-              <h3>Female / Male Breakdown</h3>
-              <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={femaleData} layout="vertical" margin={{ left: 10, right: 50 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={55} tick={{ fontSize: 11 }} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend />
-                  <Bar dataKey="Nữ"  stackId="a" fill="#db2777" radius={[0,0,0,0]} />
-                  <Bar dataKey="Nam" stackId="a" fill="#2563eb" radius={[0,3,3,0]}
-                    label={{ position:'right', fontSize:11, formatter:(_v, e) => e?.['Nữ'] > 0 ? `${Math.round(e['Nữ']/(e['Nữ']+(e['Nam']||0))*100)}%` : '' }}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* ── Indicator Summary Table ── */}
+          {/* ── Progress Board: Indicator Table ── */}
           <div className="mel-indicator-table-wrap">
             <h3>Tiến độ theo Indicator Group</h3>
             <table className="l3-table">
               <thead>
                 <tr>
                   <th>Indicator</th>
-                  <th>Label</th>
+                  <th>Description</th>
                   <th className="num">Target</th>
                   <th className="num">Actual</th>
-                  <th style={{ width: 140 }}>Progress</th>
-                  <th className="num">%</th>
-                  <th>Female %</th>
+                  <th style={{ width: 180 }}>Progress</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {indicatorStats.map(g => {
-                  const pct = g.targetVietnam > 0 ? (g.actual / g.targetVietnam * 100) : 0;
-                  const femalePct = g.actual > 0 ? (g.female / g.actual * 100) : null;
-                  const progColor = pct >= 80 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626';
+                  const pct = g.targetVietnam > 0 ? g.actual / g.targetVietnam : 0;
+                  const status = pct >= 0.8 ? 'on-track' : pct >= 0.4 ? 'at-risk' : 'critical';
+                  const progColor = STATUS_COLOR[status];
                   return (
                     <tr key={g.code}>
                       <td><strong>{g.code}</strong></td>
@@ -653,20 +617,10 @@ export default function MELDashboard() {
                       <td className="num">{g.targetVietnam.toLocaleString()}</td>
                       <td className="num">{g.actual.toLocaleString()}</td>
                       <td>
-                        <ProgressBar pct={pct / 100} color={progColor} />
+                        <ProgressBar pct={pct} color={progColor} />
+                        <div className="l3-sub-label">{Math.round(pct * 100)}%</div>
                       </td>
-                      <td className="num" style={{ color: progColor, fontWeight: 600 }}>
-                        {pct.toFixed(1)}%
-                      </td>
-                      <td>
-                        {femalePct !== null ? (
-                          <span style={{ color: femalePct < 50 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
-                            {femalePct.toFixed(0)}%
-                          </span>
-                        ) : (
-                          <span className="l3-muted">—</span>
-                        )}
-                      </td>
+                      <td><StatusBadge status={status} /></td>
                     </tr>
                   );
                 })}
@@ -674,12 +628,44 @@ export default function MELDashboard() {
                   <td colSpan={2}><strong>TOTAL</strong></td>
                   <td className="num">{totalTarget.toLocaleString()}</td>
                   <td className="num">{totalActual.toLocaleString()}</td>
-                  <td><ProgressBar pct={totalTarget > 0 ? totalActual / totalTarget : 0} color="#2563eb" /></td>
-                  <td className="num" style={{ color: '#2563eb' }}>{overallPct}%</td>
-                  <td style={{ color: femaleRatio < 50 ? '#dc2626' : '#16a34a' }}>{femaleRatio}%</td>
+                  <td>
+                    <ProgressBar pct={totalTarget > 0 ? totalActual / totalTarget : 0} color="#2563eb" />
+                    <div className="l3-sub-label" style={{ color: '#2563eb' }}>{overallPct}%</div>
+                  </td>
+                  <td />
                 </tr>
               </tbody>
             </table>
+
+            {/* Gender Alert Panel */}
+            {(() => {
+              const genderAlerts = indicatorStats.filter(g => {
+                if (g.actual === 0) return false;
+                const threshold = g.code.startsWith('122') ? 60 : 50;
+                return (g.female / g.actual * 100) < threshold;
+              });
+              if (genderAlerts.length === 0) return null;
+              return (
+                <div className="gender-alert-panel">
+                  <div className="gender-alert-title">Gender Gap Alerts</div>
+                  <div className="gender-alert-rows">
+                    {genderAlerts.map(g => {
+                      const femalePct = Math.round(g.female / g.actual * 100);
+                      const threshold = g.code.startsWith('122') ? 60 : 50;
+                      const gap = femalePct - threshold;
+                      return (
+                        <div key={g.code} className="gender-alert-row">
+                          <strong className="gender-alert-code">{g.code}</strong>
+                          <span className="gender-alert-pct">{femalePct}% female</span>
+                          <span className="l3-muted">— need {threshold}%</span>
+                          <span className="gender-alert-gap">{gap}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="mel-budget-section">

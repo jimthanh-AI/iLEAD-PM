@@ -37,6 +37,33 @@
 }
 .mel-tooltip strong { display: block; margin-bottom: 4px; }
 
+/* Gender Alert Panel */
+.gender-alert-panel {
+  margin-top: 16px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.gender-alert-title {
+  font-size: .78rem;
+  font-weight: 700;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 10px;
+}
+.gender-alert-rows { display: flex; flex-direction: column; gap: 6px; }
+.gender-alert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .82rem;
+}
+.gender-alert-code { min-width: 52px; color: var(--text); }
+.gender-alert-pct  { min-width: 80px; font-weight: 600; color: #dc2626; }
+.gender-alert-gap  { font-weight: 700; color: #dc2626; }
+
 /* Budget Section */
 .mel-budget-section { background: var(--card); border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 .mel-budget-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
