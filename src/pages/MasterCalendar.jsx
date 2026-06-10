@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { TASK_STATUS_LABELS, fmtDate, daysLeft, generateId, TEAM_MEMBERS } from '../utils/constants';
+import { TASK_STATUS_LABELS, fmtDate, daysLeft, generateId, TEAM_MEMBERS, STAGE_COLORS } from '../utils/constants';
 import './MasterCalendar.css';
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -12,6 +12,229 @@ const CHIP_COLORS = {
   in_progress: { bg: 'rgba(37,99,235,.13)', color: '#2563eb', border: '#3b82f6' },
   todo:        { bg: 'rgba(156,163,175,.13)', color: '#6b7280', border: '#9ca3af' },
 };
+
+// ── ICS helpers ──
+function getIcsUrlFromEmbedUrl(embedUrl) {
+  try {
+    const u = new URL(embedUrl);
+    const src = u.searchParams.get('src');
+    if (src) return `https://calendar.google.com/calendar/ical/${encodeURIComponent(src)}/public/full.ics`;
+  } catch (e) { /* ignore */ }
+  // If it already looks like an ICS URL, return as-is
+  if (embedUrl.includes('/ical/')) return embedUrl;
+  return null;
+}
+
+function parseICS(icsText) {
+  const events = [];
+  const unfolded = icsText.replace(/\r\n[ \t]/g, '').replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '');
+  const lines = unfolded.split('\n');
+  let ev = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line === 'BEGIN:VEVENT') { ev = {}; continue; }
+    if (line === 'END:VEVENT') {
+      if (ev?.dtstart) events.push(ev);
+      ev = null; continue;
+    }
+    if (!ev) continue;
+    const colon = line.indexOf(':');
+    if (colon < 0) continue;
+    const keyFullOrig = line.slice(0, colon);              // original case — needed for TZID extraction
+    const keyFull = keyFullOrig.toUpperCase();
+    const val = line.slice(colon + 1).replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
+    const key = keyFull.split(';')[0]; // strip params like TZID
+    if (key === 'SUMMARY')      ev.summary = val;
+    else if (key === 'DTSTART') {
+      ev.dtstart = val;
+      ev.allDay = !val.includes('T');
+      const tzidMatch = keyFullOrig.match(/TZID=([^;:]+)/i);
+      ev.dtstart_tz = tzidMatch ? tzidMatch[1] : null;
+    }
+    else if (key === 'DTEND')   ev.dtend = val;
+    else if (key === 'UID')     ev.uid = val;
+    else if (key === 'URL')     ev.url = val;
+    else if (key === 'RRULE')   ev.rrule = val;
+    else if (key === 'DURATION') ev.duration = val;
+  }
+  return events;
+}
+
+// Convert raw ICS datetime + TZID → Vietnam time {dateIso, timeStr}
+// Uses Intl.DateTimeFormat for dynamic timezone conversion — handles any IANA timezone name.
+// timeStr format: "8:30am", "9pm" (12h like Google Calendar), "" for all-day
+function toVietnamTime(val, tzid) {
+  if (!val) return { dateIso: null, timeStr: '' };
+  const hasTime = val.includes('T');
+  const isUtcZ = val.endsWith('Z');
+  const v = val.replace(/[^0-9T]/g, '');
+  const y = +v.slice(0, 4), mo = +v.slice(4, 6) - 1, d = +v.slice(6, 8);
+  if (!hasTime) {
+    return { dateIso: `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`, timeStr: '' };
+  }
+  const h = +v.slice(9, 11), min = +v.slice(11, 13);
+
+  let utcMs;
+
+  if (isUtcZ) {
+    // Value is already in UTC
+    utcMs = Date.UTC(y, mo, d, h, min);
+  } else if (tzid) {
+    try {
+      // h:min is the local time in tzid. Derive its UTC offset dynamically:
+      // Treat h:min as UTC, format in tzid → see what tzid clock shows at that UTC moment.
+      const refUTC = Date.UTC(y, mo, d, h, min);
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tzid, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date(refUTC));
+      const tzH = +parts.find(p => p.type === 'hour').value;
+      const tzMin = +parts.find(p => p.type === 'minute').value;
+      // srcOffsetMin = UTC offset of tzid (e.g. -240 for EDT, +420 for Vietnam)
+      let srcOffsetMin = (tzH * 60 + tzMin) - (h * 60 + min);
+      // Normalize for day-boundary wrap (covers UTC-11 to UTC+13)
+      if (srcOffsetMin > 13 * 60) srcOffsetMin -= 24 * 60;
+      if (srcOffsetMin < -11 * 60) srcOffsetMin += 24 * 60;
+      // UTC = local_in_tzid − srcOffset
+      utcMs = refUTC - srcOffsetMin * 60 * 1000;
+    } catch (e) {
+      utcMs = null; // invalid TZID → treat as floating
+    }
+  } else {
+    utcMs = null; // floating (no Z, no TZID) → treat as Vietnam local
+  }
+
+  let vnY, vnMo, vnD, vnH, vnMin;
+  if (utcMs != null) {
+    // UTC → Vietnam (+7h)
+    const dt = new Date(utcMs + 7 * 3600 * 1000);
+    vnY = dt.getUTCFullYear(); vnMo = dt.getUTCMonth() + 1; vnD = dt.getUTCDate();
+    vnH = dt.getUTCHours(); vnMin = dt.getUTCMinutes();
+  } else {
+    // Treat as Vietnam local time (no conversion)
+    vnY = y; vnMo = mo + 1; vnD = d; vnH = h; vnMin = min;
+  }
+
+  const dateIso = `${vnY}-${String(vnMo).padStart(2,'0')}-${String(vnD).padStart(2,'0')}`;
+  const period = vnH >= 12 ? 'pm' : 'am';
+  const h12 = vnH % 12 || 12;
+  const timeStr = vnMin === 0 ? `${h12}${period}` : `${h12}:${String(vnMin).padStart(2,'0')}${period}`;
+  return { dateIso, timeStr };
+}
+
+// Advance an ICS dtstart string by N days (pure date arithmetic, no timezone conversion)
+function advanceIcsDtstart(dtstart, days) {
+  const v = dtstart.replace(/[^0-9T]/g, '');
+  const y = +v.slice(0,4), mo = +v.slice(4,6)-1, d = +v.slice(6,8);
+  const next = new Date(y, mo, d + days); // local date, no UTC
+  const ny = next.getFullYear();
+  const nm = String(next.getMonth()+1).padStart(2,'0');
+  const nd = String(next.getDate()).padStart(2,'0');
+  return `${ny}${nm}${nd}${dtstart.slice(8)}`; // preserve time portion exactly
+}
+
+function advanceIcsDtstartMonths(dtstart, months) {
+  const v = dtstart.replace(/[^0-9T]/g, '');
+  const y = +v.slice(0,4), mo = +v.slice(4,6)-1, d = +v.slice(6,8);
+  const next = new Date(y, mo + months, d);
+  const ny = next.getFullYear();
+  const nm = String(next.getMonth()+1).padStart(2,'0');
+  const nd = String(next.getDate()).padStart(2,'0');
+  return `${ny}${nm}${nd}${dtstart.slice(8)}`;
+}
+
+const BYDAY_MAP = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+
+// For WEEKLY+BYDAY: snap dtstart forward to the first matching weekday
+function snapToByDay(dtstart, byDays) {
+  const v = dtstart.replace(/[^0-9T]/g, '');
+  const y = +v.slice(0,4), mo = +v.slice(4,6)-1, d = +v.slice(6,8);
+  const base = new Date(y, mo, d);
+  const targetDow = BYDAY_MAP[byDays[0]]; // use first BYDAY
+  if (targetDow === undefined) return dtstart;
+  let diff = (targetDow - base.getDay() + 7) % 7;
+  if (diff === 0) return dtstart; // already on correct day
+  return advanceIcsDtstart(dtstart, diff);
+}
+
+// Expand recurring events (RRULE) within an ISO date window.
+// Each event in result has _isoDate (Vietnam date) and _timeStr (Vietnam time, 12h am/pm).
+function expandEvents(rawEvents, winStartIso, winEndIso) {
+  const result = [];
+  const seen = new Set(); // dedup key: `${uid||summary}_${isoDate}`
+
+  // Push one occurrence with pre-computed Vietnam date/time
+  function pushEvent(ev, dtstart) {
+    const { dateIso, timeStr } = toVietnamTime(dtstart, ev.dtstart_tz);
+    if (!dateIso) return;
+    const key = `${ev.uid || ev.summary}_${dateIso}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push({ ...ev, dtstart, _isoDate: dateIso, _timeStr: timeStr });
+  }
+
+  for (const ev of rawEvents) {
+    if (!ev.rrule) {
+      // Multi-day all-day event: render a chip on every day it spans
+      if (ev.allDay && ev.dtend) {
+        const startIso = icsValToIso(ev.dtstart, ev.dtstart_tz);
+        const endIso   = icsValToIso(ev.dtend,   ev.dtstart_tz); // DTEND is exclusive per RFC
+        if (startIso && endIso && endIso > startIso) {
+          let cur = ev.dtstart;
+          while (true) {
+            const curIso = icsValToIso(cur, ev.dtstart_tz);
+            if (!curIso || curIso >= endIso || curIso > winEndIso) break;
+            if (curIso >= winStartIso) pushEvent({ ...ev, _multiday: true }, cur);
+            cur = advanceIcsDtstart(cur, 1);
+          }
+          continue;
+        }
+      }
+      // Single-day or timed event
+      pushEvent(ev, ev.dtstart);
+      continue;
+    }
+
+    // RRULE expansion
+    const parts = {};
+    ev.rrule.split(';').forEach(p => { const [k,v]=p.split('='); if(k) parts[k]=v; });
+    const freq     = parts.FREQ;
+    const interval = parseInt(parts.INTERVAL || '1');
+    const count    = parts.COUNT ? parseInt(parts.COUNT) : null;
+    const until    = parts.UNTIL ? icsValToIso(parts.UNTIL, null) : null;
+    const endIso   = until && until < winEndIso ? until : winEndIso;
+    const byDays   = parts.BYDAY ? parts.BYDAY.split(',').map(d => d.replace(/[^A-Z]/g, '')) : null;
+
+    // For WEEKLY+BYDAY: snap start to the correct weekday first
+    let cur = (freq === 'WEEKLY' && byDays) ? snapToByDay(ev.dtstart, byDays) : ev.dtstart;
+    let n = 0, maxN = count || 500;
+
+    while (n < maxN) {
+      const isoDate = icsValToIso(cur, ev.dtstart_tz);
+      if (!isoDate || isoDate > endIso) break;
+      if (isoDate >= winStartIso) pushEvent(ev, cur);
+      // Advance by one interval
+      if      (freq === 'DAILY')   cur = advanceIcsDtstart(cur, interval);
+      else if (freq === 'WEEKLY')  cur = advanceIcsDtstart(cur, 7 * interval);
+      else if (freq === 'MONTHLY') cur = advanceIcsDtstartMonths(cur, interval);
+      else if (freq === 'YEARLY')  cur = advanceIcsDtstartMonths(cur, 12 * interval);
+      else break;
+      n++;
+    }
+  }
+  return result;
+}
+
+// Returns Vietnam date ISO string (YYYY-MM-DD), handling UTC-Z and TZID conversion
+function icsValToIso(val, tzid) {
+  if (!val) return null;
+  return toVietnamTime(val, tzid).dateIso;
+}
+
+// Returns Vietnam time string in 12h format ("8:30am", "9pm"), "" for all-day
+function icsValToTime(val, tzid) {
+  if (!val || !val.includes('T')) return '';
+  return toVietnamTime(val, tzid).timeStr;
+}
 
 // Use local date parts to avoid UTC timezone shift (Vietnam = UTC+7)
 const toLocalIso = (d) => {
@@ -39,7 +262,6 @@ const QuickAddTask = ({ defaultDate, activities, addTask, onClose }) => {
       assignee,
       dueDate,
       notes: '',
-      pos: Date.now(),
     });
     onClose();
   };
@@ -82,15 +304,160 @@ const QuickAddTask = ({ defaultDate, activities, addTask, onClose }) => {
   );
 };
 
+/* ── Task Detail Popup ── */
+const TaskDetailPopup = ({ task, act, pa, nav, onClose, updateTask }) => {
+  const isOverdue = task.dueDate && daysLeft(task.dueDate) < 0 && task.status !== 'done';
+  const dl = task.dueDate ? daysLeft(task.dueDate) : null;
+
+  const toggleDone = () => {
+    updateTask(task.id, { status: task.status === 'done' ? 'todo' : 'done' });
+    onClose();
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--surface-solid)',
+          border: '1px solid var(--border)',
+          borderRadius: '10px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          width: '360px',
+          maxWidth: '92vw',
+          overflow: 'hidden',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '12px 14px',
+          background: isOverdue ? 'rgba(239,68,68,0.08)' : task.status === 'done' ? 'rgba(16,185,129,0.08)' : 'var(--surface2)',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'flex-start', gap: '8px',
+        }}>
+          <span style={{ fontSize: '16px', marginTop: '2px' }}>
+            {task.status === 'done' ? '✅' : isOverdue ? '⚠️' : '🔲'}
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontWeight: 700, fontSize: '14px', color: 'var(--text)',
+              textDecoration: task.status === 'done' ? 'line-through' : 'none',
+              opacity: task.status === 'done' ? 0.7 : 1,
+            }}>{task.name}</div>
+            {act && (
+              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>
+                {pa ? `${pa.name} · ` : ''}{act.name}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', color: 'var(--text3)', padding: '0 2px' }}
+          >✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {task.dueDate && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+              <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Deadline</span>
+              <span style={{
+                fontWeight: 600,
+                color: isOverdue ? '#ef4444' : dl !== null && dl <= 3 ? '#f59e0b' : 'var(--text)',
+              }}>
+                {fmtDate(task.dueDate)}
+                {dl !== null && task.status !== 'done' && (
+                  <span style={{ fontWeight: 400, marginLeft: '6px', fontSize: '11px', color: isOverdue ? '#ef4444' : 'var(--text3)' }}>
+                    {isOverdue ? `Quá hạn ${Math.abs(dl)} ngày` : dl === 0 ? 'Hôm nay' : `còn ${dl} ngày`}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+          {task.assignee && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+              <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Giao cho</span>
+              <span style={{ fontWeight: 500 }}>👤 {task.assignee}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Trạng thái</span>
+            <span style={{
+              padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600,
+              background: isOverdue ? 'rgba(239,68,68,0.12)' : task.status === 'done' ? 'rgba(16,185,129,0.12)' : 'rgba(156,163,175,0.15)',
+              color: isOverdue ? '#ef4444' : task.status === 'done' ? '#059669' : '#6b7280',
+            }}>
+              {isOverdue ? 'Quá hạn' : task.status === 'done' ? 'Hoàn thành' : 'Todo'}
+            </span>
+          </div>
+          {task.notes && (
+            <div style={{ fontSize: '12px', color: 'var(--text2)', background: 'var(--surface2)', borderRadius: '6px', padding: '8px 10px', marginTop: '2px' }}>
+              {task.notes}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px' }}>
+          <button
+            className="btn btn-sm"
+            style={{
+              flex: 1,
+              background: task.status === 'done' ? 'rgba(156,163,175,0.15)' : 'rgba(16,185,129,0.12)',
+              color: task.status === 'done' ? '#6b7280' : '#059669',
+              border: `1px solid ${task.status === 'done' ? '#9ca3af' : '#10b981'}`,
+              fontWeight: 600,
+            }}
+            onClick={toggleDone}
+          >
+            {task.status === 'done' ? '↩ Mở lại' : '✓ Đánh dấu Done'}
+          </button>
+          {act && (
+            <button
+              className="btn btn-sm"
+              style={{ flex: 1, fontWeight: 500 }}
+              onClick={() => { onClose(); nav(`/activity/${act.id}`); }}
+            >
+              Xem Activity →
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const MasterCalendar = () => {
   const nav = useNavigate();
-  const { tasks, activities, partners, addTask } = useData();
+  const { tasks, activities, partners, addTask, updateTask } = useData();
 
   // View state
   const [view, setView]               = useState('month');
   const [weekOffset, setWeekOffset]   = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [quickAdd, setQuickAdd]       = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const touchStartX = useRef(null);
+
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd   = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 40) return; // ignore small movements
+    if (dx < 0) {
+      view === 'week' ? setWeekOffset(o => o + 1) : setMonthOffset(o => o + 1);
+    } else {
+      view === 'week' ? setWeekOffset(o => o - 1) : setMonthOffset(o => o - 1);
+    }
+  };
 
   // Toggles panel — tasks are either todo or done (no in_progress status)
   const [showTasks, setShowTasks] = useState({ todo: true, done: true, overdue: true });
@@ -105,65 +472,40 @@ export const MasterCalendar = () => {
   };
   const toggleTaskFilter = (k) => setShowTasks(p => ({ ...p, [k]: !p[k] }));
   
-  // Google API State
-  const [clientId, setClientId] = useState(() => localStorage.getItem('ilead_gcal_client_id') || '');
-  const [gcalAuthToken, setGcalAuthToken] = useState(null);
+  // Google Calendar — embed URL → ICS proxy → integrated grid events
+  const [gcalEmbedUrl, setGcalEmbedUrl] = useState(() => localStorage.getItem('ilead_gcal_embed_url') || '');
+  const [gcalInputVal, setGcalInputVal] = useState('');
+  const [showGcalPanel, setShowGcalPanel] = useState(false);
   const [gcalEvents, setGcalEvents] = useState([]);
-  const [loadingGcal, setLoadingGcal] = useState(false);
-  const [showGcalEvents, setShowGcalEvents] = useState(true);
+  const [gcalLoading, setGcalLoading] = useState(false);
+  const [gcalError, setGcalError] = useState('');
 
-  // Auth & Fetch Google Calendar
-  const saveClientId = (id) => {
-    setClientId(id);
-    localStorage.setItem('ilead_gcal_client_id', id);
+  const saveGcalEmbedUrl = (url) => {
+    setGcalEmbedUrl(url);
+    localStorage.setItem('ilead_gcal_embed_url', url);
   };
 
-  const handleAuthClick = () => {
-    if (!clientId) {
-      alert("Vui lòng nhập Google Client ID trước.");
-      return;
-    }
-    if (!window.google) {
-      alert("Google Identity Services script chưa được tải. Đang tải lại trang...");
-      window.location.reload();
-      return;
-    }
-    
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/calendar.events.readonly',
-      callback: (tokenResponse) => {
-        if (tokenResponse && tokenResponse.access_token) {
-          setGcalAuthToken(tokenResponse.access_token);
-          fetchGoogleEvents(tokenResponse.access_token);
-        }
-      },
-    });
-    client.requestAccessToken();
-  };
-
-  const fetchGoogleEvents = async (token) => {
-    setLoadingGcal(true);
-    try {
-      // Calculate start & end of current view window approx (just fetch a wide range, e.g. -1 month to +2 months)
-      const timeMin = new Date(); timeMin.setMonth(timeMin.getMonth() - 2);
-      const timeMax = new Date(); timeMax.setMonth(timeMax.getMonth() + 3);
-
-      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}&singleEvents=true&orderBy=startTime`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.items) {
-        setGcalEvents(data.items);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Lỗi khi tải sự kiện Google Calendar.");
-    }
-    setLoadingGcal(false);
-  };
-
-  // Re-fetch if view changes significantly? For simplicity we fetched a 5 month window.
+  // Fetch ICS via server-side proxy whenever embed URL changes
+  useEffect(() => {
+    if (!gcalEmbedUrl) { setGcalEvents([]); return; }
+    const icsUrl = getIcsUrlFromEmbedUrl(gcalEmbedUrl);
+    if (!icsUrl) { setGcalError('Link không hợp lệ'); return; }
+    setGcalLoading(true);
+    setGcalError('');
+    const now = new Date();
+    const winStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const winEnd   = new Date(now.getFullYear(), now.getMonth() + 7, 0);
+    const winStartIso = toLocalIso(winStart);
+    const winEndIso   = toLocalIso(winEnd);
+    fetch(`/api/gcal-proxy?url=${encodeURIComponent(icsUrl)}`)
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.text(); })
+      .then(text => {
+        const raw = parseICS(text);
+        setGcalEvents(expandEvents(raw, winStartIso, winEndIso));
+        setGcalLoading(false);
+      })
+      .catch(() => { setGcalError('Lịch không công khai hoặc lỗi kết nối'); setGcalLoading(false); });
+  }, [gcalEmbedUrl]);
 
   const today    = new Date();
   const todayIso = toLocalIso(today);
@@ -191,29 +533,15 @@ export const MasterCalendar = () => {
     });
   }, [tasks, showTasks, partnerActivityIds]);
 
-  // Combine unified events — Tasks + GCal only (no activities)
+  // Events per day — iLEAD Tasks + Google Calendar events
+  // gcalEvents have pre-computed _isoDate (Vietnam date) set by expandEvents
   const getUnifiedEventsForDay = (isoDate) => {
-    // 1. iLEAD Tasks by deadline
     const dayTasks = filteredTasks
       .filter(t => t.dueDate === isoDate)
-      .map(t => ({ type: 'task', data: t, sortTime: '00:00:00' }));
-
-    // 2. Google Calendar Events
-    let dayGcal = [];
-    if (showGcalEvents) {
-      dayGcal = gcalEvents
-        .filter(ev => {
-          if (ev.start?.date) return ev.start.date === isoDate;
-          if (ev.start?.dateTime) return ev.start.dateTime.startsWith(isoDate);
-          return false;
-        })
-        .map(ev => ({
-          type: 'gcal',
-          data: ev,
-          sortTime: ev.start?.dateTime ? ev.start.dateTime.substring(11, 19) : '00:00:00'
-        }));
-    }
-
+      .map(t => ({ type: 'task', data: t }));
+    const dayGcal = gcalEvents
+      .filter(ev => ev._isoDate === isoDate)
+      .map(ev => ({ type: 'gcal', data: ev }));
     return [...dayTasks, ...dayGcal];
   };
 
@@ -273,7 +601,7 @@ export const MasterCalendar = () => {
       <div
         className={`uc-event uc-evt-task${compact ? ' compact' : ''}`}
         style={chipStyle}
-        onClick={(e) => { e.stopPropagation(); act && nav(`/activity/${act.id}`); }}
+        onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
         title={`Task: ${task.name}${act ? ' · ' + act.name : ''}`}
       >
         <span className="uc-evt-icon">
@@ -288,7 +616,11 @@ export const MasterCalendar = () => {
 
   const ActivityChip = ({ act, compact }) => {
     const pa = partners.find(p => p.id === act.partnerId);
-    const color = pa?.color || '#6366f1';
+    const isOver = act.endDate && daysLeft(act.endDate) < 0 && act.status !== 'done';
+    const color = act.status === 'done' ? '#10b981'
+                : isOver ? '#ef4444'
+                : act.status === 'in_progress' ? (STAGE_COLORS[act.stage] || pa?.color || '#6366f1')
+                : '#9ca3af';
     return (
       <div
         className={`uc-event${compact ? ' compact' : ''}`}
@@ -303,21 +635,23 @@ export const MasterCalendar = () => {
   };
 
   const GCalChip = ({ ev, compact }) => {
-    // Format start time if available
-    const timeStr = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('vi-VN', { hour:'2-digit', minute:'2-digit' }) : '';
-    const color = ev.colorId ? '#4285F4' : '#039be5'; // simplified Gcal colors mapping
+    const timeStr = ev._timeStr || '';   // pre-computed Vietnam time (12h am/pm)
+    const gcalLink = ev.url || `https://calendar.google.com/calendar/r`;
     return (
-      <div 
+      <div
         className={`uc-event uc-evt-gcal${compact ? ' compact' : ''}`}
-        title={`GCal: ${ev.summary}`}
-        onClick={(e) => { e.stopPropagation(); window.open(ev.htmlLink, '_blank'); }}
+        title={`${timeStr ? timeStr + ' ' : ''}${ev.summary}`}
+        onClick={(e) => { e.stopPropagation(); window.open(gcalLink, '_blank'); }}
+        style={{ cursor: 'pointer' }}
       >
-        <div className="uc-evt-gcal-dot" style={{ background: color }}></div>
-        {timeStr && !compact && <span className="uc-evt-time">{timeStr}</span>}
+        <div className="uc-evt-gcal-dot" style={{ background: '#4285F4' }}></div>
+        {timeStr && <span className="uc-evt-time" style={{ fontSize:'10px', opacity:0.8, marginRight:'2px' }}>{timeStr}</span>}
         <span className="uc-evt-name">{ev.summary || '(No title)'}</span>
       </div>
     );
   };
+  const selectedTaskCtx = selectedTask ? getContext(selectedTask) : {};
+
   return (
     <div className="mc-root animate-fade-in" onClick={() => setQuickAdd(null)}>
 
@@ -353,31 +687,7 @@ export const MasterCalendar = () => {
         {/* Google Calendar Group */}
         <div className="mc-sb-group">
           <div className="mc-sb-group-hdr">📆 LỊCH GOOGLE</div>
-          {!gcalAuthToken ? (
-            <div className="mc-sb-auth-card">
-              <input 
-                className="mc-sb-client-input" 
-                placeholder="Nhập phần đầu GCal Client ID..."
-                value={clientId.split('.apps.googleusercontent.com')[0]}
-                onChange={e => saveClientId(e.target.value + '.apps.googleusercontent.com')}
-                title="Chỉ cần nhập phần Client ID trước đuôi .apps.googleusercontent.com"
-              />
-              <button className="btn btn-sm" onClick={handleAuthClick} style={{ width:'100%', background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', fontWeight:600 }}>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G" style={{ width:12, marginRight:6 }}/>
-                Kết nối GCal
-              </button>
-            </div>
-          ) : (
-            <>
-              <label className="mc-sb-item">
-                <input type="checkbox" checked={showGcalEvents} onChange={() => setShowGcalEvents(v=>!v)} />
-                <span className="mc-sb-swatch" style={{ background: '#4285F4' }}></span>
-                <span className="mc-sb-label">Primary Calendar</span>
-                {loadingGcal && <span style={{fontSize:'10px', color:'var(--text3)'}}>⏳</span>}
-              </label>
-              <div className="mc-sb-auth-info">Đã kết nối Google ☑</div>
-            </>
-          )}
+          <div style={{ fontSize:'11px', color:'var(--text3)', padding:'4px 0' }}>Dùng nút GCal trên thanh lọc phía trên.</div>
         </div>
 
       </div>
@@ -420,6 +730,59 @@ export const MasterCalendar = () => {
           </div>
         </div>
 
+        {/* ── Filter bar (all screens) ── */}
+        <div className="mc-mobile-filters">
+          {/* Nav row — only shown on mobile */}
+          <div className="mc-nav-mobile-row">
+            <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o - 1) : setMonthOffset(o => o - 1)}>‹</button>
+            <span style={{ fontSize:'13px', fontWeight:600, flex:1, textAlign:'center' }}>{navLabel}</span>
+            <button className="btn btn-sm" onClick={() => { setWeekOffset(0); setMonthOffset(0); }}>Hôm nay</button>
+            <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o + 1) : setMonthOffset(o => o + 1)}>›</button>
+          </div>
+          {/* Filter chips row */}
+          <div className="mc-filter-chips-row">
+            <label className="mc-sb-item" style={{ margin:0 }}>
+              <input type="checkbox" checked={showTasks.todo} onChange={() => toggleTaskFilter('todo')} />
+              <span className="mc-sb-swatch" style={{ background:'#9ca3af', border:'1px solid #6b7280' }}></span>
+              <span style={{ fontSize:'12px' }}>Todo</span>
+            </label>
+            <label className="mc-sb-item" style={{ margin:0 }}>
+              <input type="checkbox" checked={showTasks.done} onChange={() => toggleTaskFilter('done')} />
+              <span className="mc-sb-swatch" style={{ background: CHIP_COLORS.done.bg, border:`1px solid ${CHIP_COLORS.done.border}` }}></span>
+              <span style={{ fontSize:'12px' }}>Done</span>
+            </label>
+            <label className="mc-sb-item" style={{ margin:0 }}>
+              <input type="checkbox" checked={showTasks.overdue} onChange={() => toggleTaskFilter('overdue')} />
+              <span className="mc-sb-swatch" style={{ background:'rgba(239,68,68,0.1)', border:'1px solid #ef4444' }}></span>
+              <span style={{ fontSize:'12px', color:'var(--red)' }}>Quá hạn</span>
+            </label>
+            {!gcalEmbedUrl ? (
+              <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
+                <input
+                  className="mc-sb-client-input"
+                  style={{ width:220, fontSize:'12px' }}
+                  placeholder="Dán link Google Calendar embed..."
+                  value={gcalInputVal}
+                  onChange={e => setGcalInputVal(e.target.value)}
+                />
+                <button className="btn btn-sm" onClick={() => { if (gcalInputVal.trim()) saveGcalEmbedUrl(gcalInputVal.trim()); }} style={{ background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', whiteSpace:'nowrap' }}>
+                  📅 Lưu
+                </button>
+              </div>
+            ) : (
+              <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
+                {gcalLoading && <span style={{ fontSize:'11px', color:'var(--text3)' }}>⏳</span>}
+                {gcalError && <span style={{ fontSize:'11px', color:'#ef4444' }} title={gcalError}>⚠️</span>}
+                {!gcalError && !gcalLoading && gcalEvents.length > 0 && <span style={{ fontSize:'11px', color:'#4285F4' }}>●</span>}
+                <button className="btn btn-sm" onClick={() => setShowGcalPanel(v => !v)} style={{ background: showGcalPanel ? '#3b82f6' : '#fff', border:'1px solid var(--border)', color: showGcalPanel ? '#fff' : '#3b82f6', whiteSpace:'nowrap' }}>
+                  📅 Google Cal
+                </button>
+                <button onClick={() => { saveGcalEmbedUrl(''); setGcalEvents([]); setShowGcalPanel(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'14px' }} title="Xóa lịch Google">✕</button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* ── Quick Add Panel ── */}
         {quickAdd && (
           <div style={{ position:'absolute', zIndex:100, top:'60px', right:'20px' }}>
@@ -428,7 +791,10 @@ export const MasterCalendar = () => {
         )}
 
         {/* ── UNIFIED GRID (Month & Week) ── */}
-        <div className="mc-grid-container">
+        <div className="mc-grid-container"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           
           {/* MONTH VIEW */}
           {view === 'month' && (
@@ -455,8 +821,9 @@ export const MasterCalendar = () => {
                     </div>
                     <div className="uc-events-list">
                       {events.slice(0, 4).map((evt) =>
-                        evt.type === 'task' ? <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
-                                            : <GCalChip key={`g_${evt.data.id}`} ev={evt.data} compact />
+                        evt.type === 'task'
+                          ? <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
+                          : <GCalChip key={`g_${evt.data.uid || evt.data.summary}_${evt.data._isoDate}`} ev={evt.data} compact />
                       )}
                       {events.length > 4 && <div className="uc-more">+{events.length - 4} nữa</div>}
                     </div>
@@ -492,8 +859,9 @@ export const MasterCalendar = () => {
                       <div key={i} className={`uc-week-col${isToday?' is-today':''}`}>
                         <div className="uc-events-list" style={{ marginTop:'8px' }}>
                           {events.map((evt) =>
-                            evt.type === 'task' ? <TaskChip key={`tw_${evt.data.id}`} task={evt.data} />
-                                                : <GCalChip key={`gw_${evt.data.id}`} ev={evt.data} />
+                            evt.type === 'task'
+                              ? <TaskChip key={`tw_${evt.data.id}`} task={evt.data} />
+                              : <GCalChip key={`gw_${evt.data.uid || evt.data.summary}_${evt.data._isoDate}`} ev={evt.data} />
                           )}
                         </div>
                       </div>
@@ -508,6 +876,33 @@ export const MasterCalendar = () => {
 
       </div>
 
+      {selectedTask && (
+        <TaskDetailPopup
+          task={selectedTask}
+          act={selectedTaskCtx.act}
+          pa={selectedTaskCtx.pa}
+          nav={nav}
+          onClose={() => setSelectedTask(null)}
+          updateTask={updateTask}
+        />
+      )}
+
+      {/* Google Calendar iframe panel */}
+      {showGcalPanel && gcalEmbedUrl && (
+        <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowGcalPanel(false)}>
+          <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', width:'min(900px, 95vw)', height:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid #e5e7eb' }}>
+              <span style={{ fontWeight:600, fontSize:'14px' }}>📅 Google Calendar</span>
+              <button onClick={() => setShowGcalPanel(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'18px', color:'#6b7280' }}>✕</button>
+            </div>
+            <iframe
+              src={gcalEmbedUrl}
+              style={{ flex:1, border:'none', width:'100%' }}
+              title="Google Calendar"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

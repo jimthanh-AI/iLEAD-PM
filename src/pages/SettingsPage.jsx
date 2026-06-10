@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../utils/supabaseClient';
 import { INDICATOR_GROUPS } from '../utils/constants';
 import './SettingsPage.css';
 
@@ -12,14 +14,33 @@ function storageSize() {
   } catch { return '?'; }
 }
 
+const ROLES = [
+  { v: 'admin',       label: 'Admin',       desc: 'Toàn quyền' },
+  { v: 'pm',          label: 'PM',          desc: 'Chỉnh sửa & xóa' },
+  { v: 'coordinator', label: 'Coordinator', desc: 'Chỉnh sửa, không xóa' },
+  { v: 'viewer',      label: 'Viewer',      desc: 'Chỉ xem' },
+];
+
 export default function SettingsPage() {
-  const { setData, userRole, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators } = useData();
+  const { setData, pushToSupabase, clearAndSeed, restoreFromBackup, userRole, isAdmin, partners, activities, tasks, melEntries, partnerBudgets, activityIndicators, budgetLineItems } = useData();
+  const { fetchAllUsers, updateUserRole, removeUser, appUser } = useAuth();
   const [theme, setTheme]       = useState(() => localStorage.getItem('ilead_theme') || 'light');
-  const [role, setRole]         = useState(() => localStorage.getItem('ilead_user_role') || 'coordinator');
   const [importErr, setImportErr] = useState('');
   const [importOk, setImportOk]   = useState('');
   const [resetConfirm, setResetConfirm] = useState(false);
   const fileRef = useRef();
+
+  // User management (admin only)
+  const [users,      setUsers]      = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userMsg,    setUserMsg]    = useState('');
+  const [pendingRoles, setPendingRoles] = useState({});
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    setUsersLoading(true);
+    fetchAllUsers().then(data => { setUsers(data); setUsersLoading(false); });
+  }, [isAdmin]);
 
   // ── Theme ──────────────────────────────────────────────────────
   const applyTheme = (t) => {
@@ -28,20 +49,45 @@ export default function SettingsPage() {
     document.documentElement.dataset.theme = t;
   };
 
-  // ── Role ───────────────────────────────────────────────────────
-  const applyRole = (r) => {
-    setRole(r);
-    localStorage.setItem('ilead_user_role', r);
-    window.dispatchEvent(new Event('ilead_role_changed'));
+  // ── User management ────────────────────────────────────────────
+  const handleRoleChange = (email, newRole) => {
+    setPendingRoles(p => ({ ...p, [email]: newRole }));
+  };
+
+  const handleSaveRole = async (email) => {
+    const newRole = pendingRoles[email];
+    if (!newRole) return;
+    setUserMsg('');
+    const { error } = await updateUserRole(email, newRole);
+    if (error) { setUserMsg('Lỗi: ' + error.message); return; }
+    setUsers(us => us.map(u => u.email === email ? { ...u, role: newRole } : u));
+    setPendingRoles(p => { const n = { ...p }; delete n[email]; return n; });
+    setUserMsg('Đã cập nhật quyền cho ' + email);
   };
 
   // ── Export JSON ────────────────────────────────────────────────
-  const handleExport = () => {
+  const handleExport = async () => {
+    // Fetch app_users + audit_logs from Supabase (not in React state)
+    let appUsers = [], auditLogs = [];
+    try {
+      const [u, l] = await Promise.all([
+        supabase.from('app_users').select('*'),
+        supabase.from('audit_logs').select('*').order('changed_at', { ascending: false }).limit(5000),
+      ]);
+      appUsers  = u.data || [];
+      auditLogs = l.data || [];
+    } catch (e) {
+      console.warn('Backup: không tải được app_users/audit_logs', e);
+    }
+
     const snapshot = {
-      __v: 4,
+      __v: 5,
       partners, activities, tasks,
       activityIndicators: activityIndicators || [],
+      budgetLineItems: budgetLineItems || [],
       melEntries, partnerBudgets,
+      appUsers,
+      auditLogs,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
@@ -59,21 +105,38 @@ export default function SettingsPage() {
     if (!file) return;
     setImportErr(''); setImportOk('');
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const parsed = JSON.parse(ev.target.result);
         if (!parsed.partners || !parsed.activities) throw new Error('Không tìm thấy dữ liệu hợp lệ (thiếu partners/activities)');
         const restored = {
-          __v:            parsed.__v            || 4,
+          __v:            parsed.__v            || 5,
           partners:       parsed.partners       || [],
           activities:     parsed.activities     || [],
           tasks:          parsed.tasks          || [],
           activityIndicators: parsed.activityIndicators || [],
+          budgetLineItems: parsed.budgetLineItems || [],
           melEntries:     parsed.melEntries     || [],
           partnerBudgets: parsed.partnerBudgets || [],
         };
-        setData(restored);
-        setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries.`);
+        setImportOk('Đang đồng bộ lên Supabase...');
+        await restoreFromBackup(restored);
+
+        // Restore app_users + audit_logs nếu có trong backup
+        if (parsed.appUsers?.length) {
+          await supabase.from('app_users').upsert(parsed.appUsers);
+        }
+        if (parsed.auditLogs?.length) {
+          // Insert in batches of 500 to avoid payload limits
+          for (let i = 0; i < parsed.auditLogs.length; i += 500) {
+            await supabase.from('audit_logs').upsert(parsed.auditLogs.slice(i, i + 500));
+          }
+        }
+
+        const extras = [];
+        if (parsed.appUsers?.length)  extras.push(`${parsed.appUsers.length} users`);
+        if (parsed.auditLogs?.length) extras.push(`${parsed.auditLogs.length} audit logs`);
+        setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries${extras.length ? ', ' + extras.join(', ') : ''}.`);
       } catch (err) {
         setImportErr('Lỗi: ' + err.message);
       }
@@ -83,9 +146,14 @@ export default function SettingsPage() {
   };
 
   // ── Reset to SEED ──────────────────────────────────────────────
-  const handleReset = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    window.location.reload();
+  const handleReset = async () => {
+    try {
+      await clearAndSeed();
+      setResetConfirm(false);
+    } catch (err) {
+      setImportErr('Lỗi reset: ' + err.message);
+      setResetConfirm(false);
+    }
   };
 
   const kbUsed = storageSize();
@@ -152,26 +220,56 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ── Role ── */}
+        {/* ── My Role ── */}
         <div className="settings-card">
-          <h2>Quyền truy cập</h2>
-          <p className="card-hint">Thay đổi role sẽ reload trang. PM có thể chỉnh sửa, Viewer chỉ xem.</p>
+          <h2>Quyền của bạn</h2>
+          <p className="card-hint">Role được gán bởi Admin. Liên hệ Jim Thanh để thay đổi.</p>
           <div className="role-switcher">
-            {[
-              { v:'coordinator', label:'Coordinator', desc:'Chỉnh sửa, không xóa' },
-              { v:'pm',          label:'PM',           desc:'Chỉnh sửa & xóa' },
-              { v:'admin',       label:'Admin',        desc:'Toàn quyền' },
-              { v:'viewer',      label:'Viewer',       desc:'Chỉ xem' },
-            ].map(r => (
-              <button key={r.v}
-                className={`role-btn ${role === r.v ? 'active' : ''}`}
-                onClick={() => applyRole(r.v)}>
+            {ROLES.map(r => (
+              <div key={r.v} className={`role-btn ${userRole === r.v ? 'active' : ''}`} style={{ cursor: 'default' }}>
                 <strong>{r.label}</strong>
                 <span>{r.desc}</span>
-              </button>
+              </div>
             ))}
           </div>
         </div>
+
+        {/* ── User Management (Admin only) ── */}
+        {isAdmin && (
+          <div className="settings-card">
+            <h2>Quản lý người dùng</h2>
+            <p className="card-hint">Ai đăng nhập lần đầu sẽ tự động thành Viewer. Admin có thể đổi role ở đây.</p>
+            {userMsg && <div className="msg-ok" style={{ marginBottom: 12 }}>{userMsg}</div>}
+            {usersLoading ? (
+              <div style={{ color: 'var(--text2)', fontSize: 13 }}>Đang tải...</div>
+            ) : (
+              <div className="user-mgmt-list">
+                {users.map(u => (
+                  <div key={u.email} className="user-mgmt-row">
+                    <div className="user-mgmt-info">
+                      <strong>{u.display_name || u.email}</strong>
+                      <span>{u.email}</span>
+                    </div>
+                    <select
+                      className="user-role-select"
+                      value={pendingRoles[u.email] ?? u.role}
+                      onChange={e => handleRoleChange(u.email, e.target.value)}
+                    >
+                      {ROLES.map(r => (
+                        <option key={r.v} value={r.v}>{r.label}</option>
+                      ))}
+                    </select>
+                    {pendingRoles[u.email] && (
+                      <button className="btn-save-role" onClick={() => handleSaveRole(u.email)}>
+                        Lưu
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Danger Zone ── */}
         <div className="settings-card danger-zone">
@@ -199,7 +297,7 @@ export default function SettingsPage() {
             <div className="info-row"><span>Chương trình</span><strong>iLEAD 2025–2028</strong></div>
             <div className="info-row"><span>Quốc gia</span><strong>Vietnam</strong></div>
             <div className="info-row"><span>Fiscal Year</span><strong>Q1 Apr–Jun · Q4 ends 31 Mar</strong></div>
-            <div className="info-row"><span>Storage</span><strong>localStorage only</strong></div>
+            <div className="info-row"><span>Storage</span><strong>Supabase (cloud)</strong></div>
           </div>
         </div>
 

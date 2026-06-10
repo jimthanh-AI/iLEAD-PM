@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { FileText } from 'lucide-react';
+import { generateActivitiesReport } from '../utils/reportGenerator';
 import { useData } from '../context/DataContext';
 import { STAGE_COLORS, STATUS_CSS, STATUS_LABELS, fmtDate, daysLeft, generateId } from '../utils/constants';
 import { ActivityForm } from '../components/forms/ActivityForm';
@@ -87,6 +89,8 @@ const GlobalKanban = () => {
 
   const getPartner = (a) => partnerMap[a.partnerId];
 
+  const openReport = () => generateActivitiesReport(acts, partnerMap, tasks);
+
   return (
     <div className="page-container animate-fade-in" style={{ display:'flex', flexDirection:'column', minHeight: 0 }}>
       {/* Controls */}
@@ -96,6 +100,7 @@ const GlobalKanban = () => {
           <option value="">Tất cả Partner</option>
           {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+        <button className="btn btn-secondary" onClick={openReport} title="Xuất báo cáo Activities (PDF)"><FileText size={14} /> Report</button>
         <button className="btn btn-primary" onClick={() => openAdd('not_started')}>+ Activity</button>
       </div>
 
@@ -133,6 +138,10 @@ const GlobalKanban = () => {
                       const sc = STAGE_COLORS[a.stage] || '#888';
                       const cardDl = daysLeft(a.endDate);
                       const overdue = cardDl !== null && cardDl < 0 && a.status !== 'done';
+                      const statusColor = overdue ? '#ef4444'
+                                        : a.status === 'done' ? '#10b981'
+                                        : a.status === 'in_progress' ? sc
+                                        : '#9ca3af';
                       return (
                         <Draggable key={a.id} draggableId={a.id} index={index}>
                           {(prov, snap) => (
@@ -145,6 +154,7 @@ const GlobalKanban = () => {
                                 ...prov.draggableProps.style,
                                 boxShadow: snap.isDragging ? 'var(--shadow-lg)' : undefined,
                                 opacity: snap.isDragging ? .9 : (a.status === 'done' ? undefined : 1),
+                                borderLeft: `3px solid ${statusColor}`,
                               }}
                               onClick={() => nav(`/activity/${a.id}`)}
                             >

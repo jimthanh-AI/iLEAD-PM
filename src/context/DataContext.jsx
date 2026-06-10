@@ -1,14 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { supabase } from '../utils/supabaseClient';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 export const useData = () => useContext(DataContext);
 
-const STORAGE_KEY = 'ilead_v5_data';
-const DATA_VERSION = 4; // v4: adds melEntries + partnerBudgets
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SEED — dữ liệu khởi tạo (3-tier: Partner → Activity → Task)
-// Partner IDs khớp với database thực tế của user
+// SEED — fallback data if both Supabase and localStorage are empty
 // ─────────────────────────────────────────────────────────────────────────────
 const SEED = {
   partners: [
@@ -20,293 +19,278 @@ const SEED = {
     { id:'p6', name:'VLA',                color:'#16a34a', sector:'Association', region:'TP.HCM'  },
     { id:'p7', name:'SHi',                color:'#6366f1', sector:'NGO',         region:'Đà Nẵng' },
   ],
-
   activities: [
-    // ── VCCI MTTN (p1) ───────────────────────────────────────────
-    {
-      id:'a1', partnerId:'p1', activityTypeCode:'3', iteration:1,
-      name:'Làm baseline research với Tiến team về RPB',
-      status:'done', stage:'S7',
-      ballOwner:'CR/Mnr', ca:'Steve',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:10000, budget_actual:8450,
-      startDate:'2025-10-15', endDate:'2025-12-15',
-      nextAction:'Hợp phần đã kết thúc', notes:'', pos:0,
-    },
-    {
-      id:'a2', partnerId:'p1', activityTypeCode:'1A', iteration:1,
-      name:'Tổ chức 2 lớp TOT cho SMEs và CBCC tại Đà Nẵng',
-      status:'done', stage:'S7',
-      ballOwner:'Partner', ca:'Wayne',
-      reachTotal:52, reachWomen:28, reachMen:24,
-      budget_planned:10000, budget_actual:7800,
-      startDate:'2026-01-10', endDate:'2026-01-20',
-      nextAction:'', notes:'', pos:1,
-    },
-    {
-      id:'a3', partnerId:'p1', activityTypeCode:'1A', iteration:2,
-      name:'ToT cán bộ công chức về RBP/ESG – VCCI MTTN (lần 2)',
-      status:'in_progress', stage:'S3',
-      ballOwner:'CR/Mnr', ca:'TBD',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:10000, budget_actual:2000,
-      startDate:'2026-03-01', endDate:'2026-06-30',
-      nextAction:'Gửi TOR cho Jane approve và sàng lọc LSP', notes:'', pos:2,
-    },
-    {
-      id:'a4', partnerId:'p1', activityTypeCode:'4', iteration:1,
-      name:'Phát triển chỉ số ESG với VCCI MTTN (RBP Index)',
-      status:'not_started', stage:'S1',
-      ballOwner:'Partner', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:15000, budget_actual:0,
-      startDate:'2026-04-15', endDate:'2026-08-30',
-      nextAction:'Thiết kế framework và xác định bộ chỉ số', notes:'', pos:3,
-    },
-    {
-      id:'a5', partnerId:'p1', activityTypeCode:'8', iteration:1,
-      name:'Làm digital platform / ESG dashboard với VCCI MTTN',
-      status:'not_started', stage:'S2',
-      ballOwner:'Partner', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:20000, budget_actual:0,
-      startDate:'2026-05-01', endDate:'2026-10-30',
-      nextAction:'Phân tích yêu cầu và chọn công nghệ', notes:'', pos:4,
-    },
-
-    // ── APED Ha Noi (p2) ──────────────────────────────────────────
-    {
-      id:'a6', partnerId:'p2', activityTypeCode:'6', iteration:1,
-      name:'Hội nghị sáng kiến ESG tại Hà Nội (với APED/TAC)',
-      status:'done', stage:'S7',
-      ballOwner:'CR/Mnr', ca:'',
-      reachTotal:85, reachWomen:40, reachMen:45,
-      budget_planned:25000, budget_actual:0,
-      startDate:'2026-01-04', endDate:'2026-01-06',
-      nextAction:'', notes:'', pos:0,
-    },
-    {
-      id:'a7', partnerId:'p2', activityTypeCode:'3', iteration:1,
-      name:'Research review về luật doanh nghiệp hiện hành (trụ cột G)',
-      status:'in_progress', stage:'S2',
-      ballOwner:'CR/Mnr', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:10000, budget_actual:0,
-      startDate:'2026-01-15', endDate:'2026-06-30',
-      nextAction:'Jim gửi TOR cho Jane duyệt', notes:'', pos:1,
-    },
-    {
-      id:'a8', partnerId:'p2', activityTypeCode:'2A', iteration:1,
-      name:'Đào tạo RBP cho cán bộ công chức – APED/TAC',
-      status:'not_started', stage:'S1',
-      ballOwner:'Partner', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:10000, budget_actual:0,
-      startDate:'2026-05-01', endDate:'2026-11-30',
-      nextAction:'Xây dựng chương trình đào tạo', notes:'', pos:2,
-    },
-
-    // ── VNAH (p3) ────────────────────────────────────────────────
-    {
-      id:'a9', partnerId:'p3', activityTypeCode:'7', iteration:1,
-      name:'Làm RBP guideline cho ngành hospitality (hòa nhập KT)',
-      status:'in_progress', stage:'S2',
-      ballOwner:'CR/Mnr', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:4000, budget_actual:0,
-      startDate:'2025-12-15', endDate:'2026-06-30',
-      nextAction:'Jane đã approve, gửi cho VNAH ký', notes:'', pos:0,
-    },
-
-    // ── RED Communication (p4) ────────────────────────────────────
-    {
-      id:'a10', partnerId:'p4', activityTypeCode:'8', iteration:1,
-      name:'Các hoạt động truyền thông RBP với RED Communication',
-      status:'not_started', stage:'S1',
-      ballOwner:'CR/Mnr', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:15000, budget_actual:0,
-      startDate:'2026-01-15', endDate:'2026-10-30',
-      nextAction:'Đã gửi MOU cho Jane approve', notes:'', pos:0,
-    },
-
-    // ── VCCI HCMC (p5) ────────────────────────────────────────────
-    {
-      id:'a11', partnerId:'p5', activityTypeCode:'3', iteration:1,
-      name:'Làm baseline research với VCCI HCMC',
-      status:'not_started', stage:'S2',
-      ballOwner:'Partner', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:10000, budget_actual:0,
-      startDate:'2025-12-20', endDate:'2026-06-30',
-      nextAction:'Họp với VCCI sáng thứ 3', notes:'', pos:0,
-    },
-    {
-      id:'a12', partnerId:'p5', activityTypeCode:'1A', iteration:1,
-      name:'ToT cán bộ công chức về RBP/ESG – VCCI HCMC',
-      status:'not_started', stage:'S1',
-      ballOwner:'CR/Mnr', ca:'',
-      reachTotal:0, reachWomen:0, reachMen:0,
-      budget_planned:10000, budget_actual:0,
-      startDate:'2026-04-01', endDate:'2026-08-31',
-      nextAction:'Sàng lọc LSP và confirm với partner', notes:'', pos:1,
-    },
-
-    // ── SHi (p7) ─────────────────────────────────────────────────
-    {
-      id:'a13', partnerId:'p7', activityTypeCode:'6', iteration:1,
-      name:'Tổ chức workshop ESG trong ngành hospitality (với SHi)',
-      status:'done', stage:'S7',
-      ballOwner:'CR/Mnr', ca:'',
-      reachTotal:45, reachWomen:22, reachMen:23,
-      budget_planned:8000, budget_actual:0,
-      startDate:'2026-01-10', endDate:'2026-01-17',
-      nextAction:'', notes:'', pos:0,
-    },
+    { id:'a1',  partnerId:'p1', activityTypeCode:'3',  iteration:1, name:'Làm baseline research với Tiến team về RPB',                 status:'done',        stage:'S7', ballOwner:'CR/Mnr', ca:'Steve', reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:10000, budget_actual:8450, startDate:'2025-10-15', endDate:'2025-12-15', nextAction:'Hợp phần đã kết thúc', notes:'', pos:0 },
+    { id:'a2',  partnerId:'p1', activityTypeCode:'1A', iteration:1, name:'Tổ chức 2 lớp TOT cho SMEs và CBCC tại Đà Nẵng',            status:'done',        stage:'S7', ballOwner:'Partner', ca:'Wayne', reachTotal:52, reachWomen:28, reachMen:24, budget_planned:10000, budget_actual:7800, startDate:'2026-01-10', endDate:'2026-01-20', nextAction:'', notes:'', pos:1 },
+    { id:'a3',  partnerId:'p1', activityTypeCode:'1A', iteration:2, name:'ToT cán bộ công chức về RBP/ESG – VCCI MTTN (lần 2)',       status:'in_progress', stage:'S3', ballOwner:'CR/Mnr',  ca:'TBD',   reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:10000, budget_actual:2000, startDate:'2026-03-01', endDate:'2026-06-30', nextAction:'Gửi TOR cho Jane approve và sàng lọc LSP', notes:'', pos:2 },
+    { id:'a4',  partnerId:'p1', activityTypeCode:'4',  iteration:1, name:'Phát triển chỉ số ESG với VCCI MTTN (RBP Index)',            status:'not_started', stage:'S1', ballOwner:'Partner', ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:15000, budget_actual:0,    startDate:'2026-04-15', endDate:'2026-08-30', nextAction:'Thiết kế framework và xác định bộ chỉ số', notes:'', pos:3 },
+    { id:'a5',  partnerId:'p1', activityTypeCode:'8',  iteration:1, name:'Làm digital platform / ESG dashboard với VCCI MTTN',        status:'not_started', stage:'S2', ballOwner:'Partner', ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:20000, budget_actual:0,    startDate:'2026-05-01', endDate:'2026-10-30', nextAction:'Phân tích yêu cầu và chọn công nghệ', notes:'', pos:4 },
+    { id:'a6',  partnerId:'p2', activityTypeCode:'6',  iteration:1, name:'Hội nghị sáng kiến ESG tại Hà Nội (với APED/TAC)',          status:'done',        stage:'S7', ballOwner:'CR/Mnr',  ca:'',      reachTotal:85, reachWomen:40, reachMen:45, budget_planned:25000, budget_actual:0,    startDate:'2026-01-04', endDate:'2026-01-06', nextAction:'', notes:'', pos:0 },
+    { id:'a7',  partnerId:'p2', activityTypeCode:'3',  iteration:1, name:'Research review về luật doanh nghiệp hiện hành (trụ cột G)',status:'in_progress', stage:'S2', ballOwner:'CR/Mnr',  ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:10000, budget_actual:0,    startDate:'2026-01-15', endDate:'2026-06-30', nextAction:'Jim gửi TOR cho Jane duyệt', notes:'', pos:1 },
+    { id:'a8',  partnerId:'p2', activityTypeCode:'2A', iteration:1, name:'Đào tạo RBP cho cán bộ công chức – APED/TAC',               status:'not_started', stage:'S1', ballOwner:'Partner', ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:10000, budget_actual:0,    startDate:'2026-05-01', endDate:'2026-11-30', nextAction:'Xây dựng chương trình đào tạo', notes:'', pos:2 },
+    { id:'a9',  partnerId:'p3', activityTypeCode:'7',  iteration:1, name:'Làm RBP guideline cho ngành hospitality (hòa nhập KT)',     status:'in_progress', stage:'S2', ballOwner:'CR/Mnr',  ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:4000,  budget_actual:0,    startDate:'2025-12-15', endDate:'2026-06-30', nextAction:'Jane đã approve, gửi cho VNAH ký', notes:'', pos:0 },
+    { id:'a10', partnerId:'p4', activityTypeCode:'8',  iteration:1, name:'Các hoạt động truyền thông RBP với RED Communication',      status:'not_started', stage:'S1', ballOwner:'CR/Mnr',  ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:15000, budget_actual:0,    startDate:'2026-01-15', endDate:'2026-10-30', nextAction:'Đã gửi MOU cho Jane approve', notes:'', pos:0 },
+    { id:'a11', partnerId:'p5', activityTypeCode:'3',  iteration:1, name:'Làm baseline research với VCCI HCMC',                       status:'not_started', stage:'S2', ballOwner:'Partner', ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:10000, budget_actual:0,    startDate:'2025-12-20', endDate:'2026-06-30', nextAction:'Họp với VCCI sáng thứ 3', notes:'', pos:0 },
+    { id:'a12', partnerId:'p5', activityTypeCode:'1A', iteration:1, name:'ToT cán bộ công chức về RBP/ESG – VCCI HCMC',              status:'not_started', stage:'S1', ballOwner:'CR/Mnr',  ca:'',      reachTotal:0,  reachWomen:0,  reachMen:0,  budget_planned:10000, budget_actual:0,    startDate:'2026-04-01', endDate:'2026-08-31', nextAction:'Sàng lọc LSP và confirm với partner', notes:'', pos:1 },
+    { id:'a13', partnerId:'p7', activityTypeCode:'6',  iteration:1, name:'Tổ chức workshop ESG trong ngành hospitality (với SHi)',    status:'done',        stage:'S7', ballOwner:'CR/Mnr',  ca:'',      reachTotal:45, reachWomen:22, reachMen:23, budget_planned:8000,  budget_actual:0,    startDate:'2026-01-10', endDate:'2026-01-17', nextAction:'', notes:'', pos:0 },
   ],
-
   tasks: [
-    // a3 – ToT CBCC lần 2
-    { id:'t1', activityId:'a3', name:'Phát triển TOR chi tiết cho ToT',          status:'done',        assignee:'CR/Mnr',   dueDate:'2026-03-15', pos:0 },
-    { id:'t2', activityId:'a3', name:'Sàng lọc và đề xuất danh sách LSP',        status:'in_progress', assignee:'CR/Mnr',   dueDate:'2026-04-30', pos:1 },
-    { id:'t3', activityId:'a3', name:'Viết AAF và upload lên QuickBase',          status:'todo',        assignee:'Jim',      dueDate:'2026-05-15', pos:2 },
-    // a7 – Research review luật
-    { id:'t4', activityId:'a7', name:'Phân tích Luật Doanh nghiệp 2020',         status:'done',        assignee:'CR/Mnr',   dueDate:'2026-02-28', pos:0 },
-    { id:'t5', activityId:'a7', name:'Phỏng vấn chuyên gia pháp lý',             status:'in_progress', assignee:'CR/Mnr',   dueDate:'2026-05-30', pos:1 },
-    { id:'t6', activityId:'a7', name:'Dự thảo báo cáo khuyến nghị chính sách',   status:'todo',        assignee:'Jim',      dueDate:'2026-07-30', pos:2 },
-    // a9 – RBP guideline
-    { id:'t7', activityId:'a9', name:'Nghiên cứu disability-inclusive practices', status:'done',        assignee:'CR/Mnr',   dueDate:'2026-01-31', pos:0 },
-    { id:'t8', activityId:'a9', name:'Soạn thảo guideline (bản nháp)',            status:'in_progress', assignee:'Catalyste',dueDate:'2026-04-30', pos:1 },
-    { id:'t9', activityId:'a9', name:'VNAH review và ký kết',                    status:'todo',        assignee:'Partner',  dueDate:'2026-05-31', pos:2 },
-    // a10 – RED Communication
-    { id:'t10', activityId:'a10', name:'Gửi MOU cho Jane approve',               status:'in_progress', assignee:'CR/Mnr',  dueDate:'2026-04-30', pos:0 },
-    { id:'t11', activityId:'a10', name:'Họp kick-off với RED',                   status:'todo',        assignee:'CR/Mnr',  dueDate:'2026-06-01', pos:1 },
+    { id:'t1',  activityId:'a3',  name:'Phát triển TOR chi tiết cho ToT',          status:'done',        assignee:'CR/Mnr',   dueDate:'2026-03-15', notes:'', pos:0 },
+    { id:'t2',  activityId:'a3',  name:'Sàng lọc và đề xuất danh sách LSP',        status:'todo',        assignee:'CR/Mnr',   dueDate:'2026-04-30', notes:'', pos:1 },
+    { id:'t3',  activityId:'a3',  name:'Viết AAF và upload lên QuickBase',          status:'todo',        assignee:'Jim',      dueDate:'2026-05-15', notes:'', pos:2 },
+    { id:'t4',  activityId:'a7',  name:'Phân tích Luật Doanh nghiệp 2020',         status:'done',        assignee:'CR/Mnr',   dueDate:'2026-02-28', notes:'', pos:0 },
+    { id:'t5',  activityId:'a7',  name:'Phỏng vấn chuyên gia pháp lý',             status:'todo',        assignee:'CR/Mnr',   dueDate:'2026-05-30', notes:'', pos:1 },
+    { id:'t6',  activityId:'a7',  name:'Dự thảo báo cáo khuyến nghị chính sách',   status:'todo',        assignee:'Jim',      dueDate:'2026-07-30', notes:'', pos:2 },
+    { id:'t7',  activityId:'a9',  name:'Nghiên cứu disability-inclusive practices', status:'done',        assignee:'CR/Mnr',   dueDate:'2026-01-31', notes:'', pos:0 },
+    { id:'t8',  activityId:'a9',  name:'Soạn thảo guideline (bản nháp)',            status:'todo',        assignee:'Catalyste',dueDate:'2026-04-30', notes:'', pos:1 },
+    { id:'t9',  activityId:'a9',  name:'VNAH review và ký kết',                    status:'todo',        assignee:'Partner',  dueDate:'2026-05-31', notes:'', pos:2 },
+    { id:'t10', activityId:'a10', name:'Gửi MOU cho Jane approve',                  status:'todo',        assignee:'CR/Mnr',   dueDate:'2026-04-30', notes:'', pos:0 },
+    { id:'t11', activityId:'a10', name:'Họp kick-off với RED',                      status:'todo',        assignee:'CR/Mnr',   dueDate:'2026-06-01', notes:'', pos:1 },
   ],
-
-  // ── Partner Budget Allocation (CAD, manual entry) ─────────────
   partnerBudgets: [
-    { partnerId:'p1', allocated:66450,  spent:46882.76 }, // VCCI MTTN
-    { partnerId:'p2', allocated:132900, spent:14324.69 }, // APED Ha Noi
-    { partnerId:'p3', allocated:26580,  spent:4096.86  }, // VNAH
-    { partnerId:'p4', allocated:39870,  spent:0        }, // RED Communication
-    { partnerId:'p5', allocated:66450,  spent:0        }, // VCCI HCMC
+    { partnerId:'p1', allocated:66450,  spent:46882.76 },
+    { partnerId:'p2', allocated:132900, spent:14324.69 },
+    { partnerId:'p3', allocated:26580,  spent:4096.86  },
+    { partnerId:'p4', allocated:39870,  spent:0        },
+    { partnerId:'p5', allocated:66450,  spent:0        },
   ],
-
-  // ── MEL Entries (actual results, maps to MEL_Master detail rows) ──
   melEntries: [
-    // 1111A
-    { id:'mel1',  indicatorGroup:'1111A', subCode:'1111.3', date:'2025-04-25', partnerId:'p2', activityId:'', description:'APED/TAC – Enterprise Database Project presentation',             q1_m:3,  q1_f:5,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:0,  q4_f:0  },
-    { id:'mel2',  indicatorGroup:'1111A', subCode:'1111.4', date:'2025-04-27', partnerId:'',   activityId:'', description:'ILO – Productivity Ecosystems for Decent Works discussion',         q1_m:8,  q1_f:1,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:0,  q4_f:0  },
-    { id:'mel3',  indicatorGroup:'1111A', subCode:'1111.3', date:'2025-07-11', partnerId:'p3', activityId:'', description:'VNAH – RBP guideline for disabled groups discussion',               q1_m:0,  q1_f:0,  q2_m:0, q2_f:1, q3_m:0,  q3_f:0,  q4_m:0,  q4_f:0  },
-    { id:'mel4',  indicatorGroup:'1111A', subCode:'1111.3', date:'2025-12-01', partnerId:'p1', activityId:'a1', description:'VCCI MTTN – Baseline research RBP awareness in Da Nang',         q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:50, q3_f:59, q4_m:0,  q4_f:0  },
-    { id:'mel5',  indicatorGroup:'1111A', subCode:'1111.3', date:'2026-03-27', partnerId:'p1', activityId:'', description:'VCCI MTTN – MOU discussion and signing with DAFO',                  q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:20, q4_f:20 },
-    // 1111B
-    { id:'mel6',  indicatorGroup:'1111B', subCode:'1111.3', date:'2026-03-23', partnerId:'p1', activityId:'', description:'VCCI MTTN – Technical meeting with DAFO on MOU content',            q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:6,  q4_f:4  },
-    // 1112
-    { id:'mel7',  indicatorGroup:'1112',  subCode:'1112.2', date:'2025-04-25', partnerId:'p2', activityId:'', description:'APED/TAC – Data management systems for RBP presentation',           q1_m:3,  q1_f:5,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:0,  q4_f:0  },
-    { id:'mel8',  indicatorGroup:'1112',  subCode:'1112.4', date:'2025-05-13', partnerId:'p1', activityId:'', description:'VCCI MTTN – RBP policy monitoring information sharing',              q1_m:4,  q1_f:1,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:0,  q4_f:0  },
-    // 1121A (count of meetings – M=count, F=0)
-    { id:'mel9',  indicatorGroup:'1121A', subCode:'1121.1', date:'2026-01-28', partnerId:'',   activityId:'', description:'DAFO – Interagency consultation meetings (multi-quarter)',            q1_m:5,  q1_f:0,  q2_m:6, q2_f:0, q3_m:0,  q3_f:0,  q4_m:4,  q4_f:0  },
-    // 1211
-    { id:'mel10', indicatorGroup:'1211',  subCode:'1211.3', date:'2025-06-11', partnerId:'p1', activityId:'a6', description:'VCCI MTTN – International Conference RBP preparation session',    q1_m:3,  q1_f:4,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:0,  q4_f:0  },
-    { id:'mel11', indicatorGroup:'1211',  subCode:'1211.3', date:'2025-10-24', partnerId:'p1', activityId:'a6', description:'VCCI MTTN – International Conference RBP in the Global Economy',  q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:99, q3_f:130,q4_m:0,  q4_f:0  },
-    { id:'mel12', indicatorGroup:'1211',  subCode:'1211.3', date:'2025-11-05', partnerId:'p1', activityId:'', description:'VCCI MTTN – TOT preparation session',                               q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:3,  q3_f:2,  q4_m:0,  q4_f:0  },
-    { id:'mel13', indicatorGroup:'1211',  subCode:'1211.3', date:'2026-01-27', partnerId:'p1', activityId:'a2', description:'VCCI MTTN – TOT for SMEs (Jan 2026)',                             q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:9,  q4_f:14 },
-    // 1221A
-    { id:'mel14', indicatorGroup:'1221A', subCode:'1221.2', date:'2025-06-11', partnerId:'p1', activityId:'', description:'VCCI MTTN – RBP training framework development discussion',          q1_m:8,  q1_f:4,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:0,  q4_f:0  },
-    { id:'mel15', indicatorGroup:'1221A', subCode:'1221.3', date:'2026-01-06', partnerId:'p2', activityId:'a6', description:'APED/TAC – Conference on Sustainable Business New Value',          q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:35, q4_f:85 },
-    { id:'mel16', indicatorGroup:'1221A', subCode:'1221.3', date:'2026-01-27', partnerId:'p1', activityId:'a2', description:'VCCI MTTN – TOT SMEs (Jan 2026)',                                  q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:9,  q4_f:14 },
-    { id:'mel17', indicatorGroup:'1221A', subCode:'1221.3', date:'2026-01-28', partnerId:'p1', activityId:'', description:'VCCI MTTN – TOT civil servants (Jan 2026)',                          q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:9,  q4_f:14 },
-    // 1221B
-    { id:'mel18', indicatorGroup:'1221B', subCode:'1221.3', date:'2025-11-06', partnerId:'p7', activityId:'a13', description:'SHi – Round table discussion (Nov 2025)',                        q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:5,  q3_f:13, q4_m:0,  q4_f:0  },
-    { id:'mel19', indicatorGroup:'1221B', subCode:'1221.5', date:'2026-01-17', partnerId:'p7', activityId:'a13', description:'SHi – Round table discussion (Jan 2026)',                        q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,  q4_m:5,  q4_f:15 },
+    { id:'mel1',  indicatorGroup:'1111A', subCode:'1111.3', date:'2025-04-25', partnerId:'p2', activityId:'',    description:'APED/TAC – Enterprise Database Project presentation',             q1_m:3,  q1_f:5,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:0,  q4_f:0  },
+    { id:'mel2',  indicatorGroup:'1111A', subCode:'1111.4', date:'2025-04-27', partnerId:'',   activityId:'',    description:'ILO – Productivity Ecosystems for Decent Works discussion',         q1_m:8,  q1_f:1,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:0,  q4_f:0  },
+    { id:'mel3',  indicatorGroup:'1111A', subCode:'1111.3', date:'2025-07-11', partnerId:'p3', activityId:'',    description:'VNAH – RBP guideline for disabled groups discussion',               q1_m:0,  q1_f:0,  q2_m:0, q2_f:1, q3_m:0,  q3_f:0,   q4_m:0,  q4_f:0  },
+    { id:'mel4',  indicatorGroup:'1111A', subCode:'1111.3', date:'2025-12-01', partnerId:'p1', activityId:'a1',  description:'VCCI MTTN – Baseline research RBP awareness in Da Nang',         q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:50, q3_f:59,  q4_m:0,  q4_f:0  },
+    { id:'mel5',  indicatorGroup:'1111A', subCode:'1111.3', date:'2026-03-27', partnerId:'p1', activityId:'',    description:'VCCI MTTN – MOU discussion and signing with DAFO',                  q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:20, q4_f:20 },
+    { id:'mel6',  indicatorGroup:'1111B', subCode:'1111.3', date:'2026-03-23', partnerId:'p1', activityId:'',    description:'VCCI MTTN – Technical meeting with DAFO on MOU content',            q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:6,  q4_f:4  },
+    { id:'mel7',  indicatorGroup:'1112',  subCode:'1112.2', date:'2025-04-25', partnerId:'p2', activityId:'',    description:'APED/TAC – Data management systems for RBP presentation',           q1_m:3,  q1_f:5,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:0,  q4_f:0  },
+    { id:'mel8',  indicatorGroup:'1112',  subCode:'1112.4', date:'2025-05-13', partnerId:'p1', activityId:'',    description:'VCCI MTTN – RBP policy monitoring information sharing',              q1_m:4,  q1_f:1,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:0,  q4_f:0  },
+    { id:'mel9',  indicatorGroup:'1121A', subCode:'1121.1', date:'2026-01-28', partnerId:'',   activityId:'',    description:'DAFO – Interagency consultation meetings (multi-quarter)',            q1_m:5,  q1_f:0,  q2_m:6, q2_f:0, q3_m:0,  q3_f:0,   q4_m:4,  q4_f:0  },
+    { id:'mel10', indicatorGroup:'1211',  subCode:'1211.3', date:'2025-06-11', partnerId:'p1', activityId:'a6',  description:'VCCI MTTN – International Conference RBP preparation session',    q1_m:3,  q1_f:4,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:0,  q4_f:0  },
+    { id:'mel11', indicatorGroup:'1211',  subCode:'1211.3', date:'2025-10-24', partnerId:'p1', activityId:'a6',  description:'VCCI MTTN – International Conference RBP in the Global Economy',  q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:99, q3_f:130, q4_m:0,  q4_f:0  },
+    { id:'mel12', indicatorGroup:'1211',  subCode:'1211.3', date:'2025-11-05', partnerId:'p1', activityId:'',    description:'VCCI MTTN – TOT preparation session',                               q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:3,  q3_f:2,   q4_m:0,  q4_f:0  },
+    { id:'mel13', indicatorGroup:'1211',  subCode:'1211.3', date:'2026-01-27', partnerId:'p1', activityId:'a2',  description:'VCCI MTTN – TOT for SMEs (Jan 2026)',                             q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:9,  q4_f:14 },
+    { id:'mel14', indicatorGroup:'1221A', subCode:'1221.2', date:'2025-06-11', partnerId:'p1', activityId:'',    description:'VCCI MTTN – RBP training framework development discussion',          q1_m:8,  q1_f:4,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:0,  q4_f:0  },
+    { id:'mel15', indicatorGroup:'1221A', subCode:'1221.3', date:'2026-01-06', partnerId:'p2', activityId:'a6',  description:'APED/TAC – Conference on Sustainable Business New Value',          q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:35, q4_f:85 },
+    { id:'mel16', indicatorGroup:'1221A', subCode:'1221.3', date:'2026-01-27', partnerId:'p1', activityId:'a2',  description:'VCCI MTTN – TOT SMEs (Jan 2026)',                                  q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:9,  q4_f:14 },
+    { id:'mel17', indicatorGroup:'1221A', subCode:'1221.3', date:'2026-01-28', partnerId:'p1', activityId:'',    description:'VCCI MTTN – TOT civil servants (Jan 2026)',                          q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:9,  q4_f:14 },
+    { id:'mel18', indicatorGroup:'1221B', subCode:'1221.3', date:'2025-11-06', partnerId:'p7', activityId:'a13', description:'SHi – Round table discussion (Nov 2025)',                        q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:5,  q3_f:13,  q4_m:0,  q4_f:0  },
+    { id:'mel19', indicatorGroup:'1221B', subCode:'1221.5', date:'2026-01-17', partnerId:'p7', activityId:'a13', description:'SHi – Round table discussion (Jan 2026)',                        q1_m:0,  q1_f:0,  q2_m:0, q2_f:0, q3_m:0,  q3_f:0,   q4_m:5,  q4_f:15 },
   ],
-
   activityIndicators: [
-    { id:'ai1', activityId:'a2',  indicatorCode:'1111.3', targetCount:25, actualCount:25 },
-    { id:'ai2', activityId:'a2',  indicatorCode:'1221.2', targetCount:25, actualCount:25 },
-    { id:'ai3', activityId:'a3',  indicatorCode:'1111.3', targetCount:25, actualCount:0  },
-    { id:'ai4', activityId:'a3',  indicatorCode:'1221.3', targetCount:25, actualCount:0  },
-    { id:'ai5', activityId:'a6',  indicatorCode:'1221.4', targetCount:80, actualCount:80 },
-    { id:'ai6', activityId:'a7',  indicatorCode:'1111.4', targetCount:100,actualCount:0  },
-    { id:'ai7', activityId:'a7',  indicatorCode:'1112.2', targetCount:100,actualCount:0  },
-    { id:'ai8', activityId:'a9',  indicatorCode:'1221.3', targetCount:100,actualCount:0  },
-    { id:'ai9', activityId:'a13', indicatorCode:'1221.4', targetCount:40, actualCount:40 },
+    { id:'ai1', activityId:'a2',  indicatorCode:'1111.3', targetCount:25,  actualCount:25, femaleCount:0 },
+    { id:'ai2', activityId:'a2',  indicatorCode:'1221.2', targetCount:25,  actualCount:25, femaleCount:0 },
+    { id:'ai3', activityId:'a3',  indicatorCode:'1111.3', targetCount:25,  actualCount:0,  femaleCount:0 },
+    { id:'ai4', activityId:'a3',  indicatorCode:'1221.3', targetCount:25,  actualCount:0,  femaleCount:0 },
+    { id:'ai5', activityId:'a6',  indicatorCode:'1221.4', targetCount:80,  actualCount:80, femaleCount:0 },
+    { id:'ai6', activityId:'a7',  indicatorCode:'1111.4', targetCount:100, actualCount:0,  femaleCount:0 },
+    { id:'ai7', activityId:'a7',  indicatorCode:'1112.2', targetCount:100, actualCount:0,  femaleCount:0 },
+    { id:'ai8', activityId:'a9',  indicatorCode:'1221.3', targetCount:100, actualCount:0,  femaleCount:0 },
+    { id:'ai9', activityId:'a13', indicatorCode:'1221.4', targetCount:40,  actualCount:40, femaleCount:0 },
   ],
+  budgetLineItems: [],
 };
 
+
 // ─────────────────────────────────────────────────────────────────────────────
-// localStorage helpers
+// Supabase helpers
 // ─────────────────────────────────────────────────────────────────────────────
-const loadLocal = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    // Version check: discard any pre-3-tier data
-    if (!parsed.__v || parsed.__v < DATA_VERSION) return null;
-    // Validate structure
-    if (!Array.isArray(parsed.partners) || !Array.isArray(parsed.activities)) return null;
-    return parsed;
-  } catch {
-    return null;
+const fetchAll = async () => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const [p, a, t, m, ai, pb, bli] = await Promise.all([
+        supabase.from('partners').select('*'),
+        supabase.from('activities').select('*').order('pos'),
+        supabase.from('tasks').select('*').order('pos'),
+        supabase.from('mel_entries').select('*').order('id'),
+        supabase.from('activity_indicators').select('*').order('id'),
+        supabase.from('partner_budgets').select('*'),
+        supabase.from('budget_line_items').select('*').order('created_at').then(
+          r => r,  // table exists
+          () => ({ data: [], error: null }), // table doesn't exist yet
+        ),
+      ]);
+      // Check core tables — partial errors must not silently return [] and overwrite local
+      const tables = [p, a, t, m, ai, pb];
+      const names  = ['partners','activities','tasks','mel_entries','activity_indicators','partner_budgets'];
+      const errs = tables.map((r, i) => r.error && `${names[i]}: ${r.error.message}`).filter(Boolean);
+      if (errs.length) throw new Error('Supabase fetch failed → ' + errs.join('; '));
+      return {
+        partners:           p.data   || [],
+        activities:         a.data   || [],
+        tasks:              t.data   || [],
+        melEntries:         m.data   || [],
+        activityIndicators: ai.data  || [],
+        partnerBudgets:     pb.data  || [],
+        budgetLineItems:    bli?.data || [],
+      };
+    } catch (e) {
+      if (attempt === 2) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
   }
 };
 
-const saveLocal = (data) => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, __v: DATA_VERSION })); } catch {}
+// Guard empty arrays — Supabase upsert([]) can error/no-op inconsistently
+const safeUpsert = (table, rows) =>
+  rows && rows.length ? supabase.from(table).upsert(rows) : Promise.resolve({ error: null });
+
+// Numeric and date fields that must be null (not '') when empty
+const ACTIVITY_NUMERIC  = ['budget_planned','budget_actual','reachTotal','reachWomen','reachMen','iteration','pos'];
+const ACTIVITY_DATE     = ['startDate','endDate'];
+const TASK_NUMERIC      = ['pos'];
+const TASK_DATE         = ['dueDate'];
+
+const sanitizeActivity = (a) => {
+  const out = { ...a };
+  ACTIVITY_NUMERIC.forEach(k => { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  ACTIVITY_DATE.forEach(k =>   { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  return out;
 };
+
+const sanitizeTask = (t) => {
+  const out = { ...t };
+  TASK_NUMERIC.forEach(k => { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  TASK_DATE.forEach(k =>   { if (out[k] === '' || out[k] === undefined) out[k] = null; });
+  return out;
+};
+
+const checkUpsertError = (result, table) => {
+  if (result && result.error) throw new Error(`[${table}] ${result.error.message || JSON.stringify(result.error)}`);
+};
+
+const pushToSupabase = async (data) => {
+  // Sanitize before upsert — backup JSON may have '' for numeric/date fields
+  const activities = (data.activities || []).map(sanitizeActivity);
+  const tasks      = (data.tasks      || []).map(sanitizeTask);
+
+  // Sequential: partners first (FK parent), then children in parallel
+  checkUpsertError(await safeUpsert('partners', data.partners), 'partners');
+  const [r1, r2] = await Promise.all([
+    safeUpsert('activities',     activities),
+    safeUpsert('partner_budgets', data.partnerBudgets),
+  ]);
+  checkUpsertError(r1, 'activities');
+  checkUpsertError(r2, 'partner_budgets');
+  const [r3, r4, r5] = await Promise.all([
+    safeUpsert('tasks',               tasks),
+    safeUpsert('mel_entries',         data.melEntries),
+    safeUpsert('activity_indicators', data.activityIndicators),
+  ]);
+  checkUpsertError(r3, 'tasks');
+  checkUpsertError(r4, 'mel_entries');
+  checkUpsertError(r5, 'activity_indicators');
+  // budget_line_items — optional table, ignore errors if not yet created
+  if (data.budgetLineItems?.length) {
+    await safeUpsert('budget_line_items', data.budgetLineItems).catch(() => {});
+  }
+};
+
+const clearSupabase = async () => {
+  // Delete children first (FK order), then parents
+  await Promise.all([
+    supabase.from('tasks').delete().neq('id', ''),
+    supabase.from('activity_indicators').delete().neq('id', ''),
+    supabase.from('mel_entries').delete().neq('id', ''),
+    supabase.from('partner_budgets').delete().neq('partnerId', ''),
+    supabase.from('budget_line_items').delete().neq('id', '').catch(() => {}),
+  ]);
+  await supabase.from('activities').delete().neq('id', '');
+  await supabase.from('partners').delete().neq('id', '');
+};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Provider
 // ─────────────────────────────────────────────────────────────────────────────
 export const DataProvider = ({ children }) => {
-  const [data, setData] = useState(() => {
-    const saved = loadLocal();
-    // Ensure new fields exist even if loaded from older v4 snapshot
-    if (saved) {
-      if (!saved.melEntries)     saved.melEntries     = SEED.melEntries;
-      if (!saved.partnerBudgets) saved.partnerBudgets = SEED.partnerBudgets;
-      // Migrate: in_progress tasks → todo (task status simplified to todo/done only)
-      if (Array.isArray(saved.tasks)) {
-        saved.tasks = saved.tasks.map(t =>
-          t.status === 'in_progress' ? { ...t, status: 'todo' } : t
-        );
-      }
-    }
-    return saved || SEED;
-  });
+  const [data, setData] = useState(SEED);
+  const [loading, setLoading] = useState(true);
+  const [syncError, setSyncError] = useState(null);  // visible banner when Supabase fails
+  const [bootFailed, setBootFailed] = useState(false);
 
-  // ── RBAC ──────────────────────────────────────────────────────
-  const [userRole, setUserRole] = useState(
-    () => localStorage.getItem('ilead_user_role') || 'coordinator'
-  );
+  // ── RBAC — driven by authenticated user from AuthContext ──────
+  const { appUser } = useAuth();
+  const userRole  = appUser?.role  || 'viewer';
+  const userName  = appUser?.display_name || appUser?.email || '';
+  const userEmail = appUser?.email || '';
+  const isAdmin   = userRole === 'admin';
+  // coordinator: edit only (no delete) | pm: edit + delete | admin: full
+  const canEdit   = (userRole !== 'viewer') && !bootFailed;
+  const canDelete = (userRole === 'admin' || userRole === 'pm') && !bootFailed;
+
+  // ── Audit log helper — writes one row per action ──────────────
+  const logAudit = (action, tbl, record_id, itemName = null) => {
+    if (!userEmail) return;
+    supabase.from('audit_logs').insert({
+      action,
+      tbl,
+      record_id: String(record_id),
+      field: null,
+      old_val: null,
+      new_val: itemName ? String(itemName).substring(0, 200) : null,
+      changed_by: userName || userEmail,
+      changed_at: new Date().toISOString(),
+    }).then(({ error }) => {
+      if (error) console.warn('audit_logs:', error.message);
+    });
+  };
+
+// ── Boot: load from Supabase only ─────────────────────────────
   useEffect(() => {
-    const handler = () => setUserRole(localStorage.getItem('ilead_user_role') || 'coordinator');
-    window.addEventListener('ilead_role_changed', handler);
-    return () => window.removeEventListener('ilead_role_changed', handler);
+    const boot = async () => {
+      try {
+        const remote = await fetchAll();
+        if (remote.partners.length === 0) {
+          // No data found — show SEED in UI only, never write to DB automatically
+          // (auto-seeding caused data loss when auth token exchange raced fetchAll)
+          setData(SEED);
+        } else {
+          setData(remote);
+        }
+      } catch (err) {
+        setSyncError('Không kết nối được Supabase: ' + err.message);
+        setBootFailed(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    boot();
   }, []);
 
-  const isAdmin   = userRole === 'admin';
-  const canEdit   = userRole !== 'viewer';
-  const canDelete = userRole === 'admin' || userRole === 'pm';
-
-  const dataRef = useRef(data);
-  useEffect(() => { dataRef.current = data; }, [data]);
-
-  // Save to localStorage on every data change
-  useEffect(() => {
-    saveLocal(data);
-  }, [data]);
+  // ── Supabase fire-and-forget helper ───────────────────────────
+  // Supabase v2 query builders are thenable but not real Promises (no .catch),
+  // so wrap with Promise.resolve(). Surface errors visibly via setSyncError so
+  // the user is never silently disconnected.
+  const sb = (fn, label = 'sync') => {
+    Promise.resolve()
+      .then(() => fn())
+      .then((res) => {
+        if (res && res.error) {
+          const msg = res.error.message || res.error.details || JSON.stringify(res.error);
+          console.error('Supabase[' + label + ']:', msg, res.error);
+          setSyncError('[' + label + '] ' + msg);
+        }
+      })
+      .catch((err) => {
+        const msg = err?.message || String(err);
+        console.error('Supabase[' + label + ']:', msg);
+        setSyncError('[' + label + '] ' + msg);
+      });
+  };
 
   // ── Mutations: Partners ────────────────────────────────────────
   const addPartner = (p) => {
     setData(d => ({ ...d, partners: [...d.partners, p] }));
+    sb(() => supabase.from('partners').upsert(p));
+    logAudit('created', 'partners', p.id, p.name);
   };
   const updatePartner = (id, u) => {
     setData(d => ({ ...d, partners: d.partners.map(p => p.id === id ? { ...p, ...u } : p) }));
+    sb(() => supabase.from('partners').update(u).eq('id', id));
+    logAudit('updated', 'partners', id, u.name || id);
   };
   const deletePartner = (id) => {
+    const partnerName = data.partners.find(p => p.id === id)?.name;
+    logAudit('deleted', 'partners', id, partnerName);
     setData(d => {
       const aIds = d.activities.filter(a => a.partnerId === id).map(a => a.id);
       return {
@@ -315,79 +299,263 @@ export const DataProvider = ({ children }) => {
         activities:         d.activities.filter(a => a.partnerId !== id),
         tasks:              d.tasks.filter(t => !aIds.includes(t.activityId)),
         activityIndicators: d.activityIndicators.filter(ai => !aIds.includes(ai.activityId)),
+        melEntries:         d.melEntries.filter(e => e.partnerId !== id && !aIds.includes(e.activityId)),
+        partnerBudgets:     d.partnerBudgets.filter(b => b.partnerId !== id),
       };
+    });
+    sb(async () => {
+      const { data: acts } = await supabase.from('activities').select('id').eq('partnerId', id);
+      const aIds = (acts || []).map(a => a.id);
+      if (aIds.length > 0) {
+        await Promise.all([
+          supabase.from('tasks').delete().in('activityId', aIds),
+          supabase.from('activity_indicators').delete().in('activityId', aIds),
+          supabase.from('mel_entries').delete().in('activityId', aIds),
+        ]);
+        await supabase.from('activities').delete().eq('partnerId', id);
+      }
+      await Promise.all([
+        supabase.from('mel_entries').delete().eq('partnerId', id),
+        supabase.from('partner_budgets').delete().eq('partnerId', id),
+        supabase.from('partners').delete().eq('id', id),
+      ]);
     });
   };
 
   // ── Mutations: Activities ──────────────────────────────────────
   const addActivity = (a) => {
-    setData(d => ({ ...d, activities: [...d.activities, a] }));
+    const pos = data.activities.filter(x => x.partnerId === a.partnerId).length;
+    const item = sanitizeActivity({ ...a, pos, created_by: userName });
+    setData(d => ({ ...d, activities: [...d.activities, item] }));
+    sb(() => supabase.from('activities').upsert(item), 'addActivity');
+    logAudit('created', 'activities', item.id, item.name);
   };
   const updateActivity = (id, u) => {
+    const prev = data.activities.find(a => a.id === id);
     setData(d => ({ ...d, activities: d.activities.map(a => a.id === id ? { ...a, ...u } : a) }));
+    logAudit('updated', 'activities', id, u.name || prev?.name || id);
+    Promise.resolve()
+      .then(() => supabase.from('activities').update(sanitizeActivity(u)).eq('id', id))
+      .then(res => {
+        if (res?.error) {
+          if (prev) setData(d => ({ ...d, activities: d.activities.map(a => a.id === id ? prev : a) }));
+          setSyncError('[updateActivity] ' + res.error.message);
+        }
+      })
+      .catch(err => setSyncError('[updateActivity] ' + err.message));
   };
   const deleteActivity = (id) => {
+    const actName = data.activities.find(a => a.id === id)?.name;
+    logAudit('deleted', 'activities', id, actName);
     setData(d => ({
       ...d,
       activities:         d.activities.filter(a => a.id !== id),
       tasks:              d.tasks.filter(t => t.activityId !== id),
       activityIndicators: d.activityIndicators.filter(ai => ai.activityId !== id),
+      melEntries:         d.melEntries.filter(e => e.activityId !== id),
     }));
+    sb(async () => {
+      await Promise.all([
+        supabase.from('tasks').delete().eq('activityId', id),
+        supabase.from('activity_indicators').delete().eq('activityId', id),
+        supabase.from('mel_entries').delete().eq('activityId', id),
+      ]);
+      const { error } = await supabase.from('activities').delete().eq('id', id);
+      if (error) throw error;
+    }, 'deleteActivity');
   };
 
   // ── Mutations: Tasks ───────────────────────────────────────────
   const addTask = (t) => {
-    setData(d => ({ ...d, tasks: [...d.tasks, t] }));
+    const pos = data.tasks.filter(x => x.activityId === t.activityId).length;
+    const item = sanitizeTask({ ...t, pos, created_by: userName });
+    setData(d => ({ ...d, tasks: [...d.tasks, item] }));
+    sb(() => supabase.from('tasks').upsert(item), 'addTask');
+    logAudit('created', 'tasks', item.id, item.name);
   };
   const updateTask = (id, u) => {
+    const prev = data.tasks.find(t => t.id === id);
     setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? { ...t, ...u } : t) }));
+    logAudit('updated', 'tasks', id, u.name || prev?.name || id);
+    Promise.resolve()
+      .then(() => supabase.from('tasks').update(sanitizeTask(u)).eq('id', id))
+      .then(res => {
+        if (res?.error) {
+          if (prev) setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? prev : t) }));
+          setSyncError('[updateTask] ' + res.error.message);
+        }
+      })
+      .catch(err => setSyncError('[updateTask] ' + err.message));
+  };
+
+  const bulkDeleteTasks = async (ids) => {
+    const results = await Promise.allSettled(
+      ids.map(id => supabase.from('tasks').delete().eq('id', id))
+    );
+    const succeeded = ids.filter((_, i) => !results[i].value?.error);
+    const failed    = ids.filter((_, i) =>  results[i].value?.error);
+    setData(d => ({ ...d, tasks: d.tasks.filter(t => !succeeded.includes(t.id)) }));
+    if (failed.length) setSyncError(`Xóa thất bại ${failed.length} task — thử lại sau.`);
   };
   const deleteTask = (id) => {
+    const taskName = data.tasks.find(t => t.id === id)?.name;
+    logAudit('deleted', 'tasks', id, taskName);
     setData(d => ({ ...d, tasks: d.tasks.filter(t => t.id !== id) }));
+    sb(() => supabase.from('tasks').delete().eq('id', id));
   };
 
   // ── Mutations: MEL Entries ─────────────────────────────────────
-  const addMelEntry    = (e)     => setData(d => ({ ...d, melEntries: [...d.melEntries, e] }));
-  const updateMelEntry = (id, u) => setData(d => ({ ...d, melEntries: d.melEntries.map(e => e.id === id ? { ...e, ...u } : e) }));
-  const deleteMelEntry = (id)    => setData(d => ({ ...d, melEntries: d.melEntries.filter(e => e.id !== id) }));
+  const addMelEntry = (e) => {
+    const item = { ...e, created_by: userName };
+    setData(d => ({ ...d, melEntries: [...d.melEntries, item] }));
+    sb(() => supabase.from('mel_entries').upsert(item));
+    logAudit('created', 'mel_entries', item.id, item.description || item.subCode || item.id);
+  };
+  const updateMelEntry = (id, u) => {
+    setData(d => ({ ...d, melEntries: d.melEntries.map(e => e.id === id ? { ...e, ...u } : e) }));
+    sb(() => supabase.from('mel_entries').update(u).eq('id', id));
+    logAudit('updated', 'mel_entries', id, u.description || id);
+  };
+  const deleteMelEntry = (id) => {
+    const melName = data.melEntries.find(e => e.id === id)?.description || id;
+    logAudit('deleted', 'mel_entries', id, melName);
+    setData(d => ({ ...d, melEntries: d.melEntries.filter(e => e.id !== id) }));
+    sb(() => supabase.from('mel_entries').delete().eq('id', id));
+  };
 
   // ── Mutations: Partner Budgets ─────────────────────────────────
-  const updatePartnerBudget = (partnerId, u) =>
+  const updatePartnerBudget = (partnerId, u) => {
     setData(d => ({
       ...d,
       partnerBudgets: d.partnerBudgets.some(b => b.partnerId === partnerId)
         ? d.partnerBudgets.map(b => b.partnerId === partnerId ? { ...b, ...u } : b)
         : [...d.partnerBudgets, { partnerId, allocated: 0, spent: 0, ...u }],
     }));
+    sb(() => supabase.from('partner_budgets').upsert({ partnerId, ...u }));
+  };
 
   // ── Mutations: Activity Indicators ────────────────────────────
   const addActivityIndicator = (ai) => {
-    const newAi = { ...ai, id: ai.id || crypto.randomUUID() };
-    setData(d => ({ ...d, activityIndicators: [...d.activityIndicators, newAi] }));
+    const item = { ...ai, id: ai.id || crypto.randomUUID() };
+    setData(d => ({ ...d, activityIndicators: [...d.activityIndicators, item] }));
+    sb(() => supabase.from('activity_indicators').upsert(item));
   };
   const updateActivityIndicator = (id, u) => {
     setData(d => ({ ...d, activityIndicators: d.activityIndicators.map(ai => ai.id === id ? { ...ai, ...u } : ai) }));
+    sb(() => supabase.from('activity_indicators').update(u).eq('id', id));
   };
   const deleteActivityIndicator = (id) => {
     setData(d => ({ ...d, activityIndicators: d.activityIndicators.filter(ai => ai.id !== id) }));
+    sb(() => supabase.from('activity_indicators').delete().eq('id', id));
+  };
+
+  // ── Mutations: Budget Line Items ──────────────────────────────
+  const addBudgetLineItem = (item) => {
+    const row = { ...item, id: item.id || crypto.randomUUID() };
+    setData(d => ({ ...d, budgetLineItems: [...d.budgetLineItems, row] }));
+    sb(() => supabase.from('budget_line_items').upsert(row), 'addBudgetLineItem');
+    logAudit('created', 'budget_line_items', row.id, row.description || `${row.amount}`);
+  };
+  const updateBudgetLineItem = (id, u) => {
+    setData(d => ({ ...d, budgetLineItems: d.budgetLineItems.map(b => b.id === id ? { ...b, ...u } : b) }));
+    sb(() => supabase.from('budget_line_items').update(u).eq('id', id), 'updateBudgetLineItem');
+  };
+  const deleteBudgetLineItem = (id) => {
+    const item = data.budgetLineItems.find(b => b.id === id);
+    logAudit('deleted', 'budget_line_items', id, item?.description || `${item?.amount}`);
+    setData(d => ({ ...d, budgetLineItems: d.budgetLineItems.filter(b => b.id !== id) }));
+    sb(() => supabase.from('budget_line_items').delete().eq('id', id), 'deleteBudgetLineItem');
   };
 
   // ── O(1) Lookup Maps ──────────────────────────────────────────
-  const partnerMap  = useMemo(() => Object.fromEntries(data.partners.map(p => [p.id, p])),   [data.partners]);
+  const partnerMap  = useMemo(() => Object.fromEntries(data.partners.map(p  => [p.id,  p])),  [data.partners]);
   const activityMap = useMemo(() => Object.fromEntries(data.activities.map(a => [a.id, a])), [data.activities]);
+
+  if (loading) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:'12px', fontFamily:'sans-serif', color:'#6b7280' }}>
+        <div style={{ width:'32px', height:'32px', border:'3px solid #e5e7eb', borderTop:'3px solid #2563eb', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+        <span style={{ fontSize:'14px' }}>Đang tải dữ liệu...</span>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  const clearAndSeed = async () => {
+    await clearSupabase();
+    await pushToSupabase(SEED);
+    setData(SEED);
+  };
+
+  const restoreFromBackup = async (backupData) => {
+    try {
+      await clearSupabase();
+      await pushToSupabase(backupData);
+      // Verify write succeeded by re-fetching from Supabase
+      const verified = await fetchAll();
+      setData(verified);
+      setSyncError(null);
+    } catch (err) {
+      setSyncError('Khôi phục thất bại: ' + (err.message || String(err)));
+      throw err;
+    }
+  };
+
+  const downloadBackupJSON = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `iLEAD_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <DataContext.Provider value={{
       ...data, setData,
       partnerMap, activityMap,
-      userRole, isAdmin, canEdit, canDelete,
+      userRole, userName, isAdmin, canEdit, canDelete,
+      bootFailed,
+      syncError, setSyncError,
+      pushToSupabase,
+      clearAndSeed,
+      restoreFromBackup,
       addPartner, updatePartner, deletePartner,
       addActivity, updateActivity, deleteActivity,
-      addTask, updateTask, deleteTask,
+      addTask, updateTask, deleteTask, bulkDeleteTasks,
       addActivityIndicator, updateActivityIndicator, deleteActivityIndicator,
       addMelEntry, updateMelEntry, deleteMelEntry,
       updatePartnerBudget,
+      addBudgetLineItem, updateBudgetLineItem, deleteBudgetLineItem,
+      downloadBackupJSON,
     }}>
+      {syncError && (
+        <div style={{
+          position:'fixed', top:0, left:0, right:0, zIndex:9999,
+          background:'#fef2f2', borderBottom:'1px solid #fecaca',
+          color:'#991b1b', padding:'10px 16px', fontSize:'13px',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          fontFamily:'system-ui, sans-serif',
+          boxShadow:'0 1px 3px rgba(0,0,0,.06)',
+        }}>
+          <span>⚠️ {syncError}</span>
+          <div style={{ display:'flex', gap:'8px' }}>
+            {bootFailed && (
+              <button onClick={() => window.location.reload()}
+                style={{ background:'#dc2626', border:'none', color:'#fff', borderRadius:'6px', padding:'4px 12px', cursor:'pointer', fontSize:'12px', fontWeight:600 }}>
+                Thử lại
+              </button>
+            )}
+            {!bootFailed && (
+              <button onClick={() => setSyncError(null)}
+                style={{ background:'transparent', border:'1px solid #fca5a5', color:'#991b1b', borderRadius:'6px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' }}>
+                Đóng
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {children}
     </DataContext.Provider>
   );

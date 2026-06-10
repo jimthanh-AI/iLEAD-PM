@@ -4,6 +4,8 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { useData } from '../context/DataContext';
+import { FileText } from 'lucide-react';
+import { generateMELReport } from '../utils/reportGenerator';
 import { INDICATOR_GROUPS, INDICATOR_GROUP_MAP, fmtCad } from '../utils/constants';
 import {
   computeTimeElapsed, computeRiskMatrix, computePartnerScorecard, computeForecasts,
@@ -453,12 +455,15 @@ function ModuleForecast({ forecasts }) {
 export default function MELDashboard() {
   const {
     melEntries, partnerBudgets, partners, partnerMap, activityMap,
-    activities, activityIndicators,
-    updatePartnerBudget, canEdit,
+    activities, activityIndicators, budgetLineItems,
+    updatePartnerBudget, addBudgetLineItem, updateBudgetLineItem, deleteBudgetLineItem,
+    canEdit,
   } = useData();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [editBudget, setEditBudget] = useState(null);
+  const [expandedPartner, setExpandedPartner] = useState(null);
+  const [editLineItem, setEditLineItem] = useState(null);
 
   // ── Layer 3 computed data ─────────────────────────────────────
   const riskMatrix = useMemo(
@@ -509,15 +514,22 @@ export default function MELDashboard() {
   }));
 
   const budgetWithPartner = useMemo(() => {
+    const lineItems = budgetLineItems || [];
     return partners.map(p => {
       const b = partnerBudgets.find(pb => pb.partnerId === p.id) || { allocated: 0, spent: 0 };
+      // Auto-sum spent from budget_line_items if any exist for this partner
+      const partnerLines = lineItems.filter(li => li.partnerId === p.id);
+      const lineSpent = partnerLines.reduce((s, li) => s + (parseFloat(li.amount) || 0), 0);
+      const spent = partnerLines.length > 0 ? lineSpent : (b.spent || 0);
       return {
         ...b, partnerId: p.id, name: p.name, color: p.color,
-        remaining: (b.allocated || 0) - (b.spent || 0),
-        pct: b.allocated > 0 ? Math.round(((b.allocated - b.spent) / b.allocated) * 100) : 100,
+        spent,
+        remaining: (b.allocated || 0) - spent,
+        pct: b.allocated > 0 ? Math.round(((b.allocated - spent) / b.allocated) * 100) : 100,
+        lineItems: partnerLines,
       };
     }).filter(b => b.allocated > 0);
-  }, [partners, partnerBudgets]);
+  }, [partners, partnerBudgets, budgetLineItems]);
 
   const totalAllocated  = budgetWithPartner.reduce((s, b) => s + (b.allocated || 0), 0);
   const totalSpent      = budgetWithPartner.reduce((s, b) => s + (b.spent    || 0), 0);
@@ -537,11 +549,21 @@ export default function MELDashboard() {
     { id: 'forecast',     label: 'C — Forecast' },
   ];
 
+  const openReport = () => generateMELReport({
+    indicatorStats,
+    partners,
+    partnerBudgets,
+    melEntries,
+    activityMap,
+    partnerMap,
+  });
+
   return (
     <div className="mel-dashboard">
       <div className="mel-header">
         <h1>i-LEAD MEL Dashboard</h1>
         <span className="mel-subtitle">Fiscal Year 2025–2026 · Vietnam</span>
+        <button className="btn btn-secondary btn-sm" onClick={openReport} title="Xuất báo cáo MEL (PDF)" style={{ marginLeft:'auto' }}><FileText size={14} /> Report</button>
       </div>
 
       {/* Tab bar */}
@@ -569,39 +591,81 @@ export default function MELDashboard() {
             <KPICard label="Female Ratio"      value={`${femaleRatio}%`}            color="#16a34a" sub={`${totalFemale} / ${totalActual}`} />
           </div>
 
-          <div className="mel-charts-row">
-            <div className="mel-chart-card">
-              <h3>Target vs Actual by Indicator</h3>
-              <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={targetActualData} layout="vertical" margin={{ left: 10, right: 50 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={55} tick={{ fontSize: 11 }} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend />
-                  <Bar dataKey="Target" fill="#2563eb" radius={[0,3,3,0]} />
-                  <Bar dataKey="Actual" fill="#10b981" radius={[0,3,3,0]} />
-                  <Bar dataKey="Gap"    fill="#fbbf24" radius={[0,3,3,0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          {/* ── Progress Board: Indicator Table ── */}
+          <div className="mel-indicator-table-wrap">
+            <h3>Tiến độ theo Indicator Group</h3>
+            <table className="l3-table">
+              <thead>
+                <tr>
+                  <th>Indicator</th>
+                  <th>Description</th>
+                  <th className="num">Target</th>
+                  <th className="num">Actual</th>
+                  <th style={{ width: 180 }}>Progress</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {indicatorStats.map(g => {
+                  const pct = g.targetVietnam > 0 ? g.actual / g.targetVietnam : 0;
+                  const status = pct >= 0.8 ? 'on-track' : pct >= 0.4 ? 'at-risk' : 'critical';
+                  const progColor = STATUS_COLOR[status];
+                  return (
+                    <tr key={g.code}>
+                      <td><strong>{g.code}</strong></td>
+                      <td style={{ fontSize: '0.82rem', maxWidth: 280 }}>{g.label}</td>
+                      <td className="num">{g.targetVietnam.toLocaleString()}</td>
+                      <td className="num">{g.actual.toLocaleString()}</td>
+                      <td>
+                        <ProgressBar pct={pct} color={progColor} />
+                        <div className="l3-sub-label">{Math.round(pct * 100)}%</div>
+                      </td>
+                      <td><StatusBadge status={status} /></td>
+                    </tr>
+                  );
+                })}
+                <tr className="total-row" style={{ fontWeight: 600 }}>
+                  <td colSpan={2}><strong>TOTAL</strong></td>
+                  <td className="num">{totalTarget.toLocaleString()}</td>
+                  <td className="num">{totalActual.toLocaleString()}</td>
+                  <td>
+                    <ProgressBar pct={totalTarget > 0 ? totalActual / totalTarget : 0} color="#2563eb" />
+                    <div className="l3-sub-label" style={{ color: '#2563eb' }}>{overallPct}%</div>
+                  </td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
 
-            <div className="mel-chart-card">
-              <h3>Female / Male Breakdown</h3>
-              <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={femaleData} layout="vertical" margin={{ left: 10, right: 50 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={55} tick={{ fontSize: 11 }} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend />
-                  <Bar dataKey="Nữ"  stackId="a" fill="#db2777" radius={[0,0,0,0]} />
-                  <Bar dataKey="Nam" stackId="a" fill="#2563eb" radius={[0,3,3,0]}
-                    label={{ position:'right', fontSize:11, formatter:(_v, e) => e?.['Nữ'] > 0 ? `${Math.round(e['Nữ']/(e['Nữ']+(e['Nam']||0))*100)}%` : '' }}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {/* Gender Alert Panel */}
+            {(() => {
+              const genderAlerts = indicatorStats.filter(g => {
+                if (g.actual === 0) return false;
+                const threshold = g.code.startsWith('122') ? 60 : 50;
+                return (g.female / g.actual * 100) < threshold;
+              });
+              if (genderAlerts.length === 0) return null;
+              return (
+                <div className="gender-alert-panel">
+                  <div className="gender-alert-title">Gender Gap Alerts</div>
+                  <div className="gender-alert-rows">
+                    {genderAlerts.map(g => {
+                      const femalePct = Math.round(g.female / g.actual * 100);
+                      const threshold = g.code.startsWith('122') ? 60 : 50;
+                      const gap = femalePct - threshold;
+                      return (
+                        <div key={g.code} className="gender-alert-row">
+                          <strong className="gender-alert-code">{g.code}</strong>
+                          <span className="gender-alert-pct">{femalePct}% female</span>
+                          <span className="l3-muted">— need {threshold}%</span>
+                          <span className="gender-alert-gap">{gap}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="mel-budget-section">
@@ -650,36 +714,125 @@ export default function MELDashboard() {
             </div>
 
             <div className="mel-budget-table-wrap">
-              <h3>Chi tiết ngân sách <span className="hint">— click ô để chỉnh sửa</span></h3>
+              <h3>Chi tiết ngân sách <span className="hint">— click partner để xem chi tiết · click ô để chỉnh sửa</span></h3>
               <table className="mel-budget-table">
                 <thead>
                   <tr><th>Partner</th><th>Allocated (CAD)</th><th>Spent (CAD)</th><th>Remaining</th><th>Remain %</th></tr>
                 </thead>
                 <tbody>
                   {partners.map((p) => {
+                    const bwp = budgetWithPartner.find(b => b.partnerId === p.id);
                     const b = partnerBudgets.find(pb => pb.partnerId === p.id) || { allocated:0, spent:0 };
-                    const rem = (b.allocated||0) - (b.spent||0);
+                    const spent = bwp ? bwp.spent : (b.spent || 0);
+                    const rem = (b.allocated||0) - spent;
                     const pct = b.allocated > 0 ? ((rem / b.allocated)*100).toFixed(0) : '—';
+                    const isExpanded = expandedPartner === p.id;
+                    const partnerActivities = activities.filter(a => a.partnerId === p.id);
+                    const partnerLines = (budgetLineItems || []).filter(li => li.partnerId === p.id);
+
                     return (
-                      <tr key={p.id}>
-                        <td><span className="partner-dot-sm" style={{ background: p.color }} />{p.name}</td>
-                        <td className="editable" onClick={() => canEdit && setEditBudget({ partnerId:p.id, field:'allocated', value: b.allocated||0 })}>
-                          {editBudget?.partnerId===p.id && editBudget.field==='allocated'
-                            ? <input autoFocus type="number" defaultValue={b.allocated||0}
-                                onBlur={e => handleBudgetEdit(p.id,'allocated',e.target.value)}
-                                onKeyDown={e => e.key==='Enter' && handleBudgetEdit(p.id,'allocated',e.target.value)} />
-                            : (b.allocated||0).toLocaleString()}
-                        </td>
-                        <td className="editable" onClick={() => canEdit && setEditBudget({ partnerId:p.id, field:'spent', value: b.spent||0 })}>
-                          {editBudget?.partnerId===p.id && editBudget.field==='spent'
-                            ? <input autoFocus type="number" defaultValue={b.spent||0}
-                                onBlur={e => handleBudgetEdit(p.id,'spent',e.target.value)}
-                                onKeyDown={e => e.key==='Enter' && handleBudgetEdit(p.id,'spent',e.target.value)} />
-                            : (b.spent||0).toLocaleString()}
-                        </td>
-                        <td className={rem < 0 ? 'negative' : ''}>{rem.toLocaleString()}</td>
-                        <td className={rem < 0 ? 'negative' : ''}>{pct}%</td>
-                      </tr>
+                      <React.Fragment key={p.id}>
+                        <tr className={`clickable ${isExpanded ? 'expanded' : ''}`}
+                            onClick={() => setExpandedPartner(isExpanded ? null : p.id)}>
+                          <td>
+                            <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                            <span className="partner-dot-sm" style={{ background: p.color }} />{p.name}
+                          </td>
+                          <td className="editable" onClick={(e) => { e.stopPropagation(); canEdit && setEditBudget({ partnerId:p.id, field:'allocated', value: b.allocated||0 }); }}>
+                            {editBudget?.partnerId===p.id && editBudget.field==='allocated'
+                              ? <input autoFocus type="number" defaultValue={b.allocated||0}
+                                  onClick={e => e.stopPropagation()}
+                                  onBlur={e => handleBudgetEdit(p.id,'allocated',e.target.value)}
+                                  onKeyDown={e => e.key==='Enter' && handleBudgetEdit(p.id,'allocated',e.target.value)} />
+                              : (b.allocated||0).toLocaleString()}
+                          </td>
+                          <td style={{ fontWeight: 600, color: '#ef4444' }}>{spent.toLocaleString()}</td>
+                          <td className={rem < 0 ? 'negative' : ''}>{rem.toLocaleString()}</td>
+                          <td className={rem < 0 ? 'negative' : ''}>{pct}%</td>
+                        </tr>
+
+                        {isExpanded && (
+                          <tr className="budget-expand-row">
+                            <td colSpan={5}>
+                              <div className="budget-expand-box">
+                                <table className="budget-line-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Activity / Mô tả</th>
+                                      <th className="num">Spent (CAD)</th>
+                                      <th style={{ width: 60 }}></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {partnerLines.map(li => {
+                                      const act = li.activityId ? activityMap[li.activityId] : null;
+                                      const isEditing = editLineItem?.id === li.id;
+                                      return (
+                                        <tr key={li.id}>
+                                          <td>
+                                            {isEditing ? (
+                                              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                                <select defaultValue={li.activityId || ''} style={{ flex:1, fontSize:'.82rem' }}
+                                                  onChange={e => setEditLineItem(prev => ({ ...prev, activityId: e.target.value || null }))}>
+                                                  <option value="">— Chọn activity —</option>
+                                                  {partnerActivities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                                </select>
+                                                <input type="text" defaultValue={li.description} placeholder="Mô tả..."
+                                                  style={{ flex:1, fontSize:'.82rem' }}
+                                                  onChange={e => setEditLineItem(prev => ({ ...prev, description: e.target.value }))} />
+                                              </div>
+                                            ) : (
+                                              <span>{act ? act.name : ''}{li.description ? (act ? ' — ' : '') + li.description : ''}</span>
+                                            )}
+                                          </td>
+                                          <td className="num">
+                                            {isEditing ? (
+                                              <input type="number" defaultValue={li.amount} style={{ width:100, fontSize:'.82rem' }}
+                                                onChange={e => setEditLineItem(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))} />
+                                            ) : (
+                                              (parseFloat(li.amount) || 0).toLocaleString()
+                                            )}
+                                          </td>
+                                          <td>
+                                            {canEdit && (
+                                              isEditing ? (
+                                                <div style={{ display:'flex', gap:4 }}>
+                                                  <button className="btn-xs btn-primary" onClick={() => {
+                                                    const { id, ...updates } = editLineItem;
+                                                    updateBudgetLineItem(li.id, updates);
+                                                    setEditLineItem(null);
+                                                  }}>✓</button>
+                                                  <button className="btn-xs" onClick={() => setEditLineItem(null)}>✕</button>
+                                                </div>
+                                              ) : (
+                                                <div style={{ display:'flex', gap:4 }}>
+                                                  <button className="btn-xs" onClick={() => setEditLineItem({ id: li.id, activityId: li.activityId, description: li.description, amount: li.amount })}>✎</button>
+                                                  <button className="btn-xs btn-danger" onClick={() => deleteBudgetLineItem(li.id)}>✕</button>
+                                                </div>
+                                              )
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                    {partnerLines.length === 0 && (
+                                      <tr><td colSpan={3} style={{ color:'#9ca3af', fontSize:'.82rem', textAlign:'center' }}>
+                                        Chưa có dòng chi tiết. Nhấn + để thêm.
+                                      </td></tr>
+                                    )}
+                                  </tbody>
+                                </table>
+                                {canEdit && (
+                                  <button className="btn btn-sm btn-secondary" style={{ marginTop: 8 }}
+                                    onClick={() => addBudgetLineItem({ partnerId: p.id, activityId: null, description: '', amount: 0 })}>
+                                    + Thêm dòng chi tiết
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                   <tr className="total-row">

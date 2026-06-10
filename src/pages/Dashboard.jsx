@@ -79,12 +79,19 @@ const Dashboard = () => {
     return { p, acts, pdone, ppct, reach, budget, topStage };
   }).filter(x => x.acts.length);
 
-  // ── Follow-up & upcoming ──────────────────────────────────────
-  const followUp = activities.filter(a => a.status === 'in_progress' && a.nextAction).slice(0, 6);
-  const upcoming = activities
-    .filter(a => { if (a.status === 'done') return false; const dl = daysLeft(a.endDate); return dl !== null && dl >= 0 && dl <= 14; })
-    .sort((a, b) => daysLeft(a.endDate) - daysLeft(b.endDate))
-    .slice(0, 6);
+  // ── Follow-up: one row per activity, sorted by nearest task deadline ─
+  const followUp = activities
+    .filter(a => a.status !== 'done')
+    .map(a => {
+      const openTasks = tasks
+        .filter(t => t.activityId === a.id && t.status !== 'done' && t.dueDate)
+        .sort((x, y) => x.dueDate.localeCompare(y.dueDate));
+      if (!openTasks.length) return null;
+      return { ...a, _nearestTask: openTasks[0] };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a._nearestTask.dueDate.localeCompare(b._nearestTask.dueDate))
+    .slice(0, 5);
 
   const dlStr = (endDate) => {
     const dl = daysLeft(endDate);
@@ -99,15 +106,15 @@ const Dashboard = () => {
     const pa = partnerMap[a.partnerId];
     return (
       <div className="tbl-row act-tbl-row" onClick={() => nav(`/activity/${a.id}`)}>
-        <div className={`prio-dot ${PRIO_CLASS[guessPrio(a.endDate)]}`}></div>
+        <div className={`prio-dot ${PRIO_CLASS[guessPrio(a._nearestTask?.dueDate || a.endDate)]}`}></div>
         <div>
           <div className="cell-name">{a.name}</div>
-          {a.nextAction && <div className="cell-next">→ {a.nextAction}</div>}
+          {a._nearestTask && <div className="cell-next">→ {a._nearestTask.name}</div>}
         </div>
         <span className="cell-tag" style={{color: pa?.color}}>{pa?.name || '—'}</span>
         <span className={`cell-tag stage-${a.stage}`}>{a.stage}</span>
         <span className="cell-small">{a.ballOwner || '—'}</span>
-        <span className="cell-mono">{dlStr(a.endDate)}</span>
+        <span className="cell-mono">{dlStr(a._nearestTask?.dueDate || a.endDate)}</span>
       </div>
     );
   };
@@ -137,12 +144,8 @@ const Dashboard = () => {
   const monthsElapsed  = Math.min(totalMonths, Math.floor(elapsedDays / 30.44) + 1);
   const daysRemaining  = Math.max(0, Math.ceil((PROJECT_END - now) / 86400000));
 
-  // ── Reach Projection ─────────────────────────────────────────
-  const doneActivities   = activities.filter(a => a.status === 'done');
-  const doneReach        = doneActivities.reduce((s, a) => s + (Number(a.reachTotal) || 0), 0);
-  const avgReachPerDone  = doneActivities.length > 0 ? doneReach / doneActivities.length : 0;
-  const projectedReach   = total > 0 ? Math.round(avgReachPerDone * total) : 0;
-  const reachGapPct      = melTotalTarget > 0 ? Math.round(projectedReach / melTotalTarget * 100) : 0;
+  // ── Reach vs Target (Kế hoạch vs GAC target) ─────────────────
+  const reachGapPct = melTotalTarget > 0 ? Math.round(totalReach / melTotalTarget * 100) : 0;
 
   // ── RAG status helpers ────────────────────────────────────────
   // Timeline health: activities done % vs time elapsed %
@@ -180,11 +183,11 @@ const Dashboard = () => {
           <div className="phb-sub">{timeElapsedPct}% thời gian · {actDonePct}% HĐ xong · còn {daysRemaining} ngày</div>
         </div>
 
-        {/* Reach projection */}
+        {/* Reach — Kế hoạch ước lượng */}
         <div className="proj-health-item">
-          <div className="phb-label">Dự báo Reach</div>
+          <div className="phb-label">Số người ước lượng (KH)</div>
           <div className="phb-main">
-            <span className="phb-val">{projectedReach > 0 ? projectedReach.toLocaleString() : '—'}</span>
+            <span className="phb-val">{totalReach > 0 ? totalReach.toLocaleString() : '—'}</span>
             <span className="phb-badge" style={{ background:`var(--${reachRag}-bg,var(--bg2))`, color:`var(--${reachRag})` }}>
               {reachGapPct}% target
             </span>
@@ -192,7 +195,7 @@ const Dashboard = () => {
           <div className="phb-track">
             <div className="phb-fill" style={{ width:`${Math.min(reachGapPct,100)}%`, background:`var(--${reachRag})` }} />
           </div>
-          <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · avg {Math.round(avgReachPerDone)} người/HĐ</div>
+          <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · Kế hoạch dự kiến từ các HĐ</div>
         </div>
 
         {/* Budget */}
@@ -251,9 +254,9 @@ const Dashboard = () => {
           <div className="kpi-val">{over}</div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc':'var(--orange)'}}>
-          <div className="kpi-label">Tổng Reach</div>
-          <div className="kpi-val">{totalReach.toLocaleString()}</div>
-          <div className="kpi-sub">người tham gia</div>
+          <div className="kpi-label">Actual Reach</div>
+          <div className="kpi-val">{melTotalActual.toLocaleString()}</div>
+          <div className="kpi-sub">người tham gia (MEL thực tế)</div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc': pctWomen >= 50 ? 'var(--green)' : 'var(--orange)'}}>
           <div className="kpi-label">Tỷ lệ phụ nữ</div>
@@ -308,7 +311,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* ── Follow-up ── */}
+      {/* ── Follow-up (tasks with nearest deadlines) ── */}
       {followUp.length > 0 && (
         <div className="dash-section">
           <div className="dash-section-hdr">
@@ -320,21 +323,6 @@ const Dashboard = () => {
               <span></span><span>Activity</span><span>Partner</span><span>Stage</span><span>Owner</span><span>Deadline</span>
             </div>
             {followUp.map(a => <ActRow key={a.id} a={a} />)}
-          </div>
-        </div>
-      )}
-
-      {/* ── Upcoming Deadlines ── */}
-      {upcoming.length > 0 && (
-        <div className="dash-section">
-          <div className="dash-section-hdr">
-            <h2 className="dash-section-title">⚠️ Sắp deadline (14 ngày)</h2>
-          </div>
-          <div className="tbl-wrap">
-            <div className="tbl-hdr act-tbl-row">
-              <span></span><span>Activity</span><span>Partner</span><span>Stage</span><span>Owner</span><span>Deadline</span>
-            </div>
-            {upcoming.map(a => <ActRow key={a.id} a={a} />)}
           </div>
         </div>
       )}

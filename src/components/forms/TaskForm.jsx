@@ -7,7 +7,7 @@ const defaultForm = (activityId) => ({ name: '', status: 'todo', assignee: '', d
 
 const fromTask = (t, fallbackActivityId) => ({
   name:       t.name       || '',
-  status:     t.status === 'in_progress' ? 'todo' : (t.status || 'todo'),
+  status:     (['todo', 'done'].includes(t.status) ? t.status : 'todo'),
   assignee:   t.assignee   || '',
   dueDate:    t.dueDate    || '',
   activityId: t.activityId || fallbackActivityId || '',
@@ -33,7 +33,7 @@ export const TaskForm = ({ isOpen, onClose, activityId, editTask }) => {
       if (editTask) {
         updateTask(editTask.id, { ...form, notes: editTask.notes || '' });
       } else {
-        addTask({ id: generateId('t'), notes: '', pos: Date.now(), ...form });
+        addTask({ id: generateId('t'), notes: '', ...form });
       }
       setForm(defaultForm(activityId));
       setError('');

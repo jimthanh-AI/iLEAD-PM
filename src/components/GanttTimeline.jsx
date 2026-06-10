@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FileText } from 'lucide-react';
+import { generateTimelineReport } from '../utils/reportGenerator';
 import { useData } from '../context/DataContext';
 import { STAGE_COLORS, daysLeft, fmtDate } from '../utils/constants';
 import '../pages/Dashboard.css';
@@ -66,7 +68,9 @@ export const GanttTimeline = () => {
     const s = new Date(a.startDate + 'T00:00:00');
     const e = new Date((a.endDate || a.startDate) + 'T00:00:00');
     return s <= re && e >= rs;
-  });
+  }).sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+  const openReport = () => generateTimelineReport(visible, partners, rangeLabel);
 
   return (
     <div className="page-container animate-fade-in">
@@ -92,6 +96,7 @@ export const GanttTimeline = () => {
             <option value="">Tất cả Partner</option>
             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          <button className="btn btn-secondary btn-sm" onClick={openReport} title="Xuất báo cáo Timeline (PDF)"><FileText size={14} /> Report</button>
         </div>
         <div className="gantt-range-label">{rangeLabel} — {visible.length} activities</div>
 
@@ -113,6 +118,10 @@ export const GanttTimeline = () => {
               const bl = pct(s); const bw = Math.max(.5, pct(e) - bl);
               const sc = STAGE_COLORS[a.stage] || '#888';
               const isOver = a.endDate && daysLeft(a.endDate) < 0 && a.status !== 'done';
+              const barColor = a.status === 'done' ? '#10b981'
+                             : isOver ? 'var(--red)'
+                             : a.status === 'in_progress' ? sc
+                             : '#9ca3af';
               return (
                 <div key={a.id} className="gantt-row" onClick={() => nav(`/activity/${a.id}`)}>
                   <div className="gantt-left">
@@ -129,7 +138,7 @@ export const GanttTimeline = () => {
                         <div className="gantt-today" />
                       </div>
                     )}
-                    <div className="gantt-bar" style={{left:`${bl}%`,width:`${bw}%`,background:isOver?'var(--red)':sc}}>
+                    <div className="gantt-bar" style={{left:`${bl}%`,width:`${bw}%`,background:barColor}}>
                       {bw > 10 ? a.stage : ''}
                     </div>
                   </div>

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
+import MobileBottomNav from './components/MobileBottomNav';
+import QuickTaskSheet from './components/QuickTaskSheet';
 import Dashboard from './pages/Dashboard';
 import PartnerView from './pages/PartnerView';
 import ActivityDetail from './pages/ActivityDetail';
@@ -11,13 +13,15 @@ import GlobalKanban from './pages/GlobalKanban';
 import { GanttTimeline } from './components/GanttTimeline';
 import { DataProvider } from './context/DataContext';
 import { ToastProvider } from './context/ToastContext';
-import { IdentityModal } from './components/IdentityModal';
 import { ConfirmProvider } from './context/ConfirmContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginPage from './pages/LoginPage';
 import ReportPage from './pages/ReportPage';
 import MELDashboard from './pages/MELDashboard';
 import MELEntry from './pages/MELEntry';
 import WeeklyPlan from './pages/WeeklyPlan';
 import SettingsPage from './pages/SettingsPage';
+import ActivityLogPage from './pages/ActivityLogPage';
 
 const NotFound = () => (
   <div style={{ padding: '48px 32px', textAlign: 'center' }}>
@@ -32,9 +36,68 @@ const NotFound = () => (
   </div>
 );
 
-function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+// Loading spinner shown while resolving saved session
+const AuthLoading = () => (
+  <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg,#f5f5f0)' }}>
+    <div style={{ textAlign:'center', color:'var(--text2,#6a6a66)' }}>
+      <div style={{ fontSize:'28px', fontWeight:800, marginBottom:'12px' }}>
+        <span style={{ color:'var(--accent,#2563eb)', fontStyle:'italic' }}>i</span>LEAD
+      </div>
+      <div style={{ fontSize:'13px' }}>Đang tải...</div>
+    </div>
+  </div>
+);
 
+// Guard: show login / loading before rendering the app
+function AuthGuard({ children }) {
+  const { appUser, authLoading } = useAuth();
+  if (authLoading) return <AuthLoading />;
+  if (!appUser)    return <LoginPage />;
+  return children;
+}
+
+function AppShell() {
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
+  const [quickTaskOpen,  setQuickTaskOpen]  = useState(false);
+
+  return (
+    <BrowserRouter>
+      <div className="app-container">
+        <div
+          className={`sidebar-overlay${sidebarOpen ? ' visible' : ''}`}
+          onClick={() => setSidebarOpen(false)}
+        />
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="main-content">
+          <Topbar onHamburger={() => setSidebarOpen(o => !o)} />
+          <main className="view-area">
+            <Routes>
+              <Route path="/"            element={<Dashboard />} />
+              <Route path="/tasks"        element={<AllTasks />} />
+              <Route path="/kanban"       element={<GlobalKanban />} />
+              <Route path="/timeline"     element={<GanttTimeline />} />
+              <Route path="/calendar"     element={<MasterCalendar />} />
+              <Route path="/weekly"        element={<WeeklyPlan />} />
+              <Route path="/partner/:id"  element={<PartnerView />} />
+              <Route path="/activity/:id" element={<ActivityDetail />} />
+              <Route path="/report"        element={<ReportPage />} />
+              <Route path="/mel-dashboard" element={<MELDashboard />} />
+              <Route path="/mel-entry"     element={<MELEntry />} />
+              <Route path="/settings"      element={<SettingsPage />} />
+              <Route path="/activity-log"  element={<ActivityLogPage />} />
+              <Route path="*"              element={<NotFound />} />
+            </Routes>
+          </main>
+        </div>
+        {/* Mobile-only: bottom nav + quick task sheet */}
+        <MobileBottomNav onQuickTask={() => setQuickTaskOpen(true)} />
+        <QuickTaskSheet isOpen={quickTaskOpen} onClose={() => setQuickTaskOpen(false)} />
+      </div>
+    </BrowserRouter>
+  );
+}
+
+function App() {
   useEffect(() => {
     const theme = localStorage.getItem('ilead_theme') || 'light';
     document.documentElement.dataset.theme = theme;
@@ -43,38 +106,13 @@ function App() {
   return (
     <ToastProvider>
       <ConfirmProvider>
-      <DataProvider>
-        <IdentityModal />
-        <BrowserRouter>
-          <div className="app-container">
-            <div
-              className={`sidebar-overlay${sidebarOpen ? ' visible' : ''}`}
-              onClick={() => setSidebarOpen(false)}
-            />
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <div className="main-content">
-              <Topbar onHamburger={() => setSidebarOpen(o => !o)} />
-              <main className="view-area">
-                <Routes>
-                  <Route path="/"            element={<Dashboard />} />
-                  <Route path="/tasks"        element={<AllTasks />} />
-                  <Route path="/kanban"       element={<GlobalKanban />} />
-                  <Route path="/timeline"     element={<GanttTimeline />} />
-                  <Route path="/calendar"     element={<MasterCalendar />} />
-                  <Route path="/weekly"        element={<WeeklyPlan />} />
-                  <Route path="/partner/:id"  element={<PartnerView />} />
-                  <Route path="/activity/:id" element={<ActivityDetail />} />
-                  <Route path="/report"        element={<ReportPage />} />
-                  <Route path="/mel-dashboard" element={<MELDashboard />} />
-                  <Route path="/mel-entry"     element={<MELEntry />} />
-                  <Route path="/settings"      element={<SettingsPage />} />
-                  <Route path="*"              element={<NotFound />} />
-                </Routes>
-              </main>
-            </div>
-          </div>
-        </BrowserRouter>
-      </DataProvider>
+        <AuthProvider>
+          <DataProvider>
+            <AuthGuard>
+              <AppShell />
+            </AuthGuard>
+          </DataProvider>
+        </AuthProvider>
       </ConfirmProvider>
     </ToastProvider>
   );

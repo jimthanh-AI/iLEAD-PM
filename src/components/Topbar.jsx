@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Search, Download, Settings } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Search, Settings, LogOut } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import './Topbar.css';
 
@@ -9,6 +10,16 @@ const Topbar = ({ onHamburger }) => {
   const location   = useLocation();
   const nav        = useNavigate();
   const { partners, activities, tasks } = useData();
+  const { appUser, signOut } = useAuth();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -65,37 +76,6 @@ const Topbar = ({ onHamburger }) => {
 
   const crumbs = buildBreadcrumbs();
   const searchResults = executeSearch();
-
-  const exportTasksToCSV = () => {
-    const rows = [
-      ['Task ID', 'Partner', 'Activity', 'Task Name', 'Status', 'Assignee', 'Deadline', 'Người Tạo']
-    ];
-
-    tasks.forEach(t => {
-      const a  = activities.find(act => act.id === t.activityId);
-      const pa = a ? partners.find(p => p.id === a.partnerId) : null;
-
-      rows.push([
-        t.id,
-        pa ? `"${pa.name}"` : '',
-        a ? `"${a.name}"` : '',
-        `"${t.name}"`,
-        t.status,
-        `"${t.assignee || ''}"`,
-        t.dueDate || '',
-        `"${t.author || ''}"`
-      ]);
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `iLEAD_Tasks_Export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <header className="topbar">
@@ -158,9 +138,6 @@ const Topbar = ({ onHamburger }) => {
           )}
         </div>
 
-        <button className="btn btn-secondary" onClick={exportTasksToCSV} title="Xuất dữ liệu Excel (CSV)">
-          <Download size={15} /> Export
-        </button>
         <NotificationCenter />
         <button
           className={`btn btn-icon${location.pathname === '/settings' ? ' active' : ''}`}
@@ -169,6 +146,35 @@ const Topbar = ({ onHamburger }) => {
         >
           <Settings size={18} />
         </button>
+
+        {/* User avatar + dropdown */}
+        {appUser && (
+          <div className="topbar-user" ref={menuRef}>
+            <button
+              className="topbar-user-btn"
+              onClick={() => setUserMenuOpen(o => !o)}
+              title={appUser.email}
+            >
+              <span className="topbar-avatar">
+                {appUser.display_name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+              <span className="topbar-user-name">{appUser.display_name}</span>
+            </button>
+            {userMenuOpen && (
+              <div className="topbar-user-menu">
+                <div className="topbar-user-info">
+                  <div className="topbar-user-fullname">{appUser.display_name}</div>
+                  <div className="topbar-user-email">{appUser.email}</div>
+                  <div className="topbar-user-role">{appUser.role}</div>
+                </div>
+                <button className="topbar-signout" onClick={signOut}>
+                  <LogOut size={14} />
+                  Đăng xuất
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

@@ -59,6 +59,16 @@
 .role-btn.active strong { color: var(--accent); }
 .role-btn:hover:not(.active) { border-color: var(--text3); }
 
+/* User management */
+.user-mgmt-list { display: flex; flex-direction: column; gap: 8px; }
+.user-mgmt-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.user-mgmt-info { flex: 1; min-width: 0; }
+.user-mgmt-info strong { display: block; font-size: .85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-mgmt-info span { font-size: .75rem; color: var(--text2); }
+.user-role-select { font-size: .82rem; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
+.btn-save-role { font-size: .78rem; padding: 5px 12px; border: none; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.btn-save-role:hover { opacity: .85; }
+
 /* Danger zone */
 .danger-zone { border-color: #fca5a5; }
 .danger-zone h2 { color: #dc2626; }
