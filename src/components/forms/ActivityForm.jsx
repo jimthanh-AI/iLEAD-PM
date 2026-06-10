@@ -194,11 +194,12 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         </div>
       </div>
 
-      {/* Reach — edit only (fill after activity is done) */}
-      {editActivity && (
+      {/* Reach — ước lượng khi tạo mới, thực tế khi Done */}
+      {(
         <div style={{ background:'var(--bg2)', borderRadius:'var(--radius)', padding:'12px', marginBottom:'4px' }}>
           <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text2)', marginBottom:'8px' }}>
-            Số người tham gia (Reach)
+            Số người {editActivity ? 'tham gia' : 'ước lượng'} (Reach)
+            {!editActivity && <span style={{ fontWeight:400, color:'var(--text3)', marginLeft:'6px' }}>· điền ước lượng kế hoạch, cập nhật thực tế sau khi Done</span>}
           </div>
           <div className="form-row" style={{ marginBottom:0 }}>
             <div className="form-group" style={{ marginBottom:0 }}>

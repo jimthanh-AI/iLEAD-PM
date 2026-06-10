@@ -168,7 +168,10 @@ const Dashboard = () => {
         <p className="page-meta">{today}</p>
       </div>
 
-      {/* ── Project Health Bar ── */}
+      {/* ── KẾ HOẠCH section ── */}
+      <div className="dash-section-label" style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px', marginTop:'4px' }}>
+        📋 KẾ HOẠCH — Từ Activities
+      </div>
       <div className="proj-health-bar">
         {/* Timeline */}
         <div className="proj-health-item">
@@ -188,7 +191,7 @@ const Dashboard = () => {
 
         {/* Reach — Kế hoạch ước lượng */}
         <div className="proj-health-item">
-          <div className="phb-label">Số người ước lượng (KH)</div>
+          <div className="phb-label">Reach ước lượng (KH)</div>
           <div className="phb-main">
             <span className="phb-val">{totalReach > 0 ? totalReach.toLocaleString() : '—'}</span>
             <span className="phb-badge" style={{ background:`var(--${reachRag}-bg,var(--bg2))`, color:`var(--${reachRag})` }}>
@@ -219,9 +222,9 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Gender */}
+        {/* Gender KH */}
         <div className="proj-health-item">
-          <div className="phb-label">Tỷ lệ phụ nữ</div>
+          <div className="phb-label">Tỉ lệ nữ (KH)</div>
           <div className="phb-main">
             <span className="phb-val">{pctWomen}%</span>
             <span className="phb-badge" style={{ background:`var(--${genderRag}-bg,var(--bg2))`, color:`var(--${genderRag})` }}>
@@ -233,6 +236,74 @@ const Dashboard = () => {
             <div className="phb-fill" style={{ width:`${Math.min(pctWomen,100)}%`, background:`var(--${genderRag})` }} />
           </div>
           <div className="phb-sub">{totalWomen.toLocaleString()} / {totalReach.toLocaleString()} người · Target: ≥50%</div>
+        </div>
+      </div>
+
+      {/* ── THỰC TẾ section ── */}
+      <div className="dash-section-label" style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px', marginTop:'20px' }}>
+        📊 THỰC TẾ — Từ MEL Entries
+      </div>
+      <div className="proj-health-bar">
+        {/* Budget TT */}
+        <div className="proj-health-item">
+          <div className="phb-label">Budget đã dùng</div>
+          <div className="phb-main">
+            <span className="phb-val">{fmtCad(totalBudgetTT)}</span>
+            <span className="phb-badge" style={{ background:`var(--${budgetRag}-bg,var(--bg2))`, color:`var(--${budgetRag})` }}>
+              {burnRate}% của {fmtCad(totalBudgetKH)}
+            </span>
+          </div>
+          <div className="phb-track">
+            <div className="phb-fill" style={{ width:`${timeElapsedPct}%`, background:'var(--text3)', opacity:0.2 }} />
+            <div className="phb-fill" style={{ width:`${Math.min(burnRate,100)}%`, background:`var(--${budgetRag})`, opacity:0.8 }} />
+          </div>
+          <div className="phb-sub">Còn lại: {fmtCad(totalBudgetKH - totalBudgetTT)} · Nguồn: MEL line items</div>
+        </div>
+
+        {/* Actual Reach MEL */}
+        <div className="proj-health-item">
+          <div className="phb-label">Actual Reach (MEL)</div>
+          <div className="phb-main">
+            <span className="phb-val">{melTotalActual > 0 ? melTotalActual.toLocaleString() : '—'}</span>
+            <span className="phb-badge" style={{ background:`var(--${reachRag}-bg,var(--bg2))`, color:`var(--${reachRag})` }}>
+              {melPct}% target
+            </span>
+          </div>
+          <div className="phb-track">
+            <div className="phb-fill" style={{ width:`${Math.min(melPct,100)}%`, background:`var(--${reachRag})` }} />
+          </div>
+          <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · {melEntries.length} MEL entries</div>
+        </div>
+
+        {/* Gender TT */}
+        <div className="proj-health-item">
+          <div className="phb-label">Tỉ lệ nữ (TT/MEL)</div>
+          <div className="phb-main">
+            <span className="phb-val">{melFemaleRatio}%</span>
+            <span className="phb-badge" style={{ background: melFemaleRatio >= 50 ? 'var(--green-bg,var(--bg2))' : 'var(--orange-bg,var(--bg2))', color: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }}>
+              {melFemaleRatio >= 50 ? 'Đạt ≥50%' : 'Dưới 50%'}
+            </span>
+          </div>
+          <div className="phb-track">
+            <div className="phb-fill" style={{ width:'50%', background:'var(--text3)', opacity:0.2 }} />
+            <div className="phb-fill" style={{ width:`${Math.min(melFemaleRatio,100)}%`, background: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }} />
+          </div>
+          <div className="phb-sub">{melTotalFemale.toLocaleString()} / {melTotalActual.toLocaleString()} người · GAC ≥50%</div>
+        </div>
+
+        {/* MEL Progress */}
+        <div className="proj-health-item" style={{ cursor:'pointer' }} onClick={() => nav('/mel-dashboard')}>
+          <div className="phb-label">MEL Progress</div>
+          <div className="phb-main">
+            <span className="phb-val">{melPct}%</span>
+            <span className="phb-badge" style={{ background: melPct >= 80 ? 'var(--green-bg,var(--bg2))' : melPct >= 40 ? 'var(--orange-bg,var(--bg2))' : 'var(--bg2)', color: melPct >= 80 ? 'var(--green)' : melPct >= 40 ? 'var(--orange)' : 'var(--red)' }}>
+              {melPct >= 80 ? 'Đạt mục tiêu' : melPct >= 40 ? 'Đang tiến hành' : 'Cần đẩy mạnh'}
+            </span>
+          </div>
+          <div className="phb-track">
+            <div className="phb-fill" style={{ width:`${Math.min(melPct,100)}%`, background: melPct >= 80 ? 'var(--green)' : melPct >= 40 ? 'var(--orange)' : 'var(--red)' }} />
+          </div>
+          <div className="phb-sub">{melTotalActual.toLocaleString()} / {melTotalTarget.toLocaleString()} · Xem MEL Dashboard →</div>
         </div>
       </div>
 
@@ -261,10 +332,10 @@ const Dashboard = () => {
           <div className="kpi-val">{melTotalActual.toLocaleString()}</div>
           <div className="kpi-sub">người tham gia (MEL thực tế)</div>
         </div>
-        <div className="kpi-card glass-card" style={{'--kc': pctWomen >= 50 ? 'var(--green)' : 'var(--orange)'}}>
-          <div className="kpi-label">Tỷ lệ phụ nữ</div>
-          <div className="kpi-val">{pctWomen}%</div>
-          <div className="kpi-sub">{totalWomen.toLocaleString()} / {totalReach.toLocaleString()} người{pctWomen >= 50 ? ' ✓' : ' ⚠️'}</div>
+        <div className="kpi-card glass-card" style={{'--kc': melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)'}}>
+          <div className="kpi-label">Tỉ lệ nữ TT (MEL)</div>
+          <div className="kpi-val">{melFemaleRatio}%</div>
+          <div className="kpi-sub">{melTotalFemale.toLocaleString()} / {melTotalActual.toLocaleString()} người{melFemaleRatio >= 50 ? ' ✓' : ' ⚠️'}</div>
         </div>
       </div>
 
@@ -360,38 +431,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* ── MEL Summary ── */}
-      <div className="dash-section mel-overview-section">
-        <div className="dash-section-hdr">
-          <h2 className="dash-section-title">📊 MEL Overview — GAC Logic Model</h2>
-          <button className="btn btn-sm" onClick={() => nav('/mel-dashboard')}>Xem MEL Dashboard →</button>
-        </div>
-        <div className="mel-stat-row">
-          <div className="mel-stat-cell">
-            <div className="mel-stat-label">MEL Progress</div>
-            <div className="mel-stat-val" style={{ color: melPct >= 80 ? 'var(--green)' : melPct >= 40 ? 'var(--orange)' : 'var(--red)' }}>{melPct}%</div>
-            <div className="mel-stat-bar"><div className="mel-stat-bar-fill" style={{ width:`${Math.min(melPct,100)}%`, background: melPct >= 80 ? 'var(--green)' : melPct >= 40 ? 'var(--orange)' : 'var(--red)' }} /></div>
-            <div className="mel-stat-sub">{melPct >= 80 ? '✓ Đạt mục tiêu' : melPct >= 40 ? 'Đang tiến hành' : '⚠ Cần đẩy mạnh'}</div>
-          </div>
-          <div className="mel-stat-cell">
-            <div className="mel-stat-label">Target (VN)</div>
-            <div className="mel-stat-val" style={{ color:'var(--accent)' }}>{melTotalTarget.toLocaleString()}</div>
-            <div className="mel-stat-sub">người / năm · GAC target</div>
-          </div>
-          <div className="mel-stat-cell">
-            <div className="mel-stat-label">Actual Reach</div>
-            <div className="mel-stat-val" style={{ color:'var(--green)' }}>{melTotalActual.toLocaleString()}</div>
-            <div className="mel-stat-bar"><div className="mel-stat-bar-fill" style={{ width:`${Math.min(melPct,100)}%`, background:'var(--green)' }} /></div>
-            <div className="mel-stat-sub">{melEntries.length} MEL entries đã ghi nhận</div>
-          </div>
-          <div className="mel-stat-cell">
-            <div className="mel-stat-label">Tỉ lệ Nữ</div>
-            <div className="mel-stat-val" style={{ color: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }}>{melFemaleRatio}%</div>
-            <div className="mel-stat-bar"><div className="mel-stat-bar-fill" style={{ width:`${Math.min(melFemaleRatio,100)}%`, background: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }} /></div>
-            <div className="mel-stat-sub">{melTotalFemale.toLocaleString()} / {melTotalActual.toLocaleString()} người · Target: ≥50%</div>
-          </div>
-        </div>
-      </div>
 
       {/* ── Partner Summary Table ── */}
       <div className="dash-section">
