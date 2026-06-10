@@ -194,11 +194,12 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         </div>
       </div>
 
-      {/* Reach — edit only (fill after activity is done) */}
-      {editActivity && (
+      {/* Reach — ước lượng khi tạo mới, thực tế khi Done */}
+      {(
         <div style={{ background:'var(--bg2)', borderRadius:'var(--radius)', padding:'12px', marginBottom:'4px' }}>
           <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text2)', marginBottom:'8px' }}>
-            Số người tham gia (Reach)
+            Số người {editActivity ? 'tham gia' : 'ước lượng'} (Reach)
+            {!editActivity && <span style={{ fontWeight:400, color:'var(--text3)', marginLeft:'6px' }}>· điền ước lượng kế hoạch, cập nhật thực tế sau khi Done</span>}
           </div>
           <div className="form-row" style={{ marginBottom:0 }}>
             <div className="form-group" style={{ marginBottom:0 }}>
@@ -221,6 +222,16 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
             <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'6px' }}>
               % phụ nữ: {Math.round((form.reachWomen / form.reachTotal) * 100)}%
               {selectedType && selectedType.code !== 'X' && ` · Target: ${selectedType.standardReach} người`}
+            </div>
+          )}
+          {(Number(form.reachWomen) + Number(form.reachMen)) > Number(form.reachTotal) && Number(form.reachTotal) > 0 && (
+            <div style={{ fontSize:'11px', color:'var(--red)', marginTop:'4px' }}>
+              ⚠ Phụ nữ + Nam ({Number(form.reachWomen) + Number(form.reachMen)}) vượt Tổng ({form.reachTotal}) — kiểm tra lại số liệu.
+            </div>
+          )}
+          {Number(form.reachWomen) > Number(form.reachTotal) && Number(form.reachTotal) > 0 && (
+            <div style={{ fontSize:'11px', color:'var(--red)', marginTop:'4px' }}>
+              ⚠ Số phụ nữ ({form.reachWomen}) không thể lớn hơn Tổng ({form.reachTotal}).
             </div>
           )}
         </div>
@@ -246,6 +257,13 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
           </div>
         )}
       </div>
+
+      {/* Budget over-planned warning */}
+      {editActivity && form.budget_actual > 0 && form.budget_planned > 0 && Number(form.budget_actual) > Number(form.budget_planned) && (
+        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'var(--radius)', padding:'8px 12px', fontSize:'12px', color:'#92400e', marginTop:'-4px', marginBottom:'4px' }}>
+          ⚠ Thực tế (<strong>${Number(form.budget_actual).toLocaleString()}</strong>) vượt kế hoạch (<strong>${Number(form.budget_planned).toLocaleString()}</strong>) — chênh lệch ${(Number(form.budget_actual) - Number(form.budget_planned)).toLocaleString()} CAD. Cần báo cáo PM.
+        </div>
+      )}
 
       {/* Ghi chú / Blocker */}
       <div className="form-group">
