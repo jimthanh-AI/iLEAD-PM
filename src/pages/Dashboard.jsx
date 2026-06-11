@@ -245,21 +245,25 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* KPI Cards — chỉ 4 card KH, bỏ 2 card MEL */}
-        <div className="kpi-grid" style={{ marginTop:16 }}>
+        {/* KPI Cards — 5 cards phân bố đều */}
+        <div className="kpi-grid" style={{ marginTop:16, gridTemplateColumns:'repeat(5,1fr)' }}>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--accent)'}} onClick={() => nav('/kanban')}>
             <div className="kpi-label">Tổng hoạt động</div>
             <div className="kpi-val">{total}</div>
             <div className="kpi-sub">iLEAD 2025–2028</div>
           </div>
-          <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--green)'}} onClick={() => nav('/kanban')}>
-            <div className="kpi-label">Hoàn thành</div>
-            <div className="kpi-val">{done}</div>
-            <div className="prog"><div className="prog-fill" style={{width:`${pct}%`, background:'var(--green)'}}></div></div>
+          <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--text3)'}} onClick={() => nav('/kanban')}>
+            <div className="kpi-label">Chưa triển khai</div>
+            <div className="kpi-val">{notst}</div>
           </div>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--accent)'}} onClick={() => nav('/kanban')}>
             <div className="kpi-label">Đang triển khai</div>
             <div className="kpi-val">{inp}</div>
+          </div>
+          <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--green)'}} onClick={() => nav('/kanban')}>
+            <div className="kpi-label">Hoàn thành</div>
+            <div className="kpi-val">{done}</div>
+            <div className="prog"><div className="prog-fill" style={{width:`${pct}%`, background:'var(--green)'}}></div></div>
           </div>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--red)'}} onClick={() => nav('/kanban')}>
             <div className="kpi-label">Quá hạn</div>
