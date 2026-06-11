@@ -307,7 +307,7 @@ export default function ProjectReportPage() {
             const aType = ACTIVITY_TYPE_MAP[a.activityTypeCode];
             return (
               <tr key={a.id}>
-                <td style={S.td}>{a.name}</td>
+                <td style={S.td}>{lang === 'en' ? (a.name_en || a.name) : a.name}</td>
                 <td style={S.td}>{aType ? `Type ${aType.code}` : '\u2014'}</td>
                 <td style={S.td}>{a.stage || '\u2014'}</td>
                 <td style={{ ...S.td, whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDateRange(a.startDate, a.endDate)}</td>
@@ -514,9 +514,9 @@ export default function ProjectReportPage() {
                         position: 'absolute', left: `${leftPct}%`, width: `${widthPct}%`,
                         height: 16, top: 3, borderRadius: 3, background: statusColor, opacity: 0.85,
                         minWidth: 6,
-                      }} title={`${a.name} (${a.startDate} \u2192 ${a.endDate || '?'})`} />
+                      }} title={`${lang === 'en' ? (a.name_en || a.name) : a.name} (${a.startDate} \u2192 ${a.endDate || '?'})`} />
                       <div style={{ position: 'absolute', left: 0, top: 2, marginLeft: -158, width: 150, fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {a.name}
+                        {lang === 'en' ? (a.name_en || a.name) : a.name}
                       </div>
                     </div>
                   );

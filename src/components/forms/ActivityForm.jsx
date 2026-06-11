@@ -4,7 +4,7 @@ import { STAGES, STAGE_LABELS, STATUS_LABELS, generateId, BALL_OWNERS } from '..
 import { Modal } from '../Modal';
 
 const defaultForm = {
-  name:'', status:'not_started', stage:'S1',
+  name:'', name_en:'', status:'not_started', stage:'S1',
   activityTypeCode:'', iteration:1,
   ballOwner:'', ca:'',
   reachTotal:0, reachWomen:0, reachMen:0,
@@ -14,6 +14,7 @@ const defaultForm = {
 
 const fromActivity = (a) => ({
   name:             a.name             || '',
+  name_en:          a.name_en          || '',
   status:           a.status           || 'not_started',
   stage:            a.stage            || 'S1',
   activityTypeCode: a.activityTypeCode || '',
@@ -127,6 +128,14 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         <input autoFocus className="form-input" value={form.name}
           onChange={e => set('name', e.target.value)}
           placeholder="VD: ToT cán bộ công chức về RBP/ESG – VCCI MTTN" />
+      </div>
+
+      {/* Name EN */}
+      <div className="form-group">
+        <label className="form-label">Activity Name (English) <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 11 }}>— dùng cho Project Report EN</span></label>
+        <input className="form-input" value={form.name_en}
+          onChange={e => set('name_en', e.target.value)}
+          placeholder="VD: VCCI MTTN - ToT for Civil Servants on RBP/ESG" />
       </div>
 
       {/* Status + Stage */}
