@@ -329,10 +329,31 @@ export default function ProjectReportPage() {
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 12mm 10mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          #root, #root > *, .app-shell, .app-body, .app-content {
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+          }
           .sidebar, .topbar, .mobile-bottom-nav, .pr-no-print { display: none !important; }
-          .main-content { margin: 0 !important; padding: 0 !important; }
-          .view-area { padding: 0 !important; overflow: visible !important; }
+          .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          .view-area {
+            padding: 0 !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+          }
           .pr-page { max-width: 100% !important; padding: 8px !important; }
           .pr-section { page-break-inside: auto; }
           .pr-page-break { page-break-before: always; }
@@ -489,7 +510,7 @@ export default function ProjectReportPage() {
         {/* Section 4 — Timeline Dashboard */}
         <div className="pr-section" style={S.section}>
           <div style={S.sectionTitle}>{t.timeline}</div>
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px 12px', background: '#fafbfc', overflowX: 'auto' }}>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px 12px', background: '#fafbfc', overflowX: 'auto', position: 'relative' }}>
             {/* Month headers */}
             <div style={{ display: 'flex', marginBottom: 8, marginLeft: 160, position: 'relative' }}>
               {MONTHS.map((m, i) => (
