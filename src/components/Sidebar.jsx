@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Layout, BarChart3, CalendarCheck, Plus, TrendingUp, ClipboardList, Activity } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Layout, BarChart3, CalendarCheck, Plus, TrendingUp, ClipboardList, Activity, FileBarChart2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { PartnerForm } from './forms/PartnerForm';
 import './Sidebar.css';
@@ -43,6 +43,10 @@ const Sidebar = ({ isOpen, onClose }) => {
         </NavLink>
         <NavLink to="/mel-entry" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onClose}>
           <ClipboardList size={16} /><span>MEL Entries</span>
+        </NavLink>
+        <div className="nav-section-title">Reports</div>
+        <NavLink to="/project-report" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onClose}>
+          <FileBarChart2 size={16} /><span>Project Report</span>
         </NavLink>
         <div className="nav-section-title">Admin</div>
         <NavLink to="/activity-log" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onClose}>
