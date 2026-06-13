@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
 import {
   INDICATOR_GROUPS, STAGES, STAGE_LABELS, ACTIVITY_TYPE_MAP,
-  STATUS_LABELS, fmtDate,
+  STATUS_LABELS, fmtDate, STAGE_COLORS, daysLeft,
 } from '../utils/constants';
 import {
   computeTimeElapsed, computeRiskMatrix, computePartnerScorecard, computeForecasts,
@@ -276,13 +276,12 @@ export default function ProjectReportPage() {
     }));
   };
 
-  // Timeline data grouped by partner
-  const timelineData = useMemo(() => {
-    return partners.map(p => {
-      const acts = activities.filter(a => a.partnerId === p.id && a.startDate);
-      return { partner: p, acts: acts.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || '')) };
-    }).filter(g => g.acts.length > 0);
-  }, [partners, activities]);
+  // Timeline data — flat list sorted by startDate (for GanttTimeline-style rendering)
+  const ganttRows = useMemo(() => {
+    return activities
+      .filter(a => a.startDate)
+      .sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+  }, [activities]);
 
   const todayPct = Math.max(0, Math.min(100, ((new Date() - FY_START) / FY_SPAN) * 100));
 
@@ -341,6 +340,9 @@ export default function ProjectReportPage() {
             overflow: visible !important;
           }
           .sidebar, .topbar, .mobile-bottom-nav, .pr-no-print { display: none !important; }
+          .qts-backdrop, .qts-sheet, .modal-overlay, .modal-content,
+          .mel-modal-overlay, .mel-modal, .identity-modal,
+          [role="dialog"], [role="alertdialog"] { display: none !important; }
           .main-content {
             margin: 0 !important;
             padding: 0 !important;
@@ -507,50 +509,71 @@ export default function ProjectReportPage() {
           </div>
         </div>
 
-        {/* Section 4 — Timeline Dashboard */}
+        {/* Section 4 — Timeline Dashboard (matches GanttTimeline visual style) */}
         <div className="pr-section" style={S.section}>
           <div style={S.sectionTitle}>{t.timeline}</div>
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px 12px', background: '#fafbfc', overflowX: 'auto', position: 'relative' }}>
-            {/* Month headers */}
-            <div style={{ display: 'flex', marginBottom: 8, marginLeft: 160, position: 'relative' }}>
-              {MONTHS.map((m, i) => (
-                <div key={m} style={{ flex: 1, fontSize: 10, fontWeight: 600, color: '#94a3b8', textAlign: 'center', borderLeft: '1px solid #e2e8f0', minWidth: 60 }}>{m}</div>
-              ))}
-            </div>
-            {/* Activities */}
-            {timelineData.map(({ partner: p, acts }) => (
-              <div key={p.id} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#334155', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={S.partnerDot(p.color)} />{p.name}
-                </div>
-                {acts.map(a => {
-                  const start = new Date(a.startDate + 'T00:00:00');
-                  const end = a.endDate ? new Date(a.endDate + 'T00:00:00') : start;
-                  const leftPct = Math.max(0, Math.min(100, ((start - FY_START) / FY_SPAN) * 100));
-                  const widthPct = Math.max(1, Math.min(100 - leftPct, ((end - start) / FY_SPAN) * 100));
-                  const statusColor = a.status === 'done' ? '#10b981' : a.status === 'in_progress' ? '#3b82f6' : '#9ca3af';
-                  return (
-                    <div key={a.id} style={{ position: 'relative', height: 22, marginLeft: 160, marginBottom: 2 }}>
-                      <div style={{
-                        position: 'absolute', left: `${leftPct}%`, width: `${widthPct}%`,
-                        height: 16, top: 3, borderRadius: 3, background: statusColor, opacity: 0.85,
-                        minWidth: 6,
-                      }} title={`${lang === 'en' ? (a.name_en || a.name) : a.name} (${a.startDate} \u2192 ${a.endDate || '?'})`} />
-                      <div style={{ position: 'absolute', left: 0, top: 2, marginLeft: -158, width: 150, fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {lang === 'en' ? (a.name_en || a.name) : a.name}
-                      </div>
-                    </div>
-                  );
-                })}
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', minWidth: 700, background: '#fff' }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0' }}>
+              <div style={{ width: 220, minWidth: 220, flexShrink: 0, padding: '8px 14px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', borderRight: '1px solid #e2e8f0' }}>
+                {lang === 'en' ? 'Activity / Partner' : 'Hoạt động / Đối tác'}
               </div>
-            ))}
-            {/* Today line */}
-            <div style={{
-              position: 'absolute', left: `calc(160px + ${todayPct}%)`, top: 0, bottom: 0,
-              width: 2, background: '#dc2626', zIndex: 10, pointerEvents: 'none',
-            }}>
-              <div style={{ position: 'absolute', top: -2, left: -14, fontSize: 9, color: '#dc2626', fontWeight: 700, whiteSpace: 'nowrap' }}>{t.today}</div>
+              <div style={{ flex: 1, position: 'relative', height: 32, overflow: 'hidden' }}>
+                {MONTHS.map((m, i) => (
+                  <span key={m} style={{ position: 'absolute', top: 8, left: `${i / 12 * 100}%`, fontSize: 9, fontFamily: 'monospace', color: '#94a3b8', whiteSpace: 'nowrap' }}>{m}</span>
+                ))}
+                {todayPct > 0 && todayPct < 100 && (
+                  <span style={{ position: 'absolute', top: 4, left: `${todayPct}%`, fontSize: 9, fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap', transform: 'translateX(-50%)', background: 'rgba(239,68,68,0.1)', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)' }}>{t.today}</span>
+                )}
+              </div>
             </div>
+            {/* Activity rows */}
+            {ganttRows.map((a, idx) => {
+              const pa = partnerMap?.[a.partnerId];
+              const start = new Date(a.startDate + 'T00:00:00');
+              const end = a.endDate ? new Date(a.endDate + 'T00:00:00') : start;
+              const bl = Math.max(0, Math.min(100, ((start - FY_START) / FY_SPAN) * 100));
+              const bw = Math.max(0.5, Math.min(100 - bl, ((end - start) / FY_SPAN) * 100));
+              const isOver = a.endDate && daysLeft(a.endDate) < 0 && a.status !== 'done';
+              const barColor = a.status === 'done' ? '#10b981'
+                             : isOver ? '#dc2626'
+                             : a.status === 'in_progress' ? (STAGE_COLORS[a.stage] || '#3b82f6')
+                             : '#9ca3af';
+              return (
+                <div key={a.id} style={{ display: 'flex', borderBottom: idx < ganttRows.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'stretch' }}>
+                  {/* Left panel */}
+                  <div style={{ width: 220, minWidth: 220, flexShrink: 0, padding: '8px 14px', borderRight: '1px solid #e2e8f0', background: '#fff' }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.4, marginBottom: 3, wordBreak: 'break-word', whiteSpace: 'normal' }}>
+                      {lang === 'en' ? (a.name_en || a.name) : a.name}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                      {pa && <span style={{ fontSize: 9, color: pa.color, fontWeight: 600 }}>{pa.name}</span>}
+                      {a.stage && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 10, background: '#f1f5f9', color: '#64748b', fontWeight: 600 }}>{a.stage}</span>}
+                    </div>
+                  </div>
+                  {/* Chart area */}
+                  <div style={{ flex: 1, position: 'relative', minHeight: 52, background: '#fff' }}>
+                    {MONTHS.map((m, i) => (
+                      <div key={m} style={{ position: 'absolute', top: 0, bottom: 0, left: `${i / 12 * 100}%`, width: 1, background: '#f1f5f9', pointerEvents: 'none' }} />
+                    ))}
+                    {todayPct > 0 && todayPct < 100 && (
+                      <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${todayPct}%`, width: 2, background: '#dc2626', opacity: 0.7, zIndex: 2, pointerEvents: 'none' }} />
+                    )}
+                    <div style={{
+                      position: 'absolute', left: `${bl}%`, width: `${bw}%`,
+                      top: '50%', transform: 'translateY(-50%)',
+                      height: 20, borderRadius: 3, background: barColor,
+                      minWidth: 4, overflow: 'hidden', whiteSpace: 'nowrap',
+                      fontSize: 9, fontWeight: 600, color: '#fff',
+                      display: 'flex', alignItems: 'center', padding: '0 6px',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    }} title={`${lang === 'en' ? (a.name_en || a.name) : a.name} (${a.startDate} \u2192 ${a.endDate || '?'})`}>
+                      {bw > 10 ? a.stage : ''}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
