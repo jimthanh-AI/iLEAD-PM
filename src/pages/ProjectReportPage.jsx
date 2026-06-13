@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import {
   INDICATOR_GROUPS, STAGES, STAGE_LABELS, ACTIVITY_TYPE_MAP,
@@ -285,6 +285,32 @@ export default function ProjectReportPage() {
 
   const todayPct = Math.max(0, Math.min(100, ((new Date() - FY_START) / FY_SPAN) * 100));
 
+  // ── Hide all modals/overlays before print ─────────────────────────────────
+  useEffect(() => {
+    const hideSelectors = ['.qts-backdrop', '.qts-sheet', '.modal-overlay', '.modal-content', '.mel-modal-overlay', '.mel-modal'];
+    const saved = [];
+    const beforePrint = () => {
+      document.querySelectorAll(hideSelectors.join(',')).forEach(el => {
+        saved.push({ el, display: el.style.display, visibility: el.style.visibility });
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('visibility', 'hidden', 'important');
+      });
+    };
+    const afterPrint = () => {
+      saved.forEach(({ el, display, visibility }) => {
+        el.style.display = display;
+        el.style.visibility = visibility;
+      });
+      saved.length = 0;
+    };
+    window.addEventListener('beforeprint', beforePrint);
+    window.addEventListener('afterprint', afterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', beforePrint);
+      window.removeEventListener('afterprint', afterPrint);
+    };
+  }, []);
+
   // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderActivityTable = (acts, showNextAction) => {
@@ -340,9 +366,13 @@ export default function ProjectReportPage() {
             overflow: visible !important;
           }
           .sidebar, .topbar, .mobile-bottom-nav, .pr-no-print { display: none !important; }
-          .qts-backdrop, .qts-sheet, .modal-overlay, .modal-content,
+          .qts-backdrop, .qts-sheet, .qts-sheet-open,
+          .modal-overlay, .modal-content,
           .mel-modal-overlay, .mel-modal, .identity-modal,
-          [role="dialog"], [role="alertdialog"] { display: none !important; }
+          [role="dialog"], [role="alertdialog"] {
+            display: none !important;
+            visibility: hidden !important;
+          }
           .main-content {
             margin: 0 !important;
             padding: 0 !important;
