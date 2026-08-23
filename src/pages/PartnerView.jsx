@@ -57,12 +57,18 @@ const PartnerView = () => {
   const openEdit = (e, a) => { e.stopPropagation(); setEditingAct(a); setActFormOpen(true); };
   const handleDelete = (e, a) => {
     e.stopPropagation();
-    confirm(`Xóa activity "${a.name}"?`).then(ok => { if (ok) deleteActivity(a.id); });
+    const actMel = melEntries.filter(m => m.activityId === a.id);
+    const melWarn = actMel.length > 0
+      ? `\n\n⚠ Activity này có ${actMel.length} MEL entry — dữ liệu MEL cũng sẽ bị xóa theo.`
+      : '';
+    confirm(`Xóa activity "${a.name}"?${melWarn}`).then(ok => { if (ok) deleteActivity(a.id); });
   };
 
   const handleDeletePartner = () => {
+    const partnerMel = melEntries.filter(m => m.partnerId === partner.id);
+    const melNote = partnerMel.length > 0 ? ` và ${partnerMel.length} MEL entries` : '';
     confirm(
-      `Xóa đối tác "${partner.name}"?\n\nThao tác này sẽ xóa toàn bộ ${allActs.length} hoạt động, tasks và indicators liên quan. Không thể hoàn tác.`
+      `Xóa đối tác "${partner.name}"?\n\nThao tác này sẽ xóa toàn bộ ${allActs.length} hoạt động, tasks, indicators${melNote} liên quan. Không thể hoàn tác.`
     ).then(ok => {
       if (ok) {
         deletePartner(partner.id);
@@ -140,6 +146,18 @@ const PartnerView = () => {
           {canEdit && <button className="btn btn-primary" onClick={openAdd}>+ Thêm hoạt động</button>}
         </div>
       </div>
+
+      {/* ── Permission banner ── */}
+      {!canEdit && (
+        <div style={{ background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'8px 14px', marginBottom:'16px', fontSize:'12px', color:'var(--text2)', display:'flex', alignItems:'center', gap:'8px' }}>
+          🔒 <span>Bạn đang ở chế độ <strong>chỉ xem</strong> — không thể thêm, sửa hoặc xóa. Liên hệ Admin để được cấp quyền.</span>
+        </div>
+      )}
+      {canEdit && !canDelete && (
+        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'var(--radius)', padding:'8px 14px', marginBottom:'16px', fontSize:'12px', color:'#92400e', display:'flex', alignItems:'center', gap:'8px' }}>
+          ⚠ <span>Role <strong>Coordinator</strong>: bạn có thể sửa nhưng <strong>không thể xóa</strong> activity hoặc đối tác.</span>
+        </div>
+      )}
 
       {/* ── Partner Stats ── */}
       <div className="kpi-grid" style={{ gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', marginBottom:'24px' }}>
