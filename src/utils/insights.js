@@ -221,7 +221,7 @@ export function computeForecasts({ riskMatrix, partnerScorecard, partnerBudgets 
       alerts.push({
         severity: 'critical',
         title: `Critical: ${g.code} projected EOY = ${g.projectedActual.toLocaleString()} / ${g.targetVietnam.toLocaleString()} (${projPct}%)`,
-        detail: `Tại tốc độ hiện tại sẽ thiếu ${100 - projPct}% target. Cần escalate hoặc reallocate.`,
+        detail: `At current pace, will miss ${100 - projPct}% of target. Need to escalate or reallocate.`,
       });
     });
 
@@ -234,7 +234,7 @@ export function computeForecasts({ riskMatrix, partnerScorecard, partnerBudgets 
       alerts.push({
         severity: 'warning',
         title: `${p.name}: budget burn projection ${projPct}% by EOY`,
-        detail: `Burn rate ${Math.round(p.burnRate * 100)}% vs pace. Đề xuất review cost norm hoặc adjust scope.`,
+        detail: `Burn rate ${Math.round(p.burnRate * 100)}% vs pace. Recommend reviewing cost norms or adjusting scope.`,
       });
     });
 
@@ -244,8 +244,8 @@ export function computeForecasts({ riskMatrix, partnerScorecard, partnerBudgets 
     .forEach(g => {
       alerts.push({
         severity: 'info',
-        title: `Opportunity: ${g.code} vượt pace (${Math.round(g.timeAdjustedPct * 100)}% time-adjusted)`,
-        detail: `Có thể stretch target hoặc reallocate effort sang indicators đang yếu.`,
+        title: `Opportunity: ${g.code} ahead of pace (${Math.round(g.timeAdjustedPct * 100)}% time-adjusted)`,
+        detail: `Consider stretching target or reallocating effort to underperforming indicators.`,
       });
     });
 
@@ -267,7 +267,7 @@ export function computeForecasts({ riskMatrix, partnerScorecard, partnerBudgets 
       alerts.push({
         severity: 'warning',
         title: `${p.name}: female ratio ${Math.round((p.femaleRatio ?? 0) * 100)}% < 50% target`,
-        detail: `${p.totalWomen} women / ${p.totalReach} total reached. Cần review activity design.`,
+        detail: `${p.totalWomen} women / ${p.totalReach} total reached. Need to review activity design.`,
       });
     });
 

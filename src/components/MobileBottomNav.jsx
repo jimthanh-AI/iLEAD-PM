@@ -48,7 +48,7 @@ const MobileBottomNav = ({ onQuickTask }) => {
         </button>
 
         {/* FAB center */}
-        <button className="mbn-fab" onClick={onQuickTask} aria-label="Thêm task mới">
+        <button className="mbn-fab" onClick={onQuickTask} aria-label="Add new task">
           <span className="mbn-fab-icon">+</span>
         </button>
         <div className="mbn-fab-placeholder" />
@@ -118,7 +118,7 @@ const MobileBottomNav = ({ onQuickTask }) => {
 
           {partners.length > 0 && (
             <>
-              <div className="mbn-drawer-section-title">ĐỐI TÁC</div>
+              <div className="mbn-drawer-section-title">PARTNERS</div>
               {partners.map(p => (
                 <button
                   key={p.id}
@@ -136,7 +136,7 @@ const MobileBottomNav = ({ onQuickTask }) => {
         {/* Drawer footer */}
         <div className="mbn-drawer-footer">
           <button className="mbn-drawer-signout" onClick={signOut}>
-            🚪 Đăng xuất
+            🚪 Sign out
           </button>
         </div>
       </div>

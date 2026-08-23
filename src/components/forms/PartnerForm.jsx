@@ -27,23 +27,23 @@ export const PartnerForm = ({ isOpen, onClose, partnerId = null }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={existing ? 'Sửa Đối Tác' : 'Thêm Đối Tác'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={existing ? 'Edit Partner' : 'Add Partner'}>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label className="form-label">Tên đối tác</label>
+          <label className="form-label">Partner Name</label>
           <input
             autoFocus
             required
             className="form-input"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Ví dụ: VCCI MMTN"
+            placeholder="e.g. VCCI MMTN"
           />
         </div>
         
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Lĩnh vực</label>
+            <label className="form-label">Sector</label>
             <input
               className="form-input"
               value={formData.sector}
@@ -52,18 +52,18 @@ export const PartnerForm = ({ isOpen, onClose, partnerId = null }) => {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Khu vực</label>
+            <label className="form-label">Region</label>
             <input
               className="form-input"
               value={formData.region}
               onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-              placeholder="Hà Nội, Đà Nẵng..."
+              placeholder="Hanoi, Da Nang..."
             />
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Màu sắc</label>
+          <label className="form-label">Color</label>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {COLORS.map((c) => (
               <div
@@ -82,8 +82,8 @@ export const PartnerForm = ({ isOpen, onClose, partnerId = null }) => {
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={onClose}>Hủy</button>
-          <button type="submit" className="btn btn-primary">{existing ? 'Cập nhật' : 'Thêm mới'}</button>
+          <button type="button" className="btn" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary">{existing ? 'Update' : 'Add'}</button>
         </div>
       </form>
     </Modal>

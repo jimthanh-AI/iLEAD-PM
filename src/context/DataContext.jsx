@@ -266,7 +266,7 @@ export const DataProvider = ({ children }) => {
           setData({ ...remote, activityTypes });
         }
       } catch (err) {
-        setSyncError('Không kết nối được Supabase: ' + err.message);
+        setSyncError('Cannot connect to Supabase: ' + err.message);
         setBootFailed(true);
       } finally {
         setLoading(false);
@@ -414,7 +414,7 @@ export const DataProvider = ({ children }) => {
     const succeeded = ids.filter((_, i) => !results[i].value?.error);
     const failed    = ids.filter((_, i) =>  results[i].value?.error);
     setData(d => ({ ...d, tasks: d.tasks.filter(t => !succeeded.includes(t.id)) }));
-    if (failed.length) setSyncError(`Xóa thất bại ${failed.length} task — thử lại sau.`);
+    if (failed.length) setSyncError(`Failed to delete ${failed.length} tasks — try again later.`);
   };
   const deleteTask = (id) => {
     const taskName = data.tasks.find(t => t.id === id)?.name;
@@ -520,7 +520,7 @@ export const DataProvider = ({ children }) => {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:'12px', fontFamily:'sans-serif', color:'#6b7280' }}>
         <div style={{ width:'32px', height:'32px', border:'3px solid #e5e7eb', borderTop:'3px solid #2563eb', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-        <span style={{ fontSize:'14px' }}>Đang tải dữ liệu...</span>
+        <span style={{ fontSize:'14px' }}>Loading data...</span>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -541,7 +541,7 @@ export const DataProvider = ({ children }) => {
       setData(verified);
       setSyncError(null);
     } catch (err) {
-      setSyncError('Khôi phục thất bại: ' + (err.message || String(err)));
+      setSyncError('Restore failed: ' + (err.message || String(err)));
       throw err;
     }
   };
@@ -590,13 +590,13 @@ export const DataProvider = ({ children }) => {
             {bootFailed && (
               <button onClick={() => window.location.reload()}
                 style={{ background:'#dc2626', border:'none', color:'#fff', borderRadius:'6px', padding:'4px 12px', cursor:'pointer', fontSize:'12px', fontWeight:600 }}>
-                Thử lại
+                Retry
               </button>
             )}
             {!bootFailed && (
               <button onClick={() => setSyncError(null)}
                 style={{ background:'transparent', border:'1px solid #fca5a5', color:'#991b1b', borderRadius:'6px', padding:'4px 10px', cursor:'pointer', fontSize:'12px' }}>
-                Đóng
+                Close
               </button>
             )}
           </div>

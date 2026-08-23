@@ -31,8 +31,8 @@ export default function LoginPage() {
         </div>
         <p className="login-tagline">Project Management · Catalyste+ Vietnam</p>
 
-        <h2 className="login-heading">Chào mừng trở lại</h2>
-        <p className="login-sub">Nhập email để đăng nhập</p>
+        <h2 className="login-heading">Welcome back</h2>
+        <p className="login-sub">Enter your email to sign in</p>
 
         <form onSubmit={handleSubmit} className="login-form">
           <input
@@ -46,12 +46,12 @@ export default function LoginPage() {
           />
           {error && <div className="login-error">{error}</div>}
           <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
         <p className="login-note">
-          Lần đầu đăng nhập sẽ tự động được thêm vào với quyền Viewer.
+          First-time login will automatically be added as a Viewer.
         </p>
       </div>
     </div>

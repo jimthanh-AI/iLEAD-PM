@@ -55,7 +55,7 @@ export const TaskForm = ({ isOpen, onClose, activityId, editTask }) => {
         <label className="form-label">Task Name *</label>
         <input autoFocus className="form-input" value={form.name}
           onChange={e => set('name', e.target.value)}
-          placeholder="Viết TOR và gửi Jane duyệt" />
+          placeholder="e.g. Draft TOR and send to Jane for approval" />
       </div>
 
       <div className="form-group">

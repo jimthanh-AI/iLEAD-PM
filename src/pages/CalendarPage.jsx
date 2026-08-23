@@ -25,7 +25,7 @@ const CalendarPage = () => {
       {/* Topbar */}
       <div className="cal-top-actions">
         <button className="btn btn-sm" onClick={loadJim}>🔗 Load Jim's Calendar</button>
-        <button className="btn btn-sm" onClick={() => setShowConfig(v => !v)}>⚙ Cài đặt</button>
+        <button className="btn btn-sm" onClick={() => setShowConfig(v => !v)}>⚙ Settings</button>
       </div>
 
       {showConfig && (
@@ -54,7 +54,7 @@ const CalendarPage = () => {
         <div className="cal-placeholder">
           <div className="cal-placeholder-icon">🗓</div>
           <div style={{fontSize:'15px', fontWeight:600, marginBottom:'6px'}}>Google Calendar</div>
-          <div style={{fontSize:'13px', color:'var(--text2)', marginBottom:'16px'}}>Nhập URL embed hoặc load lịch của Jim</div>
+          <div style={{fontSize:'13px', color:'var(--text2)', marginBottom:'16px'}}>Enter embed URL or load Jim's calendar</div>
           <button className="btn btn-primary" onClick={loadJim}>Load Jim's Calendar</button>
         </div>
       )}

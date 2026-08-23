@@ -37,8 +37,8 @@ export const ConfirmProvider = ({ children }) => {
               {state.message}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button className="btn" onClick={handleCancel}>Hủy</button>
-              <button className="btn btn-danger" onClick={handleOk}>Xóa</button>
+              <button className="btn" onClick={handleCancel}>Cancel</button>
+              <button className="btn btn-danger" onClick={handleOk}>Delete</button>
             </div>
           </div>
         </div>

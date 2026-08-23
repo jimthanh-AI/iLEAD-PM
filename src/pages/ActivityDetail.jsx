@@ -92,7 +92,7 @@ const ActivityDetail = () => {
 
   // ── Delete ────────────────────────────────────────────────────
   const handleDeleteAct = () => {
-    confirm(`Xóa activity "${act.name}"?`).then(ok => {
+    confirm(`Delete activity "${act.name}"?`).then(ok => {
       if (ok) { deleteActivity(id); nav(partner ? `/partner/${partner.id}` : '/'); }
     });
   };
@@ -115,12 +115,12 @@ const ActivityDetail = () => {
           <div style={{ display:'flex', gap:'6px' }}>
             {act.status === 'done' && (
               <button className="btn btn-sm btn-primary" onClick={() => setMelWizOpen(true)}
-                title="Tạo MEL entries từ activity này">
-                Ghi nhận MEL
+                title="Create MEL entries from this activity">
+                Record MEL
               </button>
             )}
-            {canEdit   && <button className="task-action-btn" onClick={() => setEditActOpen(true)}>✏️ Sửa</button>}
-            {canDelete && <button className="task-action-btn danger" onClick={handleDeleteAct}>🗑 Xóa</button>}
+            {canEdit   && <button className="task-action-btn" onClick={() => setEditActOpen(true)}>✏️ Edit</button>}
+            {canDelete && <button className="task-action-btn danger" onClick={handleDeleteAct}>🗑 Delete</button>}
           </div>
         </div>
 
@@ -155,17 +155,17 @@ const ActivityDetail = () => {
           {act.type      && <div className="dp"><span className="dp-lbl">Type</span>{act.type}</div>}
           {act.startDate && (
             <div className="dp">
-              <span className="dp-lbl">Thời gian</span>
+              <span className="dp-lbl">Duration</span>
               {fmtDate(act.startDate)}{act.endDate ? ' → ' + fmtDate(act.endDate) : ''}
             </div>
           )}
           {(act.budget_planned || act.budget_actual) && (
             <div className="dp">
-              <span className="dp-lbl">Ngân sách</span>
+              <span className="dp-lbl">Budget</span>
               <span style={{ fontSize:'12px' }}>
-                KH: <strong>{fmtCad(act.budget_planned)}</strong>
+                Plan: <strong>{fmtCad(act.budget_planned)}</strong>
                 {act.budget_actual >= 0 && act.budget_actual !== '' && (
-                  <> · TT: <strong style={{ color: act.budget_actual > act.budget_planned ? 'var(--red)' : 'var(--green)' }}>
+                  <> · Actual: <strong style={{ color: act.budget_actual > act.budget_planned ? 'var(--red)' : 'var(--green)' }}>
                     {fmtCad(act.budget_actual)}
                   </strong></>
                 )}
@@ -195,20 +195,20 @@ const ActivityDetail = () => {
       {/* ── Reach Section ── */}
       <div className="glass-card" style={{ padding:'16px' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
-          <h3 style={{ fontSize:'13px', fontWeight:600, margin:0 }}>👥 Số người tham gia (Reach)</h3>
+          <h3 style={{ fontSize:'13px', fontWeight:600, margin:0 }}>👥 Participants (Reach)</h3>
           {canEdit && (
-            <button className="btn btn-sm btn-primary" onClick={() => setEditActOpen(true)}>Cập nhật</button>
+            <button className="btn btn-sm btn-primary" onClick={() => setEditActOpen(true)}>Update</button>
           )}
         </div>
         <div style={{ display:'flex', gap:'24px', flexWrap:'wrap' }}>
           <div style={{ textAlign:'center' }}>
             <div style={{ fontSize:'28px', fontWeight:700, color:'var(--accent)' }}>{act.reachTotal || 0}</div>
-            <div style={{ fontSize:'11px', color:'var(--text3)' }}>Tổng</div>
+            <div style={{ fontSize:'11px', color:'var(--text3)' }}>Total</div>
             {typeInfo && <div style={{ fontSize:'10px', color:'var(--text3)' }}>target: {typeInfo.standardReach}</div>}
           </div>
           <div style={{ textAlign:'center' }}>
             <div style={{ fontSize:'28px', fontWeight:700, color:'#db2777' }}>{act.reachWomen || 0}</div>
-            <div style={{ fontSize:'11px', color:'var(--text3)' }}>Phụ nữ</div>
+            <div style={{ fontSize:'11px', color:'var(--text3)' }}>Women</div>
             {act.reachTotal > 0 && (
               <div style={{ fontSize:'10px', color: (act.reachWomen/act.reachTotal) >= 0.5 ? 'var(--green)' : 'var(--orange)' }}>
                 {Math.round((act.reachWomen / act.reachTotal) * 100)}%
@@ -218,7 +218,7 @@ const ActivityDetail = () => {
           </div>
           <div style={{ textAlign:'center' }}>
             <div style={{ fontSize:'28px', fontWeight:700, color:'var(--text2)' }}>{act.reachMen || 0}</div>
-            <div style={{ fontSize:'11px', color:'var(--text3)' }}>Nam</div>
+            <div style={{ fontSize:'11px', color:'var(--text3)' }}>Men</div>
           </div>
         </div>
         {act.reachTotal > 0 && (
@@ -250,7 +250,7 @@ const ActivityDetail = () => {
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                       <span style={{ fontSize:'11px', color:'var(--text3)' }}>
-                        {ai.actualCount} / {ai.targetCount} người
+                        {ai.actualCount} / {ai.targetCount} people
                       </span>
                       {canEdit && (
                         <>
@@ -259,10 +259,10 @@ const ActivityDetail = () => {
                             value={ai.actualCount}
                             onChange={e => updateActivityIndicator(ai.id, { actualCount: Number(e.target.value)||0 })}
                             style={{ width:'60px', fontSize:'11px', padding:'2px 6px', borderRadius:'4px', border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)' }}
-                            title="Cập nhật actual count"
+                            title="Update actual count"
                           />
                           <button className="task-action-btn danger" style={{ fontSize:'11px' }}
-                            onClick={() => deleteActivityIndicator(ai.id)} title="Xóa indicator">×</button>
+                            onClick={() => deleteActivityIndicator(ai.id)} title="Delete indicator">×</button>
                         </>
                       )}
                     </div>
@@ -277,7 +277,7 @@ const ActivityDetail = () => {
             })}
           </div>
         ) : (
-          <div style={{ fontSize:'12px', color:'var(--text3)', marginBottom:'8px' }}>Chưa có indicator nào.</div>
+          <div style={{ fontSize:'12px', color:'var(--text3)', marginBottom:'8px' }}>No indicators yet.</div>
         )}
 
         {/* Add indicator */}
@@ -289,7 +289,7 @@ const ActivityDetail = () => {
               value={addIndCode}
               onChange={e => setAddIndCode(e.target.value)}
             >
-              <option value="">+ Thêm indicator...</option>
+              <option value="">+ Add indicator...</option>
               {availableCodes.map(ic => (
                 <option key={ic.code} value={ic.code}>{ic.code} · {ic.label}</option>
               ))}
@@ -302,7 +302,7 @@ const ActivityDetail = () => {
               />
             </div>
             <button className="btn btn-primary btn-sm" onClick={handleAddIndicator} disabled={!addIndCode}>
-              Thêm
+              Add
             </button>
           </div>
         )}
@@ -339,9 +339,9 @@ const ActivityDetail = () => {
                       fontWeight: isOverdue || isSoon ? 600 : undefined,
                     }}>
                       📅 {fmtDate(t.dueDate)}
-                      {isOverdue && ` · ⚠️ quá ${Math.abs(dl)} ngày`}
-                      {isSoon && dl === 0 && ' · hôm nay!'}
-                      {isSoon && dl > 0 && ` · còn ${dl} ngày`}
+                      {isOverdue && ` · ⚠️ ${Math.abs(dl)} days overdue`}
+                      {isSoon && dl === 0 && ' · today!'}
+                      {isSoon && dl > 0 && ` · ${dl} days left`}
                     </span>
                   )}
                   {t.notes && <span style={{ color:'var(--text3)' }}>{t.notes}</span>}
@@ -349,7 +349,7 @@ const ActivityDetail = () => {
               </div>
               <div className="task-actions">
                 {canEdit   && <button className="task-action-btn" onClick={e => { e.stopPropagation(); setEditingTask(t); setTaskFormOpen(true); }}>✏️</button>}
-                {canDelete && <button className="task-action-btn danger" onClick={e => { e.stopPropagation(); confirm(`Xóa task "${t.name}"?`).then(ok => { if (ok) deleteTask(t.id); }); }}>🗑</button>}
+                {canDelete && <button className="task-action-btn danger" onClick={e => { e.stopPropagation(); confirm(`Delete task "${t.name}"?`).then(ok => { if (ok) deleteTask(t.id); }); }}>🗑</button>}
               </div>
             </div>
             );
@@ -358,7 +358,7 @@ const ActivityDetail = () => {
 
         {canEdit && (
           <div className="task-add-row" onClick={() => { setEditingTask(null); setTaskFormOpen(true); }}>
-            <span style={{ fontSize:'16px', lineHeight:1 }}>+</span> Thêm task...
+            <span style={{ fontSize:'16px', lineHeight:1 }}>+</span> Add task...
           </div>
         )}
       </div>

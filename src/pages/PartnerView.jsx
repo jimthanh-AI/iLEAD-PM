@@ -66,7 +66,7 @@ const PartnerView = () => {
 
   const handleDeletePartner = () => {
     const partnerMel = melEntries.filter(m => m.partnerId === partner.id);
-    const melNote = partnerMel.length > 0 ? ` và ${partnerMel.length} MEL entries` : '';
+    const melNote = partnerMel.length > 0 ? ` and ${partnerMel.length} MEL entries` : '';
     confirm(
       `Delete partner "${partner.name}"?\n\nThis will permanently delete all ${allActs.length} activities, tasks, indicators${melNote} linked to this partner. Cannot be undone.`
     ).then(ok => {
@@ -120,7 +120,7 @@ const PartnerView = () => {
             <h1 className="page-title">{partner.name}</h1>
           </div>
           <p className="page-meta">
-            {[partner.sector, partner.region].filter(Boolean).join(' · ')} · {allActs.length} hoạt động
+            {[partner.sector, partner.region].filter(Boolean).join(' · ')} · {allActs.length} activities
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -128,9 +128,9 @@ const PartnerView = () => {
             <button
               className="btn"
               onClick={() => setPartnerFormOpen(true)}
-              title="Sửa thông tin đối tác"
+              title="Edit partner info"
             >
-              ✏️ Sửa Partner
+              ✏️ Edit Partner
             </button>
           )}
           {canDelete && (
@@ -138,50 +138,50 @@ const PartnerView = () => {
               className="btn"
               onClick={handleDeletePartner}
               style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
-              title="Xóa đối tác và toàn bộ dữ liệu liên quan"
+              title="Delete partner and all related data"
             >
-              🗑 Xóa Partner
+              🗑 Delete Partner
             </button>
           )}
-          {canEdit && <button className="btn btn-primary" onClick={openAdd}>+ Thêm hoạt động</button>}
+          {canEdit && <button className="btn btn-primary" onClick={openAdd}>+ Add Activity</button>}
         </div>
       </div>
 
       {/* ── Permission banner ── */}
       {!canEdit && (
         <div style={{ background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'8px 14px', marginBottom:'16px', fontSize:'12px', color:'var(--text2)', display:'flex', alignItems:'center', gap:'8px' }}>
-          🔒 <span>Bạn đang ở chế độ <strong>chỉ xem</strong> — không thể thêm, sửa hoặc xóa. Liên hệ Admin để được cấp quyền.</span>
+          🔒 <span>You are in <strong>view-only</strong> mode — cannot add, edit, or delete. Contact Admin for access.</span>
         </div>
       )}
       {canEdit && !canDelete && (
         <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'var(--radius)', padding:'8px 14px', marginBottom:'16px', fontSize:'12px', color:'#92400e', display:'flex', alignItems:'center', gap:'8px' }}>
-          ⚠ <span>Role <strong>Coordinator</strong>: bạn có thể sửa nhưng <strong>không thể xóa</strong> activity hoặc đối tác.</span>
+          ⚠ <span>Role <strong>Coordinator</strong>: you can edit but <strong>cannot delete</strong> activities or partners.</span>
         </div>
       )}
 
       {/* ── Partner Stats ── */}
       <div className="kpi-grid" style={{ gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', marginBottom:'24px' }}>
         <div className="kpi-card glass-card" style={{'--kc':partner.color}}>
-          <div className="kpi-label">Hoàn thành</div>
+          <div className="kpi-label">Completed</div>
           <div className="kpi-val">{doneCount}/{allActs.length}</div>
           <div className="prog"><div className="prog-fill" style={{width:`${pct}%`, background:partner.color}}></div></div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc':'var(--accent)'}}>
-          <div className="kpi-label">Đang triển khai</div>
+          <div className="kpi-label">In Progress</div>
           <div className="kpi-val">{allActs.filter(a => a.status === 'in_progress').length}</div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc':'var(--orange)'}}>
-          <div className="kpi-label">Tổng Reach</div>
+          <div className="kpi-label">Total Reach</div>
           <div className="kpi-val">{totalReach > 0 ? totalReach.toLocaleString() : '—'}</div>
-          <div className="kpi-sub">người tham gia</div>
+          <div className="kpi-sub">participants</div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc': pctWomen >= 50 ? 'var(--green)' : 'var(--text3)'}}>
-          <div className="kpi-label">Tỷ lệ phụ nữ</div>
+          <div className="kpi-label">Women Ratio</div>
           <div className="kpi-val">{pctWomen > 0 ? pctWomen + '%' : '—'}</div>
-          <div className="kpi-sub">{totalWomen > 0 ? totalWomen + ' người' : 'chưa có dữ liệu'}</div>
+          <div className="kpi-sub">{totalWomen > 0 ? totalWomen + ' people' : 'no data yet'}</div>
         </div>
         <div className="kpi-card glass-card" style={{'--kc':'var(--text3)'}}>
-          <div className="kpi-label">Ngân sách KH</div>
+          <div className="kpi-label">Planned Budget</div>
           <div className="kpi-val" style={{ fontSize:'18px' }}>{totalBudget > 0 ? `$${(totalBudget/1000).toFixed(0)}K` : '—'}</div>
           <div className="kpi-sub">CAD</div>
         </div>
@@ -205,35 +205,35 @@ const PartnerView = () => {
       <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'16px', alignItems:'center' }}>
         <select className="form-select" style={{ maxWidth:'130px', fontSize:'12px', padding:'6px 8px' }}
           value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="all">Tất cả status</option>
+          <option value="all">All status</option>
           {['not_started','in_progress','done','not_completed'].map(s => (
             <option key={s} value={s}>{STATUS_LABELS[s]}</option>
           ))}
         </select>
         <select className="form-select" style={{ maxWidth:'130px', fontSize:'12px', padding:'6px 8px' }}
           value={filterStage} onChange={e => setFilterStage(e.target.value)}>
-          <option value="all">Tất cả stage</option>
+          <option value="all">All stages</option>
           {STAGES.map(s => <option key={s} value={s}>{s}: {STAGE_LABELS[s]}</option>)}
         </select>
         {usedTypes.length > 1 && (
           <select className="form-select" style={{ maxWidth:'160px', fontSize:'12px', padding:'6px 8px' }}
             value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option value="all">Tất cả loại</option>
+            <option value="all">All types</option>
             {usedTypes.map(code => (
               <option key={code} value={code}>{code} · {ACTIVITY_TYPE_MAP[code]?.nameVi}</option>
             ))}
           </select>
         )}
         <span style={{ fontSize:'12px', color:'var(--text3)', marginLeft:'4px' }}>
-          {filtered.length} / {allActs.length} hoạt động
+          {filtered.length} / {allActs.length} activities
         </span>
       </div>
 
       {filtered.length === 0 ? (
         <div className="empty-state" style={{ padding:'40px' }}>
           {allActs.length === 0
-            ? <span>Chưa có hoạt động nào. <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Thêm ngay</button></span>
-            : 'Không có kết quả phù hợp với bộ lọc.'
+            ? <span>No activities yet. <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Add now</button></span>
+            : 'No results match the filter.'
           }
         </div>
       ) : (
@@ -282,8 +282,8 @@ const PartnerView = () => {
                     <span>✓ {doneTasks}/{actTasks.length} tasks</span>
                   )}
                   {(a.reachTotal > 0) && (
-                    <span>👥 {a.reachTotal.toLocaleString()} người
-                      {a.reachWomen > 0 && ` · ${Math.round((a.reachWomen/a.reachTotal)*100)}% PN`}
+                    <span>👥 {a.reachTotal.toLocaleString()} people
+                      {a.reachWomen > 0 && ` · ${Math.round((a.reachWomen/a.reachTotal)*100)}% W`}
                     </span>
                   )}
                   {a.budget_planned > 0 && (
@@ -323,7 +323,7 @@ const PartnerView = () => {
                     ? <input autoFocus type="number" defaultValue={budget.allocated||0} style={{fontSize:'12px',padding:'4px',border:'1px solid var(--accent)',borderRadius:'4px',width:'100%',marginTop:'4px'}}
                         onBlur={e => { updatePartnerBudget(id,{allocated:parseFloat(e.target.value)||0}); setEditBudgetField(null); }}
                         onKeyDown={e => e.key==='Enter' && e.target.blur()} />
-                    : <div style={{fontSize:'11px',color:'var(--accent)',cursor:'pointer',marginTop:'4px'}} onClick={()=>setEditBudgetField('allocated')}>✏ Chỉnh sửa</div>
+                    : <div style={{fontSize:'11px',color:'var(--accent)',cursor:'pointer',marginTop:'4px'}} onClick={()=>setEditBudgetField('allocated')}>✏ Edit</div>
                 )}
               </div>
               <div className="kpi-card glass-card" style={{'--kc':'var(--red)'}}>
@@ -334,18 +334,18 @@ const PartnerView = () => {
                     ? <input autoFocus type="number" defaultValue={budget.spent||0} style={{fontSize:'12px',padding:'4px',border:'1px solid var(--accent)',borderRadius:'4px',width:'100%',marginTop:'4px'}}
                         onBlur={e => { updatePartnerBudget(id,{spent:parseFloat(e.target.value)||0}); setEditBudgetField(null); }}
                         onKeyDown={e => e.key==='Enter' && e.target.blur()} />
-                    : <div style={{fontSize:'11px',color:'var(--accent)',cursor:'pointer',marginTop:'4px'}} onClick={()=>setEditBudgetField('spent')}>✏ Chỉnh sửa</div>
+                    : <div style={{fontSize:'11px',color:'var(--accent)',cursor:'pointer',marginTop:'4px'}} onClick={()=>setEditBudgetField('spent')}>✏ Edit</div>
                 )}
               </div>
               <div className="kpi-card glass-card" style={{'--kc': remain >= 0 ? 'var(--green)' : 'var(--red)'}}>
                 <div className="kpi-label">Remaining</div>
                 <div className="kpi-val" style={{fontSize:'18px'}}>{fmtCad(remain)}</div>
-                <div className="kpi-sub">{remPct}% còn lại</div>
+                <div className="kpi-sub">{remPct}% remaining</div>
               </div>
               <div className="kpi-card glass-card" style={{'--kc': femPct >= 50 ? 'var(--green)' : 'var(--orange)'}}>
                 <div className="kpi-label">Female Ratio (MEL)</div>
                 <div className="kpi-val">{femPct}%</div>
-                <div className="kpi-sub">{totalF}/{total} người</div>
+                <div className="kpi-sub">{totalF}/{total} people</div>
               </div>
             </div>
 
@@ -355,7 +355,7 @@ const PartnerView = () => {
                 MEL Entries ({pMel.length})
               </div>
               {pMel.length === 0
-                ? <div style={{padding:'32px',textAlign:'center',color:'var(--text3)'}}>Chưa có MEL entry nào cho partner này.</div>
+                ? <div style={{padding:'32px',textAlign:'center',color:'var(--text3)'}}>No MEL entries for this partner yet.</div>
                 : pMel.map(e => {
                   const m = (e.q1_m||0)+(e.q2_m||0)+(e.q3_m||0)+(e.q4_m||0);
                   const f = (e.q1_f||0)+(e.q2_f||0)+(e.q3_f||0)+(e.q4_f||0);

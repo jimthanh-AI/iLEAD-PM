@@ -93,10 +93,10 @@ export default function SettingsPage() {
     if (!newRole) return;
     setUserMsg('');
     const { error } = await updateUserRole(email, newRole);
-    if (error) { setUserMsg('Lỗi: ' + error.message); return; }
+    if (error) { setUserMsg('Error: ' + error.message); return; }
     setUsers(us => us.map(u => u.email === email ? { ...u, role: newRole } : u));
     setPendingRoles(p => { const n = { ...p }; delete n[email]; return n; });
-    setUserMsg('Đã cập nhật quyền cho ' + email);
+    setUserMsg('Updated role for ' + email);
   };
 
   // ── Export JSON ────────────────────────────────────────────────
@@ -142,7 +142,7 @@ export default function SettingsPage() {
     reader.onload = async (ev) => {
       try {
         const parsed = JSON.parse(ev.target.result);
-        if (!parsed.partners || !parsed.activities) throw new Error('Không tìm thấy dữ liệu hợp lệ (thiếu partners/activities)');
+        if (!parsed.partners || !parsed.activities) throw new Error('Invalid data (missing partners/activities)');
         const restored = {
           __v:            parsed.__v            || 5,
           partners:       parsed.partners       || [],
@@ -153,7 +153,7 @@ export default function SettingsPage() {
           melEntries:     parsed.melEntries     || [],
           partnerBudgets: parsed.partnerBudgets || [],
         };
-        setImportOk('Đang đồng bộ lên Supabase...');
+        setImportOk('Syncing to Supabase...');
         await restoreFromBackup(restored);
 
         // Restore app_users + audit_logs nếu có trong backup
@@ -170,9 +170,9 @@ export default function SettingsPage() {
         const extras = [];
         if (parsed.appUsers?.length)  extras.push(`${parsed.appUsers.length} users`);
         if (parsed.auditLogs?.length) extras.push(`${parsed.auditLogs.length} audit logs`);
-        setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries${extras.length ? ', ' + extras.join(', ') : ''}.`);
+        setImportOk(`Restored successfully: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries${extras.length ? ', ' + extras.join(', ') : ''}.`);
       } catch (err) {
-        setImportErr('Lỗi: ' + err.message);
+        setImportErr('Error: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -185,7 +185,7 @@ export default function SettingsPage() {
       await clearAndSeed();
       setResetConfirm(false);
     } catch (err) {
-      setImportErr('Lỗi reset: ' + err.message);
+      setImportErr('Reset error: ' + err.message);
       setResetConfirm(false);
     }
   };
@@ -400,7 +400,7 @@ export default function SettingsPage() {
                 {showNewType && (
                   <tr style={{ borderTop:'2px solid var(--accent)', background:'var(--bg2)' }}>
                     <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'60px', padding:'4px 6px' }} placeholder="Code" value={newTypeForm.code} onChange={e => setNewTypeForm(f => ({...f, code: e.target.value}))} /></td>
-                    <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="Tên tiếng Việt" value={newTypeForm.nameVi} onChange={e => setNewTypeForm(f => ({...f, nameVi: e.target.value}))} /></td>
+                    <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="Vietnamese name" value={newTypeForm.nameVi} onChange={e => setNewTypeForm(f => ({...f, nameVi: e.target.value}))} /></td>
                     <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="English name" value={newTypeForm.nameEn} onChange={e => setNewTypeForm(f => ({...f, nameEn: e.target.value}))} /></td>
                     <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'80px', padding:'4px 6px' }} value={newTypeForm.standardReach} onChange={e => setNewTypeForm(f => ({...f, standardReach: Number(e.target.value)||0}))} /></td>
                     <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'90px', padding:'4px 6px' }} value={newTypeForm.standardBudgetCad} onChange={e => setNewTypeForm(f => ({...f, standardBudgetCad: Number(e.target.value)||0}))} /></td>

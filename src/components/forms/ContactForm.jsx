@@ -44,7 +44,7 @@ export const ContactForm = ({ isOpen, onClose }) => {
 
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
-          <button type="submit" id="submit-btn" className="btn btn-primary">Gửi</button>
+          <button type="submit" id="submit-btn" className="btn btn-primary">Submit</button>
         </div>
       </form>
     </Modal>

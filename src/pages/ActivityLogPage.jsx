@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 
-const ACTION_LABEL = { created: 'tạo mới', updated: 'cập nhật', deleted: 'xóa' };
+const ACTION_LABEL = { created: 'Created', updated: 'Updated', deleted: 'Deleted' };
 const ACTION_COLOR = { created: '#16a34a', updated: '#2563eb', deleted: '#dc2626' };
 const ACTION_BG    = { created: '#f0fdf4', updated: '#eff6ff', deleted: '#fef2f2' };
 const TBL_LABEL    = {
@@ -14,7 +14,7 @@ const TBL_LABEL    = {
 const fmtTime = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleString('vi-VN', {
+  return d.toLocaleString('en-US', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -73,10 +73,10 @@ export default function ActivityLogPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
-          Lich su hoat dong
+          Activity Log
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
-          Tat ca thao tac cua nguoi dung tren he thong
+          All user actions in the system
         </p>
       </div>
 
@@ -96,7 +96,7 @@ export default function ActivityLogPage() {
 
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-        {[['all','Tat ca'],['activities','Activity'],['tasks','Task'],['mel_entries','MEL'],['partners','Partner']].map(([val, label]) => (
+        {[['all','All'],['activities','Activity'],['tasks','Task'],['mel_entries','MEL'],['partners','Partner']].map(([val, label]) => (
           <button
             key={val}
             onClick={() => setFilter(val)}
@@ -113,12 +113,12 @@ export default function ActivityLogPage() {
       </div>
 
       {/* Feed */}
-      {loading && <div style={{ color: 'var(--text2)', fontSize: 14, padding: 24, textAlign: 'center' }}>Dang tai...</div>}
-      {error && <div style={{ color: '#dc2626', fontSize: 13, padding: 16, background: '#fef2f2', borderRadius: 8 }}>Loi: {error}</div>}
+      {loading && <div style={{ color: 'var(--text2)', fontSize: 14, padding: 24, textAlign: 'center' }}>Loading...</div>}
+      {error && <div style={{ color: '#dc2626', fontSize: 13, padding: 16, background: '#fef2f2', borderRadius: 8 }}>Error: {error}</div>}
 
       {!loading && !error && filtered.length === 0 && (
         <div style={{ color: 'var(--text2)', fontSize: 14, padding: 40, textAlign: 'center' }}>
-          Chua co hoat dong nao duoc ghi nhan.
+          No activity has been recorded yet.
         </div>
       )}
 

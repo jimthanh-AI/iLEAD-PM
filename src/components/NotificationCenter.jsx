@@ -22,7 +22,7 @@ const buildNotifications = (activities, tasks, partnerMap) => {
         id       : `ov_act_${a.id}`,
         type     : 'overdue',
         icon     : '🔴',
-        title    : `Activity quá hạn ${-dl} ngày`,
+        title    : `Activity ${-dl} days overdue`,
         desc     : `${a.name} ${ctx}`,
         path     : `/activity/${a.id}`,
         priority : 1,
@@ -33,7 +33,7 @@ const buildNotifications = (activities, tasks, partnerMap) => {
         id       : `dl0_act_${a.id}`,
         type     : 'deadline',
         icon     : '🟠',
-        title    : 'Deadline HÔM NAY',
+        title    : 'Deadline TODAY',
         desc     : `${a.name} ${ctx}`,
         path     : `/activity/${a.id}`,
         priority : 2,
@@ -44,7 +44,7 @@ const buildNotifications = (activities, tasks, partnerMap) => {
         id       : `dl3_act_${a.id}`,
         type     : 'deadline',
         icon     : '🟡',
-        title    : `Deadline trong ${dl} ngày`,
+        title    : `Deadline in ${dl} days`,
         desc     : `${a.name} ${ctx}`,
         path     : `/activity/${a.id}`,
         priority : 3,
@@ -62,7 +62,7 @@ const buildNotifications = (activities, tasks, partnerMap) => {
       id       : `ov_task_${t.id}`,
       type     : 'overdue',
       icon     : '🔴',
-      title    : `Task quá hạn ${-dl} ngày`,
+      title    : `Task ${-dl} days overdue`,
       desc     : `${t.name}${t.assignee ? ' — ' + t.assignee : ''}`,
       path     : `/activity/${t.activityId}`,
       priority : 4,
@@ -138,8 +138,8 @@ const NotificationCenter = () => {
         ref={btnRef}
         className={`nc-bell-btn${open ? ' active' : ''}`}
         onClick={() => setOpen(o => !o)}
-        title="Thông báo"
-        aria-label={`${unread.length} thông báo chưa đọc`}
+        title="Notifications"
+        aria-label={`${unread.length} unread notifications`}
       >
         🔔
         {unread.length > 0 && (
@@ -152,11 +152,11 @@ const NotificationCenter = () => {
         <div ref={panelRef} className="nc-panel glass-card">
           {/* Panel header */}
           <div className="nc-panel-hdr">
-            <span className="nc-panel-title">Thông báo</span>
+            <span className="nc-panel-title">Notifications</span>
             <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
               {unread.length > 0 && (
                 <button className="nc-clear-btn" onClick={markAll}>
-                  Đánh dấu tất cả đã đọc
+                  Mark all as read
                 </button>
               )}
               <button className="nc-close-btn" onClick={() => setOpen(false)}>✕</button>
@@ -168,7 +168,7 @@ const NotificationCenter = () => {
             {notifications.length === 0 && (
               <div className="nc-empty">
                 <div style={{ fontSize:'28px', marginBottom:'6px' }}>✅</div>
-                Không có thông báo nào. Tất cả đều đúng hạn!
+                No notifications. Everything is on track!
               </div>
             )}
 
@@ -186,7 +186,7 @@ const NotificationCenter = () => {
                     <div className="nc-item-desc">{n.desc}</div>
                   </div>
                   <span className={`nc-tag ${TYPE_CSS[n.type] || ''}`}>
-                    {n.type === 'overdue' ? 'Quá hạn' : 'Deadline'}
+                    {n.type === 'overdue' ? 'Overdue' : 'Deadline'}
                   </span>
                   {!isRead && <span className="nc-dot" />}
                 </button>
@@ -196,7 +196,7 @@ const NotificationCenter = () => {
 
           {notifications.length > 0 && (
             <div className="nc-footer">
-              {notifications.length} thông báo · {unread.length} chưa đọc
+              {notifications.length} notifications · {unread.length} unread
             </div>
           )}
         </div>

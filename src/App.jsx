@@ -27,12 +27,12 @@ import ProjectReportPage from './pages/ProjectReportPage';
 const NotFound = () => (
   <div style={{ padding: '48px 32px', textAlign: 'center' }}>
     <div style={{ fontSize: '72px', fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>404</div>
-    <h1 style={{ marginTop: '16px' }}>Trang không tồn tại</h1>
+    <h1 style={{ marginTop: '16px' }}>Page Not Found</h1>
     <p style={{ color: 'var(--text2)', marginTop: '8px' }}>
-      Đường dẫn bạn truy cập không có trong hệ thống.
+      The path you visited does not exist.
     </p>
     <a href="/" className="btn btn-primary" style={{ marginTop: '24px', display: 'inline-block' }}>
-      ← Về Dashboard
+      ← Back to Dashboard
     </a>
   </div>
 );
@@ -44,7 +44,7 @@ const AuthLoading = () => (
       <div style={{ fontSize:'28px', fontWeight:800, marginBottom:'12px' }}>
         <span style={{ color:'var(--accent,#2563eb)', fontStyle:'italic' }}>i</span>LEAD
       </div>
-      <div style={{ fontSize:'13px' }}>Đang tải...</div>
+      <div style={{ fontSize:'13px' }}>Loading...</div>
     </div>
   </div>
 );

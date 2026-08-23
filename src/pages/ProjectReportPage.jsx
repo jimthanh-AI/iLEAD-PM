@@ -578,13 +578,13 @@ export default function ProjectReportPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
                       {pa && <span style={{ fontSize: 9, color: pa.color, fontWeight: 600 }}>{pa.name}</span>}
-                      {a.stage && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 10, background: '#f1f5f9', color: '#64748b', fontWeight: 600 }}>{a.stage}</span>}
+                      {a.stage && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, fontWeight: 600, background: `${STAGE_COLORS[a.stage] || '#9ca3af'}26`, color: STAGE_COLORS[a.stage] || '#64748b' }}>{a.stage}</span>}
                     </div>
                   </div>
                   {/* Chart area */}
                   <div style={{ flex: 1, position: 'relative', minHeight: 52, background: '#fff' }}>
                     {MONTHS.map((m, i) => (
-                      <div key={m} style={{ position: 'absolute', top: 0, bottom: 0, left: `${i / 12 * 100}%`, width: 1, background: '#f1f5f9', pointerEvents: 'none' }} />
+                      <div key={m} style={{ position: 'absolute', top: 0, bottom: 0, left: `${i / 12 * 100}%`, width: 1, background: '#e2e8f0', pointerEvents: 'none' }} />
                     ))}
                     {todayPct > 0 && todayPct < 100 && (
                       <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${todayPct}%`, width: 2, background: '#dc2626', opacity: 0.7, zIndex: 2, pointerEvents: 'none' }} />

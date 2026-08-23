@@ -219,7 +219,7 @@ const AllTasks = () => {
   const bulkDone = () => { selectedIds.forEach(id => updateTask(id, { status: 'done' })); clearSel(); };
   const bulkTodo = () => { selectedIds.forEach(id => updateTask(id, { status: 'todo' })); clearSel(); };
   const bulkDelete = async () => {
-    if (!window.confirm(`Xóa ${selectedIds.size} task đã chọn?`)) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected tasks?`)) return;
     const ids = [...selectedIds];
     clearSel();
     await bulkDeleteTasks(ids);
@@ -271,7 +271,7 @@ const AllTasks = () => {
               {isOverdue && <span style={{ fontSize:'10px', marginRight:'4px' }}>⚠️</span>}
               {t.name}
             </div>
-            <button onClick={e => openEdit(e, t)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'11px', padding:'0 2px', flexShrink:0, opacity:0.6 }} title="Sửa">✏️</button>
+            <button onClick={e => openEdit(e, t)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'11px', padding:'0 2px', flexShrink:0, opacity:0.6 }} title="Edit">✏️</button>
           </div>
           {isMobile && (
             <div style={{ fontSize:'10px', color: pa?.color || 'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -306,7 +306,7 @@ const AllTasks = () => {
         <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:dc, fontWeight: isOverdue ? 700 : 400 }}>
           {t.dueDate ? fmtDate(t.dueDate) : '—'}
           {isOverdue && <span style={{ display:'block', fontSize:'9px' }}>QUÁ HẠN</span>}
-          {isSoon    && <span style={{ display:'block', fontSize:'9px' }}>Còn {dl}d</span>}
+          {isSoon    && <span style={{ display:'block', fontSize:'9px' }}>{dl}d left</span>}
         </span>
       </div>
     );
@@ -413,7 +413,7 @@ const AllTasks = () => {
             ))}
           </div>
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={openReport} title="Xuất báo cáo Tasks (PDF)"><FileText size={14} /> Report</button>
+        <button className="btn btn-secondary btn-sm" onClick={openReport} title="Export Tasks Report (PDF)"><FileText size={14} /> Report</button>
       </div>
 
       {/* ── Bulk toolbar ── */}
@@ -430,7 +430,7 @@ const AllTasks = () => {
       <div className="tbl-wrap">
         {/* Filter bar */}
         <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--surface2)', flexWrap:'wrap' }}>
-          <div onClick={toggleAllActive} title="Chọn tất cả active"
+          <div onClick={toggleAllActive} title="Select all active"
             style={{ width:'16px', height:'16px', border:`1.5px solid ${allActiveSelected?'var(--accent)':'var(--border2)'}`, borderRadius:'4px', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background: allActiveSelected ? 'var(--accent)' : 'transparent', color:'#fff', fontSize:'10px' }}>
             {allActiveSelected ? '✓' : selectedIds.size > 0 ? '–' : ''}
           </div>

@@ -7,10 +7,10 @@ const fmtDateTime = (iso) => {
   const d = new Date(iso);
   const now = new Date();
   const diffMin = Math.round((now - d) / 60000);
-  if (diffMin < 1)  return 'Vừa xong';
-  if (diffMin < 60) return `${diffMin} phút trước`;
-  if (diffMin < 1440) return `${Math.round(diffMin / 60)} giờ trước`;
-  return d.toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  if (diffMin < 1)  return 'Just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  if (diffMin < 1440) return `${Math.round(diffMin / 60)} hours ago`;
+  return d.toLocaleString('en-US', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 };
 
 const initials = (name = '') =>
@@ -34,7 +34,7 @@ const ActivityComments = ({ activityId }) => {
       .select('*')
       .eq('activity_id', activityId)
       .order('created_at', { ascending: true });
-    if (err) setError('Chưa có bảng comments. Chạy schema_sprint4.sql trên Supabase trước.');
+    if (err) setError('Comments table not found. Run schema_sprint4.sql on Supabase first.');
     else { setComments(data || []); setError(null); }
     setLoading(false);
   };
@@ -68,14 +68,14 @@ const ActivityComments = ({ activityId }) => {
       author,
       text: text.trim(),
     });
-    if (err) setError('Không thể gửi bình luận. ' + err.message);
+    if (err) setError('Could not send comment. ' + err.message);
     else setText('');
     setSubmitting(false);
   };
 
   // ── Delete own comment ─────────────────────────────────────
   const handleDelete = async (id) => {
-    if (!window.confirm('Xóa bình luận này?')) return;
+    if (!window.confirm('Delete this comment?')) return;
     await supabase.from('comments').delete().eq('id', id);
   };
 
@@ -90,7 +90,7 @@ const ActivityComments = ({ activityId }) => {
   return (
     <div className="cmt-wrap glass-card">
       <div className="cmt-hdr">
-        💬 Thảo luận
+        💬 Discussion
         <span className="cmt-count">{comments.length}</span>
       </div>
 
@@ -98,13 +98,13 @@ const ActivityComments = ({ activityId }) => {
       {error && <div className="cmt-error">{error}</div>}
 
       {/* Loading */}
-      {loading && !error && <div className="cmt-loading">Đang tải...</div>}
+      {loading && !error && <div className="cmt-loading">Loading...</div>}
 
       {/* Comment list */}
       {!loading && !error && (
         <div className="cmt-list">
           {comments.length === 0 && (
-            <div className="cmt-empty">Chưa có bình luận nào. Hãy là người đầu tiên!</div>
+            <div className="cmt-empty">No comments yet. Be the first!</div>
           )}
 
           {comments.map(c => {
@@ -120,7 +120,7 @@ const ActivityComments = ({ activityId }) => {
                     <span className="cmt-author" style={{ color }}>{c.author}</span>
                     <span className="cmt-time">{fmtDateTime(c.created_at)}</span>
                     {isMine && (
-                      <button className="cmt-del-btn" onClick={() => handleDelete(c.id)} title="Xóa">✕</button>
+                      <button className="cmt-del-btn" onClick={() => handleDelete(c.id)} title="Delete">✕</button>
                     )}
                   </div>
                   <div className="cmt-text">{c.text}</div>
@@ -140,7 +140,7 @@ const ActivityComments = ({ activityId }) => {
           </div>
           <textarea
             className="cmt-input"
-            placeholder="Viết bình luận... (Enter gửi, Shift+Enter xuống dòng)"
+            placeholder="Write a comment... (Enter to send, Shift+Enter for new line)"
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => {
