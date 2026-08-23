@@ -521,7 +521,7 @@ export default function MELEntry() {
                 </div>
                 {importError && <div className="import-error">{importError}</div>}
                 <div className="mel-modal-footer">
-                  <button className="btn-secondary" onClick={closeImport}>Đóng</button>
+                  <button className="btn-secondary" onClick={closeImport}>Close</button>
                 </div>
               </>
             )}

@@ -66,7 +66,7 @@ const PartnerView = () => {
 
   const handleDeletePartner = () => {
     const partnerMel = melEntries.filter(m => m.partnerId === partner.id);
-    const melNote = partnerMel.length > 0 ? ` và ${partnerMel.length} MEL entries` : '';
+    const melNote = partnerMel.length > 0 ? ` and ${partnerMel.length} MEL entries` : '';
     confirm(
       `Delete partner "${partner.name}"?\n\nThis will permanently delete all ${allActs.length} activities, tasks, indicators${melNote} linked to this partner. Cannot be undone.`
     ).then(ok => {

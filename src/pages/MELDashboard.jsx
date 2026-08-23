@@ -96,7 +96,7 @@ function ModuleRiskMatrix({ riskMatrix, activities, partnerMap }) {
         <div>
           <div className="l3-module-title">Module A — Indicator Risk Matrix</div>
           <div className="l3-module-desc">
-            Sort theo risk · click row để drill-down activities · female% &lt; 50% flag
+            Sort by risk · click row to drill-down activities · female% &lt; 50% flag
           </div>
         </div>
         <div className="l3-badge-row">
@@ -337,7 +337,7 @@ function ModuleForecast({ forecasts }) {
         <div>
           <div className="l3-module-title">Module C — Forecast &amp; Alerts</div>
           <div className="l3-module-desc">
-            Projection cuối FY · rule-based insights · As of{' '}
+            End-of-FY projection · rule-based insights · As of{' '}
             {new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
           </div>
         </div>

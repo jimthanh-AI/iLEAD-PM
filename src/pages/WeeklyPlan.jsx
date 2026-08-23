@@ -4,8 +4,8 @@ import { useData } from '../context/DataContext';
 import { STAGE_COLORS, STATUS_CSS, STATUS_LABELS, daysLeft, fmtDate } from '../utils/constants';
 import './WeeklyPlan.css';
 
-const DAY_NAMES = ['T2','T3','T4','T5','T6','T7','CN'];
-const DAY_FULL  = ['Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy','Chủ Nhật'];
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAY_FULL  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
 const WeeklyPlan = () => {
   const nav = useNavigate();
@@ -147,7 +147,7 @@ const WeeklyPlan = () => {
       {/* Tasks due this week */}
       {weekTasks.length > 0 && (
         <div className="weekly-list-section">
-          <h2 className="wlist-title">Tasks đến hạn tuần này ({weekTasks.length})</h2>
+          <h2 className="wlist-title">Tasks due this week ({weekTasks.length})</h2>
           {weekTasks.map(t => {
             const act = activities.find(a => a.id === t.activityId);
             const p   = act ? partnerMap[act.partnerId] : null;

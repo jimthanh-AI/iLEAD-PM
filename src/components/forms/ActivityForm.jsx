@@ -127,15 +127,15 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         <label className="form-label">Activity Name *</label>
         <input autoFocus className="form-input" value={form.name}
           onChange={e => set('name', e.target.value)}
-          placeholder="VD: ToT cán bộ công chức về RBP/ESG – VCCI MTTN" />
+          placeholder="e.g. ToT for Civil Servants on RBP/ESG – VCCI MTTN" />
       </div>
 
       {/* Name EN */}
       <div className="form-group">
-        <label className="form-label">Activity Name (English) <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 11 }}>— dùng cho Project Report EN</span></label>
+        <label className="form-label">Activity Name (English) <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 11 }}>— used in English Project Report</span></label>
         <input className="form-input" value={form.name_en}
           onChange={e => set('name_en', e.target.value)}
-          placeholder="VD: VCCI MTTN - ToT for Civil Servants on RBP/ESG" />
+          placeholder="e.g. VCCI MTTN - ToT for Civil Servants on RBP/ESG" />
       </div>
 
       {/* Status + Stage */}
@@ -171,7 +171,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
           <div className="form-group">
             <label className="form-label">CA Advisor</label>
             <input className="form-input" value={form.ca}
-              onChange={e => set('ca', e.target.value)} placeholder="Tên CA" />
+              onChange={e => set('ca', e.target.value)} placeholder="CA name" />
           </div>
         </div>
       )}

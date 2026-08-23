@@ -93,10 +93,10 @@ export default function SettingsPage() {
     if (!newRole) return;
     setUserMsg('');
     const { error } = await updateUserRole(email, newRole);
-    if (error) { setUserMsg('Lỗi: ' + error.message); return; }
+    if (error) { setUserMsg('Error: ' + error.message); return; }
     setUsers(us => us.map(u => u.email === email ? { ...u, role: newRole } : u));
     setPendingRoles(p => { const n = { ...p }; delete n[email]; return n; });
-    setUserMsg('Đã cập nhật quyền cho ' + email);
+    setUserMsg('Updated role for ' + email);
   };
 
   // ── Export JSON ────────────────────────────────────────────────
@@ -400,7 +400,7 @@ export default function SettingsPage() {
                 {showNewType && (
                   <tr style={{ borderTop:'2px solid var(--accent)', background:'var(--bg2)' }}>
                     <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'60px', padding:'4px 6px' }} placeholder="Code" value={newTypeForm.code} onChange={e => setNewTypeForm(f => ({...f, code: e.target.value}))} /></td>
-                    <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="Tên tiếng Việt" value={newTypeForm.nameVi} onChange={e => setNewTypeForm(f => ({...f, nameVi: e.target.value}))} /></td>
+                    <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="Vietnamese name" value={newTypeForm.nameVi} onChange={e => setNewTypeForm(f => ({...f, nameVi: e.target.value}))} /></td>
                     <td style={{ padding:'6px 8px' }}><input className="form-input" style={{ width:'160px', padding:'4px 6px' }} placeholder="English name" value={newTypeForm.nameEn} onChange={e => setNewTypeForm(f => ({...f, nameEn: e.target.value}))} /></td>
                     <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'80px', padding:'4px 6px' }} value={newTypeForm.standardReach} onChange={e => setNewTypeForm(f => ({...f, standardReach: Number(e.target.value)||0}))} /></td>
                     <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'90px', padding:'4px 6px' }} value={newTypeForm.standardBudgetCad} onChange={e => setNewTypeForm(f => ({...f, standardBudgetCad: Number(e.target.value)||0}))} /></td>

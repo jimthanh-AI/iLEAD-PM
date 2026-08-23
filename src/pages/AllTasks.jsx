@@ -306,7 +306,7 @@ const AllTasks = () => {
         <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:dc, fontWeight: isOverdue ? 700 : 400 }}>
           {t.dueDate ? fmtDate(t.dueDate) : '—'}
           {isOverdue && <span style={{ display:'block', fontSize:'9px' }}>QUÁ HẠN</span>}
-          {isSoon    && <span style={{ display:'block', fontSize:'9px' }}>Còn {dl}d</span>}
+          {isSoon    && <span style={{ display:'block', fontSize:'9px' }}>{dl}d left</span>}
         </span>
       </div>
     );
