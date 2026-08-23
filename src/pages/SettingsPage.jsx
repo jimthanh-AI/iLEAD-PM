@@ -142,7 +142,7 @@ export default function SettingsPage() {
     reader.onload = async (ev) => {
       try {
         const parsed = JSON.parse(ev.target.result);
-        if (!parsed.partners || !parsed.activities) throw new Error('Không tìm thấy dữ liệu hợp lệ (thiếu partners/activities)');
+        if (!parsed.partners || !parsed.activities) throw new Error('Invalid data (missing partners/activities)');
         const restored = {
           __v:            parsed.__v            || 5,
           partners:       parsed.partners       || [],
@@ -153,7 +153,7 @@ export default function SettingsPage() {
           melEntries:     parsed.melEntries     || [],
           partnerBudgets: parsed.partnerBudgets || [],
         };
-        setImportOk('Đang đồng bộ lên Supabase...');
+        setImportOk('Syncing to Supabase...');
         await restoreFromBackup(restored);
 
         // Restore app_users + audit_logs nếu có trong backup
@@ -170,9 +170,9 @@ export default function SettingsPage() {
         const extras = [];
         if (parsed.appUsers?.length)  extras.push(`${parsed.appUsers.length} users`);
         if (parsed.auditLogs?.length) extras.push(`${parsed.auditLogs.length} audit logs`);
-        setImportOk(`Khôi phục thành công: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries${extras.length ? ', ' + extras.join(', ') : ''}.`);
+        setImportOk(`Restored successfully: ${restored.partners.length} partners, ${restored.activities.length} activities, ${restored.melEntries.length} MEL entries${extras.length ? ', ' + extras.join(', ') : ''}.`);
       } catch (err) {
-        setImportErr('Lỗi: ' + err.message);
+        setImportErr('Error: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -185,7 +185,7 @@ export default function SettingsPage() {
       await clearAndSeed();
       setResetConfirm(false);
     } catch (err) {
-      setImportErr('Lỗi reset: ' + err.message);
+      setImportErr('Reset error: ' + err.message);
       setResetConfirm(false);
     }
   };

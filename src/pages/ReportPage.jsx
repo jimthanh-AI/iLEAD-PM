@@ -9,16 +9,16 @@ import './ReportPage.css';
 
 const fmtBudget = (n) => {
   if (!n && n !== 0) return '—';
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + ' tỷ';
-  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(0) + ' triệu';
-  return new Intl.NumberFormat('vi-VN').format(n);
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B';
+  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(0) + 'M';
+  return new Intl.NumberFormat('en-US').format(n);
 };
 
 const fmtDateFull = (d) => {
   if (!d) return '—';
   const dt = new Date(d + 'T00:00:00');
   if (isNaN(dt.getTime())) return d;
-  return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return dt.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 const ReportPage = () => {
@@ -84,7 +84,7 @@ const ReportPage = () => {
   /* ── Print ──────────────────────────────────────────────── */
   const handlePrint = () => window.print();
 
-  const reportDate = new Date().toLocaleDateString('vi-VN', {
+  const reportDate = new Date().toLocaleDateString('en-US', {
     day: '2-digit', month: '2-digit', year: 'numeric'
   });
 
@@ -95,16 +95,16 @@ const ReportPage = () => {
       {/* ── Filter Bar (no-print) ────────────────────────── */}
       <div className="report-toolbar no-print">
         <div className="report-toolbar-left">
-          <h1 className="report-title-screen">Báo cáo Tiến độ</h1>
+          <h1 className="report-title-screen">Progress Report</h1>
           <select value={partnerFilter} onChange={e => setPartnerFilter(e.target.value)}>
-            <option value="">Tất cả Partner</option>
+            <option value="">All Partners</option>
             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} title="Từ ngày" />
+          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} title="From date" />
           <span style={{ color: 'var(--text3)', fontSize: '12px' }}>→</span>
-          <input type="date" value={toDate}   onChange={e => setToDate(e.target.value)}   title="Đến ngày" />
+          <input type="date" value={toDate}   onChange={e => setToDate(e.target.value)}   title="To date" />
         </div>
-        <button className="btn btn-primary" onClick={handlePrint}>🖨 In / Xuất PDF</button>
+        <button className="btn btn-primary" onClick={handlePrint}>🖨 Print / Export PDF</button>
       </div>
 
       {/* ══════════════════════════════════════════════════
@@ -115,19 +115,19 @@ const ReportPage = () => {
         {/* Cover / Title */}
         <div className="rpt-cover">
           <div className="rpt-cover-logo">i-LEAD</div>
-          <h1 className="rpt-cover-title">Báo cáo Tiến độ Dự án</h1>
+          <h1 className="rpt-cover-title">Project Progress Report</h1>
           <p className="rpt-cover-meta">
-            {partnerFilter ? partnerMap[partnerFilter]?.name : 'Tất cả Partner'}
+            {partnerFilter ? partnerMap[partnerFilter]?.name : 'All Partners'}
             {(fromDate || toDate) && (
               <span> · {fromDate ? fmtDateFull(fromDate) : '...'} — {toDate ? fmtDateFull(toDate) : '...'}</span>
             )}
           </p>
-          <p className="rpt-cover-date">Ngày in: {reportDate}</p>
+          <p className="rpt-cover-date">Printed: {reportDate}</p>
         </div>
 
         {/* 1. Executive Summary */}
         <section className="rpt-section">
-          <h2 className="rpt-h2">1. Tổng quan</h2>
+          <h2 className="rpt-h2">1. Overview</h2>
           <div className="rpt-kpi-row">
             <div className="rpt-kpi">
               <div className="rpt-kpi-val">{filteredPartners.length}</div>
@@ -147,11 +147,11 @@ const ReportPage = () => {
             </div>
             <div className="rpt-kpi" style={{ color: summary.overdue > 0 ? 'var(--red)' : undefined }}>
               <div className="rpt-kpi-val">{summary.overdue}</div>
-              <div className="rpt-kpi-lbl">Quá hạn</div>
+              <div className="rpt-kpi-lbl">Overdue</div>
             </div>
             <div className="rpt-kpi">
               <div className="rpt-kpi-val">{summary.tasksDone}/{filteredTasks.length}</div>
-              <div className="rpt-kpi-lbl">Tasks xong</div>
+              <div className="rpt-kpi-lbl">Tasks Done</div>
             </div>
           </div>
 
@@ -159,11 +159,11 @@ const ReportPage = () => {
           {(summary.totalPlanned > 0 || summary.totalActual > 0) && (
             <div className="rpt-budget-row">
               <div className="rpt-budget-item">
-                <span className="rpt-budget-lbl">Ngân sách kế hoạch</span>
+                <span className="rpt-budget-lbl">Planned Budget</span>
                 <span className="rpt-budget-val">{fmtBudget(summary.totalPlanned)}</span>
               </div>
               <div className="rpt-budget-item">
-                <span className="rpt-budget-lbl">Đã thực chi</span>
+                <span className="rpt-budget-lbl">Actual Spent</span>
                 <span className="rpt-budget-val" style={{ color: summary.totalActual > summary.totalPlanned ? 'var(--red)' : 'var(--green)' }}>
                   {fmtBudget(summary.totalActual)}
                 </span>
@@ -182,7 +182,7 @@ const ReportPage = () => {
 
         {/* 2. Stage Distribution */}
         <section className="rpt-section">
-          <h2 className="rpt-h2">2. Phân bổ Stage</h2>
+          <h2 className="rpt-h2">2. Stage Distribution</h2>
           <div className="rpt-stage-chart">
             {STAGES.map(s => {
               const count = summary.stageCount[s] || 0;
@@ -205,7 +205,7 @@ const ReportPage = () => {
 
         {/* 3. Per-Partner Breakdown */}
         <section className="rpt-section">
-          <h2 className="rpt-h2">3. Chi tiết theo Partner</h2>
+          <h2 className="rpt-h2">3. Partner Breakdown</h2>
           {filteredPartners.map(partner => {
             const pActivities  = filteredActivities.filter(a => a.partnerId === partner.id);
             const pActIds      = new Set(pActivities.map(a => a.id));
@@ -280,14 +280,14 @@ const ReportPage = () => {
         {/* 4. Upcoming Deadlines */}
         {upcoming.length > 0 && (
           <section className="rpt-section">
-            <h2 className="rpt-h2">4. Deadline sắp tới (14 ngày)</h2>
+            <h2 className="rpt-h2">4. Upcoming Deadlines (14 days)</h2>
             <table className="rpt-act-table">
               <thead>
                 <tr>
                   <th>Activity</th>
                   <th>Partner</th>
                   <th>Deadline</th>
-                  <th>Còn lại</th>
+                  <th>Remaining</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -301,7 +301,7 @@ const ReportPage = () => {
                       <td style={{ color: pa?.color, fontSize: '11px' }}>{pa?.name || '—'}</td>
                       <td style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{fmtDateFull(a.endDate)}</td>
                       <td style={{ fontSize: '11px', color: dl === 0 ? 'var(--red)' : dl <= 3 ? 'var(--orange)' : 'var(--text2)' }}>
-                        {dl === 0 ? 'Hôm nay' : `${dl} ngày`}
+                        {dl === 0 ? 'Today' : `${dl} days`}
                       </td>
                       <td><span className={`cell-tag ${STATUS_CSS[a.status]}`}>{STATUS_LABELS[a.status]}</span></td>
                     </tr>
@@ -314,7 +314,7 @@ const ReportPage = () => {
 
         {/* Footer */}
         <div className="rpt-footer">
-          <span>i-LEAD Project Management · In ngày {reportDate}</span>
+          <span>i-LEAD Project Management · Printed {reportDate}</span>
         </div>
       </div>
     </div>

@@ -279,7 +279,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         <label className="form-label">Notes / Blocker</label>
         <input className="form-input" value={form.notes}
           onChange={e => set('notes', e.target.value)}
-          placeholder="Đang chờ Jane approve, blocked by…" />
+          placeholder="Waiting for Jane to approve, blocked by…" />
       </div>
 
       {/* Conflict banner */}

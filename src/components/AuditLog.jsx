@@ -2,35 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import './AuditLog.css';
 
-// Human-readable Vietnamese labels for each field
+// Human-readable labels for each field
 const FIELD_LABELS = {
-  name          : 'Tên',
-  status        : 'Trạng thái',
+  name          : 'Name',
+  status        : 'Status',
   stage         : 'Stage',
   ballOwner     : 'Ball Owner',
   ca            : 'CA Advisor',
-  type          : 'Loại',
-  subCode       : 'Mã ngân sách',
-  startDate     : 'Ngày bắt đầu',
-  endDate       : 'Ngày kết thúc',
-  nextAction    : 'Bước tiếp theo',
-  notes         : 'Ghi chú',
-  budget_planned: 'Ngân sách KH',
-  budget_actual : 'Ngân sách TT',
-  description   : 'Mô tả',
-  partnerId     : 'Đối tác',
-  assignee      : 'Giao cho',
+  type          : 'Type',
+  subCode       : 'Budget Code',
+  startDate     : 'Start Date',
+  endDate       : 'End Date',
+  nextAction    : 'Next Action',
+  notes         : 'Notes',
+  budget_planned: 'Planned Budget',
+  budget_actual : 'Actual Budget',
+  description   : 'Description',
+  partnerId     : 'Partner',
+  assignee      : 'Assignee',
   dueDate       : 'Deadline',
-  color         : 'Màu sắc',
-  sector        : 'Lĩnh vực',
-  region        : 'Khu vực',
+  color         : 'Color',
+  sector        : 'Sector',
+  region        : 'Region',
 };
 
 const STATUS_VI = {
-  not_started  : 'Chưa bắt đầu',
-  in_progress  : 'Đang thực hiện',
-  done         : 'Hoàn thành',
-  not_completed: 'Không hoàn thành',
+  not_started  : 'Not Started',
+  in_progress  : 'In Progress',
+  done         : 'Done',
+  not_completed: 'Not Completed',
   todo         : 'Todo',
 };
 
@@ -43,7 +43,7 @@ const fmtVal = (val) => {
 const fmtDateTime = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleString('vi-VN', {
+  return d.toLocaleString('en-US', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -51,7 +51,7 @@ const fmtDateTime = (iso) => {
 
 const ACTION_ICON  = { created: '✨', updated: '✏️', deleted: '🗑️' };
 const ACTION_COLOR = { created: 'var(--green)', updated: 'var(--accent)', deleted: 'var(--red)' };
-const ACTION_LABEL = { created: 'Tạo mới', updated: 'Cập nhật', deleted: 'Đã xóa' };
+const ACTION_LABEL = { created: 'Created', updated: 'Updated', deleted: 'Deleted' };
 
 // ─────────────────────────────────────────────────
 const AuditLog = ({ tableName, recordId }) => {
@@ -72,7 +72,7 @@ const AuditLog = ({ tableName, recordId }) => {
       .order('changed_at', { ascending: false })
       .limit(60)
       .then(({ data, error: err }) => {
-        if (err) setError('Không thể tải lịch sử. Hãy chạy schema_sprint2.sql trên Supabase.');
+        if (err) setError('Cannot load history. Run schema_sprint2.sql on Supabase.');
         else setLogs(data || []);
         setLoading(false);
       });
@@ -90,17 +90,17 @@ const AuditLog = ({ tableName, recordId }) => {
     <div className="alog-wrap glass-card">
       {/* Header — clickable to toggle */}
       <div className="alog-hdr" onClick={() => setOpen(o => !o)}>
-        <span className="alog-hdr-title">🕐 Lịch sử thay đổi</span>
+        <span className="alog-hdr-title">🕐 Change History</span>
         <span className="alog-toggle">{open ? '▲' : '▼'}</span>
       </div>
 
       {open && (
         <div className="alog-body">
-          {loading && <div className="alog-empty">Đang tải...</div>}
+          {loading && <div className="alog-empty">Loading...</div>}
           {error   && <div className="alog-error">{error}</div>}
 
           {!loading && !error && Object.keys(grouped).length === 0 && (
-            <div className="alog-empty">Chưa có lịch sử thay đổi nào.</div>
+            <div className="alog-empty">No change history yet.</div>
           )}
 
           {!loading && !error && Object.values(grouped).map(({ meta, entries }) => (

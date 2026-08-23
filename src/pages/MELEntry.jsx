@@ -213,7 +213,7 @@ export default function MELEntry() {
         }
       });
       if (newEntries.length === 0 && skipCount === 0 && errorCount === 0) {
-        setImportError('Không tìm thấy dòng hợp lệ. Kiểm tra lại định dạng CSV.');
+        setImportError('No valid rows found. Please check CSV format.');
         return;
       }
       setImportPreview({ newEntries, skipCount, errorCount, fileName: file.name });
@@ -265,7 +265,7 @@ export default function MELEntry() {
       <div className="mel-entry-header">
         <div>
           <h1>MEL Entries</h1>
-          <p className="mel-entry-sub">Nhập kết quả thực tế → export paste vào MEL_Master Excel</p>
+          <p className="mel-entry-sub">Enter actual results → export paste into MEL_Master Excel</p>
         </div>
         <div className="mel-entry-actions">
           {canEdit && (
@@ -274,7 +274,7 @@ export default function MELEntry() {
                 <Upload size={14} /> Import CSV
               </button>
               <button className="btn-primary" onClick={openNew}>
-                <Plus size={14} /> Thêm Entry
+                <Plus size={14} /> Add Entry
               </button>
             </>
           )}
@@ -282,25 +282,25 @@ export default function MELEntry() {
             <FileText size={14} /> Report
           </button>
           <button className="btn-secondary" onClick={copyToClipboard}>
-            <Copy size={14} /> {copied ? 'Đã copy!' : 'Copy CSV'}
+            <Copy size={14} /> {copied ? 'Copied!' : 'Copy CSV'}
           </button>
           <button className="btn-secondary" onClick={downloadCSV}>
-            <Download size={14} /> Tải CSV
+            <Download size={14} /> Download CSV
           </button>
         </div>
       </div>
 
       {/* ── Filter bar ── */}
       <div className="mel-filter-bar">
-        <label>Lọc theo nhóm:</label>
+        <label>Filter by group:</label>
         <select value={filterGroup} onChange={e => setFilterGroup(e.target.value)}>
-          <option value="">Tất cả ({melEntries.length} entries)</option>
+          <option value="">All ({melEntries.length} entries)</option>
           {INDICATOR_GROUPS.map(g => {
             const cnt = melEntries.filter(e => e.indicatorGroup === g.code).length;
             return <option key={g.code} value={g.code}>{g.code} ({cnt})</option>;
           })}
         </select>
-        <span className="mel-filter-hint">Tổng: {filtered.length} entries · {filtered.reduce((s,e)=>s+entryTotal(e),0).toLocaleString()} người</span>
+        <span className="mel-filter-hint">Total: {filtered.length} entries · {filtered.reduce((s,e)=>s+entryTotal(e),0).toLocaleString()} people</span>
       </div>
 
       {/* ── Grouped Table ── */}
@@ -326,14 +326,14 @@ export default function MELEntry() {
               </div>
               {canEdit && (
                 <button className="btn-add-group" onClick={e => { e.stopPropagation(); openNewForGroup(group.code); }}>
-                  <Plus size={13}/> Thêm
+                  <Plus size={13}/> Add
                 </button>
               )}
             </div>
 
             {isExpanded && entries.length === 0 && (
               <div style={{padding:'10px 16px',fontSize:'.78rem',color:'var(--text3)',fontStyle:'italic'}}>
-                Chưa có entry — nhấn "+ Thêm" để bắt đầu nhập liệu cho nhóm <strong>{group.code}</strong>
+                No entries — click "+ Add" to start entering data for group <strong>{group.code}</strong>
               </div>
             )}
             {isExpanded && entries.length > 0 && (
@@ -385,7 +385,7 @@ export default function MELEntry() {
         <div className="mel-modal-overlay" onClick={closeForm}>
           <div className="mel-modal" onClick={e => e.stopPropagation()}>
             <div className="mel-modal-header">
-              <h2>{editId ? 'Chỉnh sửa Entry' : 'Thêm MEL Entry'}</h2>
+              <h2>{editId ? 'Edit Entry' : 'Add MEL Entry'}</h2>
               <button className="icon-btn" onClick={closeForm}><X size={16}/></button>
             </div>
 
@@ -395,14 +395,14 @@ export default function MELEntry() {
                 <div className="form-group">
                   <label>Indicator Group *</label>
                   <select value={form.indicatorGroup} onChange={e => set('indicatorGroup', e.target.value)}>
-                    <option value="">-- Chọn nhóm --</option>
+                    <option value="">-- Select group --</option>
                     {INDICATOR_GROUPS.map(g => <option key={g.code} value={g.code}>{g.code} — {g.label.slice(0,50)}…</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Sub-code *</label>
                   <select value={form.subCode} onChange={e => set('subCode', e.target.value)}>
-                    <option value="">-- Chọn sub-code --</option>
+                    <option value="">-- Select sub-code --</option>
                     {validSubCodes.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                   </select>
                 </div>
@@ -411,21 +411,21 @@ export default function MELEntry() {
               {/* Row 2 */}
               <div className="form-row">
                 <div className="form-group">
-                  <label>Ngày *</label>
+                  <label>Date *</label>
                   <input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
                   {form.date && <span className="quarter-hint">→ {QUARTER_LABELS[autoQuarter]}</span>}
                 </div>
                 <div className="form-group">
                   <label>Partner</label>
                   <select value={form.partnerId} onChange={e => set('partnerId', e.target.value)}>
-                    <option value="">-- External / không có --</option>
+                    <option value="">-- External / none --</option>
                     {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Activity (tuỳ chọn)</label>
+                  <label>Activity (optional)</label>
                   <select value={form.activityId} onChange={e => set('activityId', e.target.value)}>
-                    <option value="">-- Không link --</option>
+                    <option value="">-- No link --</option>
                     {(form.partnerId
                       ? activities.filter(a => a.partnerId === form.partnerId)
                       : activities
@@ -433,7 +433,7 @@ export default function MELEntry() {
                   </select>
                   {activityNotDone && (
                     <div style={{marginTop:'4px',color:'var(--orange)',fontSize:'12px'}}>
-                      ⚠ Activity chưa Done ({linkedActivity.status}) — hoàn thành activity trước khi nhập MEL
+                      ⚠ Activity not Done ({linkedActivity.status}) — complete activity before entering MEL
                     </div>
                   )}
                 </div>
@@ -441,14 +441,14 @@ export default function MELEntry() {
 
               {/* Description */}
               <div className="form-group full-width">
-                <label>Mô tả hoạt động</label>
+                <label>Activity description</label>
                 <input type="text" value={form.description} onChange={e => set('description', e.target.value)}
-                       placeholder="Tên hoạt động / sự kiện cụ thể" />
+                       placeholder="Activity / event name" />
               </div>
 
               {/* Quarter inputs */}
               <div className="form-group full-width">
-                <label>Kết quả theo Quý (Nữ F / Nam M)</label>
+                <label>Results by Quarter (Female F / Male M)</label>
                 <div className="quarter-grid">
                   {['Q1','Q2','Q3','Q4'].map(q => {
                     const [km, kf] = QF[q];
@@ -458,15 +458,15 @@ export default function MELEntry() {
                         <div className="q-label">{QUARTER_LABELS[q]}{isAuto && <span className="auto-tag">auto</span>}</div>
                         <div className="q-inputs">
                           <div>
-                            <span>Nữ</span>
+                            <span>F</span>
                             <input type="number" min="0" value={form[kf]||0} onChange={e => set(kf, e.target.value)} />
                           </div>
                           <div>
-                            <span>Nam</span>
+                            <span>M</span>
                             <input type="number" min="0" value={form[km]||0} onChange={e => set(km, e.target.value)} />
                           </div>
                           <div className="q-total">
-                            <span>Tổng</span>
+                            <span>Total</span>
                             <strong>{(+form[km]||0)+(+form[kf]||0)}</strong>
                           </div>
                         </div>
@@ -478,17 +478,17 @@ export default function MELEntry() {
                   Grand total: <strong>
                     {['q1_m','q1_f','q2_m','q2_f','q3_m','q3_f','q4_m','q4_f']
                       .reduce((s,k) => s+(+form[k]||0), 0)}
-                  </strong> người
+                  </strong> people
                 </div>
               </div>
             </div>
 
             <div className="mel-modal-footer">
-              <button className="btn-secondary" onClick={closeForm}>Hủy</button>
+              <button className="btn-secondary" onClick={closeForm}>Cancel</button>
               <button className="btn-primary"
                 disabled={!form.indicatorGroup || !form.subCode || !form.date || !!activityNotDone}
                 onClick={submitForm}>
-                {editId ? 'Cập nhật' : 'Thêm Entry'}
+                {editId ? 'Update' : 'Add Entry'}
               </button>
             </div>
           </div>
@@ -508,15 +508,15 @@ export default function MELEntry() {
             {!importPreview && (
               <>
                 <div className="import-instructions">
-                  <p>Chọn file CSV xuất từ nút "Tải CSV". Chỉ dòng <strong>chưa tồn tại</strong> sẽ được thêm.</p>
+                  <p>Select a CSV file exported via "Download CSV". Only <strong>new</strong> rows will be added.</p>
                   <p style={{ fontSize:'0.75rem', color:'var(--text3)', marginTop:'4px' }}>
-                    Trùng lặp xác định bởi: Sub-code + Ngày + Partner + Mô tả
+                    Duplicates identified by: Sub-code + Date + Partner + Description
                   </p>
                 </div>
                 <div style={{ padding:'28px 24px', textAlign:'center' }}>
                   <input ref={fileRef} type="file" accept=".csv" style={{ display:'none' }} onChange={handleImportFile} />
                   <button className="btn-primary" onClick={() => fileRef.current?.click()}>
-                    <Upload size={14} /> Chọn file CSV...
+                    <Upload size={14} /> Select CSV file...
                   </button>
                 </div>
                 {importError && <div className="import-error">{importError}</div>}
@@ -536,23 +536,23 @@ export default function MELEntry() {
                   <div style={{ display:'flex', gap:'12px', marginBottom:'16px' }}>
                     <div style={{ flex:1, padding:'14px', background:'var(--green-bg)', borderRadius:'var(--radius)', textAlign:'center' }}>
                       <div style={{ fontSize:'28px', fontWeight:700, color:'var(--green)' }}>{importPreview.newEntries.length}</div>
-                      <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>dòng MỚI sẽ được thêm</div>
+                      <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>NEW rows to add</div>
                     </div>
                     <div style={{ flex:1, padding:'14px', background:'var(--surface2)', borderRadius:'var(--radius)', textAlign:'center' }}>
                       <div style={{ fontSize:'28px', fontWeight:700, color:'var(--text3)' }}>{importPreview.skipCount}</div>
-                      <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>dòng đã tồn tại, bỏ qua</div>
+                      <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>existing rows, skipped</div>
                     </div>
                     {importPreview.errorCount > 0 && (
                       <div style={{ flex:1, padding:'14px', background:'var(--red-bg)', borderRadius:'var(--radius)', textAlign:'center' }}>
                         <div style={{ fontSize:'28px', fontWeight:700, color:'var(--red)' }}>{importPreview.errorCount}</div>
-                        <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>dòng lỗi định dạng</div>
+                        <div style={{ fontSize:'12px', color:'var(--text2)', marginTop:'2px' }}>format errors</div>
                       </div>
                     )}
                   </div>
 
                   {importPreview.newEntries.length > 0 && (
                     <div style={{ fontSize:'12px', color:'var(--text2)' }}>
-                      Preview dòng mới:
+                      Preview new rows:
                       <div style={{ maxHeight:'160px', overflowY:'auto', marginTop:'6px', border:'1px solid var(--border)', borderRadius:'6px' }}>
                         {importPreview.newEntries.slice(0, 8).map((e, i) => (
                           <div key={i} style={{ padding:'5px 10px', borderBottom:'1px solid var(--border)', fontSize:'11px', display:'flex', gap:'10px', alignItems:'center' }}>
@@ -563,7 +563,7 @@ export default function MELEntry() {
                         ))}
                         {importPreview.newEntries.length > 8 && (
                           <div style={{ padding:'5px 10px', fontSize:'11px', color:'var(--text3)', fontStyle:'italic' }}>
-                            ... và {importPreview.newEntries.length - 8} dòng nữa
+                            ... and {importPreview.newEntries.length - 8} more rows
                           </div>
                         )}
                       </div>
@@ -572,19 +572,19 @@ export default function MELEntry() {
 
                   {importPreview.newEntries.length === 0 && (
                     <p style={{ textAlign:'center', color:'var(--text2)', fontSize:'13px', padding:'8px 0' }}>
-                      Tất cả dòng đã tồn tại trong database — không có gì để thêm.
+                      All rows already exist in database — nothing to add.
                     </p>
                   )}
                 </div>
 
                 <div className="mel-modal-footer">
-                  <button className="btn-secondary" onClick={() => setImportPreview(null)}>← Chọn file khác</button>
+                  <button className="btn-secondary" onClick={() => setImportPreview(null)}>← Select another file</button>
                   {importPreview.newEntries.length > 0 ? (
                     <button className="btn-primary" onClick={confirmImport}>
-                      Thêm {importPreview.newEntries.length} dòng mới →
+                      Add {importPreview.newEntries.length} new rows →
                     </button>
                   ) : (
-                    <button className="btn-secondary" onClick={closeImport}>Đóng</button>
+                    <button className="btn-secondary" onClick={closeImport}>Close</button>
                   )}
                 </div>
               </>

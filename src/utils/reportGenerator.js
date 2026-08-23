@@ -290,7 +290,7 @@ function shell({ title, subtitle, period, summaryHtml, bodyHtml }) {
 
 function openReport(html) {
   const w = window.open('', '_blank');
-  if (!w) { alert('Pop-up bị chặn. Hãy cho phép pop-up từ trang này rồi thử lại.'); return; }
+  if (!w) { alert('Pop-up blocked. Please allow pop-ups for this site and try again.'); return; }
   w.document.write(html);
   w.document.close();
 }

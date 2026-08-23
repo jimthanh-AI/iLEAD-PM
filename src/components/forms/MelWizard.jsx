@@ -83,7 +83,7 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
 
   const goToStep3 = () => {
     if (Object.keys(selected).length === 0) {
-      setError('Chọn ít nhất 1 indicator group'); return;
+      setError('Select at least 1 indicator group'); return;
     }
     setError('');
     const q = getQuarter(date);
@@ -99,7 +99,7 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
 
   const handleSubmit = () => {
     if (rows.some(r => r.m < 0 || r.f < 0)) {
-      setError('Số người không được âm'); return;
+      setError('Numbers cannot be negative'); return;
     }
     const q = quarter;
     rows.forEach(r => {
@@ -135,10 +135,10 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Ghi nhận MEL — ${step}/3`}
+      title={`Record MEL — Step ${step}/3`}
       onSubmit={step === 1 ? () => setStep(2) : step === 2 ? goToStep3 : handleSubmit}
-      submitLabel={step === 3 ? `Tạo ${rows.length} MEL entry` : 'Tiếp theo →'}
-      secondaryLabel={step > 1 ? '← Quay lại' : undefined}
+      submitLabel={step === 3 ? `Create ${rows.length} MEL entry` : 'Next →'}
+      secondaryLabel={step > 1 ? '← Back' : undefined}
       onSecondary={step > 1 ? () => setStep(s => s - 1) : undefined}
     >
       {/* ── Step 1: Confirm info ── */}
@@ -147,7 +147,7 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
           <div style={{ background:'var(--bg2)', borderRadius:'var(--radius)', padding:'12px', fontSize:'13px', display:'flex', flexDirection:'column', gap:'6px' }}>
             <div><span style={{ color:'var(--text3)', minWidth:'80px', display:'inline-block' }}>Partner</span><strong>{partner?.name || '—'}</strong></div>
             <div style={{ display:'flex', gap:'16px' }}>
-              <div><span style={{ color:'var(--text3)', minWidth:'80px', display:'inline-block' }}>Ngày</span>
+              <div><span style={{ color:'var(--text3)', minWidth:'80px', display:'inline-block' }}>Date</span>
                 <input type="date" className="form-input" style={{ display:'inline-block', width:'140px', padding:'2px 6px', fontSize:'12px' }}
                   value={date} onChange={e => { setDate(e.target.value); setQuarter(getQuarter(e.target.value)); }} />
               </div>
@@ -157,16 +157,16 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
               </div>
             </div>
             <div style={{ display:'flex', gap:'16px' }}>
-              <div><span style={{ color:'var(--text3)' }}>Reach</span> {totalR} người ({totalM}M / {totalF}F)</div>
+              <div><span style={{ color:'var(--text3)' }}>Reach</span> {totalR} people ({totalM}M / {totalF}F)</div>
             </div>
           </div>
           <div className="form-group" style={{ marginBottom:0 }}>
-            <label className="form-label">Description (sẽ ghi vào MEL entry)</label>
+            <label className="form-label">Description (will be saved to MEL entry)</label>
             <input className="form-input" value={description} onChange={e => setDesc(e.target.value)}
-              placeholder="Mô tả hoạt động..." />
+              placeholder="Activity description..." />
           </div>
           <div style={{ fontSize:'11px', color:'var(--text3)' }}>
-            Wizard sẽ tạo MEL entries riêng cho từng indicator group bạn chọn ở bước tiếp theo.
+            The wizard will create separate MEL entries for each indicator group you select in the next step.
           </div>
         </div>
       )}
@@ -175,7 +175,7 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
       {step === 2 && (
         <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
           <div style={{ fontSize:'12px', color:'var(--text3)', marginBottom:'4px' }}>
-            Đã đánh dấu sẵn dựa trên loại hoạt động. Chọn/bỏ chọn theo thực tế:
+            Pre-selected based on activity type. Check/uncheck as needed:
           </div>
           {INDICATOR_GROUPS.map(g => {
             const checked = selected[g.code] !== undefined;
@@ -219,10 +219,10 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
       {step === 3 && (
         <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
           <div style={{ fontSize:'12px', color:'var(--text3)', marginBottom:'2px' }}>
-            Nhập số Nữ/Nam cho <strong>{QUARTER_LABELS[quarter]}</strong>. Các quarter khác tự động = 0.
+            Enter Female/Male numbers for <strong>{QUARTER_LABELS[quarter]}</strong>. Other quarters auto = 0.
           </div>
           <div style={{ fontSize:'11px', color:'var(--text2)', background:'var(--bg2)', borderRadius:'var(--radius)', padding:'8px 10px' }}>
-            Reach hoạt động: <strong>{totalR}</strong> người ({totalF} Nữ / {totalM} Nam)
+            Activity reach: <strong>{totalR}</strong> people ({totalF} F / {totalM} M)
           </div>
           {rows.map((r, i) => {
             const g = INDICATOR_GROUPS.find(x => x.code === r.groupCode);
@@ -233,17 +233,17 @@ export const MelWizard = ({ isOpen, onClose, activity, partner }) => {
                   <span style={{ fontFamily:'var(--font-mono)', fontWeight:700, fontSize:'12px', color:'var(--accent)' }}>{r.groupCode}</span>
                   <span style={{ fontSize:'10px', color:'var(--text3)' }}>{r.subCode}</span>
                   <span style={{ fontSize:'11px', color:'var(--text2)', flex:1 }}>{g?.label}</span>
-                  {total > 0 && <span style={{ fontSize:'11px', fontWeight:600 }}>{total} người</span>}
+                  {total > 0 && <span style={{ fontSize:'11px', fontWeight:600 }}>{total} people</span>}
                 </div>
                 <div style={{ display:'flex', gap:'12px', alignItems:'center' }}>
                   <div style={{ flex:1 }}>
-                    <label style={{ fontSize:'11px', color:'var(--text3)', display:'block', marginBottom:'2px' }}>Nữ</label>
+                    <label style={{ fontSize:'11px', color:'var(--text3)', display:'block', marginBottom:'2px' }}>Female</label>
                     <input className="form-input" type="number" min="0" value={r.f}
                       onChange={e => setRow(i, 'f', e.target.value)}
                       style={{ textAlign:'center' }} />
                   </div>
                   <div style={{ flex:1 }}>
-                    <label style={{ fontSize:'11px', color:'var(--text3)', display:'block', marginBottom:'2px' }}>Nam</label>
+                    <label style={{ fontSize:'11px', color:'var(--text3)', display:'block', marginBottom:'2px' }}>Male</label>
                     <input className="form-input" type="number" min="0" value={r.m}
                       onChange={e => setRow(i, 'm', e.target.value)}
                       style={{ textAlign:'center' }} />

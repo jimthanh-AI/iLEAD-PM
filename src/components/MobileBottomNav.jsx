@@ -48,7 +48,7 @@ const MobileBottomNav = ({ onQuickTask }) => {
         </button>
 
         {/* FAB center */}
-        <button className="mbn-fab" onClick={onQuickTask} aria-label="Thêm task mới">
+        <button className="mbn-fab" onClick={onQuickTask} aria-label="Add new task">
           <span className="mbn-fab-icon">+</span>
         </button>
         <div className="mbn-fab-placeholder" />

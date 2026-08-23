@@ -56,22 +56,22 @@ const WeeklyPlan = () => {
       {/* Header */}
       <div className="weekly-header">
         <div>
-          <h1 className="page-title">Kế hoạch tuần</h1>
-          <p className="weekly-range">{weekLabel}{weekOffset === 0 ? ' · Tuần hiện tại' : ''}</p>
+          <h1 className="page-title">Weekly Plan</h1>
+          <p className="weekly-range">{weekLabel}{weekOffset === 0 ? ' · Current week' : ''}</p>
         </div>
         <div className="weekly-nav">
-          <button className="btn btn-sm" onClick={() => setWeekOffset(o => o - 1)}>‹ Tuần trước</button>
-          <button className="btn btn-sm" onClick={() => setWeekOffset(0)}>Tuần này</button>
-          <button className="btn btn-sm" onClick={() => setWeekOffset(o => o + 1)}>Tuần sau ›</button>
+          <button className="btn btn-sm" onClick={() => setWeekOffset(o => o - 1)}>‹ Previous</button>
+          <button className="btn btn-sm" onClick={() => setWeekOffset(0)}>This week</button>
+          <button className="btn btn-sm" onClick={() => setWeekOffset(o => o + 1)}>Next ›</button>
         </div>
       </div>
 
       {/* Alert banners */}
       {(overdue > 0 || dueSoon > 0 || weekTasks.length > 0) && (
         <div className="weekly-alerts">
-          {overdue > 0    && <div className="alert-pill danger">⚠ {overdue} hoạt động quá hạn</div>}
-          {dueSoon > 0    && <div className="alert-pill warn">⏰ {dueSoon} hoạt động đến hạn trong 7 ngày</div>}
-          {weekTasks.length > 0 && <div className="alert-pill info">✓ {weekTasks.length} task cần hoàn thành tuần này</div>}
+          {overdue > 0    && <div className="alert-pill danger">⚠ {overdue} activities overdue</div>}
+          {dueSoon > 0    && <div className="alert-pill warn">⏰ {dueSoon} activities due within 7 days</div>}
+          {weekTasks.length > 0 && <div className="alert-pill info">✓ {weekTasks.length} tasks due this week</div>}
         </div>
       )}
 
@@ -119,9 +119,9 @@ const WeeklyPlan = () => {
 
       {/* Activity list */}
       <div className="weekly-list-section">
-        <h2 className="wlist-title">Hoạt động trong tuần ({weekActivities.length})</h2>
+        <h2 className="wlist-title">Activities this week ({weekActivities.length})</h2>
         {weekActivities.length === 0
-          ? <p className="wlist-empty">Không có hoạt động nào trong tuần này.</p>
+          ? <p className="wlist-empty">No activities this week.</p>
           : weekActivities.map(a => {
               const p  = partnerMap[a.partnerId];
               const dl = daysLeft(a.endDate);

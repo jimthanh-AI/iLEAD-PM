@@ -4,8 +4,8 @@ import { useData } from '../context/DataContext';
 import { TASK_STATUS_LABELS, fmtDate, daysLeft, generateId, TEAM_MEMBERS, STAGE_COLORS } from '../utils/constants';
 import './MasterCalendar.css';
 
-const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const MONTH_GRID_DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTH_GRID_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const CHIP_COLORS = {
   done:        { bg: 'rgba(16,185,129,.15)', color: '#059669', border: '#10b981' },
@@ -275,7 +275,7 @@ const QuickAddTask = ({ defaultDate, activities, addTask, onClose }) => {
       <div className="qa-body">
         <input
           className="qa-input"
-          placeholder="Tên task *"
+          placeholder="Task name *"
           value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onClose(); }}
@@ -290,15 +290,15 @@ const QuickAddTask = ({ defaultDate, activities, addTask, onClose }) => {
         </div>
         <div className="qa-row">
           <select className="qa-select" value={activityId} onChange={e => setActId(e.target.value)} style={{ flex: 1 }}>
-            <option value="">— Hoạt động khác —</option>
+            <option value="">— Other activity —</option>
             {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <select className="qa-select" value={assignee} onChange={e => setAssignee(e.target.value)} style={{ flex: 1 }}>
-              <option value="">— Giao cho —</option>
+              <option value="">— Assign to —</option>
               {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={submit} style={{ width: '100%', marginTop: '4px' }}>Thêm Task</button>
+        <button className="btn btn-primary btn-sm" onClick={submit} style={{ width: '100%', marginTop: '4px' }}>Add Task</button>
       </div>
     </div>
   );
@@ -375,7 +375,7 @@ const TaskDetailPopup = ({ task, act, pa, nav, onClose, updateTask }) => {
                 {fmtDate(task.dueDate)}
                 {dl !== null && task.status !== 'done' && (
                   <span style={{ fontWeight: 400, marginLeft: '6px', fontSize: '11px', color: isOverdue ? '#ef4444' : 'var(--text3)' }}>
-                    {isOverdue ? `Quá hạn ${Math.abs(dl)} ngày` : dl === 0 ? 'Hôm nay' : `còn ${dl} ngày`}
+                    {isOverdue ? `${Math.abs(dl)} days overdue` : dl === 0 ? 'Today' : `${dl} days left`}
                   </span>
                 )}
               </span>
@@ -383,18 +383,18 @@ const TaskDetailPopup = ({ task, act, pa, nav, onClose, updateTask }) => {
           )}
           {task.assignee && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-              <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Giao cho</span>
+              <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Assigned to</span>
               <span style={{ fontWeight: 500 }}>👤 {task.assignee}</span>
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-            <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Trạng thái</span>
+            <span style={{ color: 'var(--text3)', width: '70px', flexShrink: 0 }}>Status</span>
             <span style={{
               padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600,
               background: isOverdue ? 'rgba(239,68,68,0.12)' : task.status === 'done' ? 'rgba(16,185,129,0.12)' : 'rgba(156,163,175,0.15)',
               color: isOverdue ? '#ef4444' : task.status === 'done' ? '#059669' : '#6b7280',
             }}>
-              {isOverdue ? 'Quá hạn' : task.status === 'done' ? 'Hoàn thành' : 'Todo'}
+              {isOverdue ? 'Overdue' : task.status === 'done' ? 'Completed' : 'Todo'}
             </span>
           </div>
           {task.notes && (
@@ -417,7 +417,7 @@ const TaskDetailPopup = ({ task, act, pa, nav, onClose, updateTask }) => {
             }}
             onClick={toggleDone}
           >
-            {task.status === 'done' ? '↩ Mở lại' : '✓ Đánh dấu Done'}
+            {task.status === 'done' ? '↩ Reopen' : '✓ Mark Done'}
           </button>
           {act && (
             <button
@@ -425,7 +425,7 @@ const TaskDetailPopup = ({ task, act, pa, nav, onClose, updateTask }) => {
               style={{ flex: 1, fontWeight: 500 }}
               onClick={() => { onClose(); nav(`/activity/${act.id}`); }}
             >
-              Xem Activity →
+              View Activity →
             </button>
           )}
         </div>
@@ -489,7 +489,7 @@ export const MasterCalendar = () => {
   useEffect(() => {
     if (!gcalEmbedUrl) { setGcalEvents([]); return; }
     const icsUrl = getIcsUrlFromEmbedUrl(gcalEmbedUrl);
-    if (!icsUrl) { setGcalError('Link không hợp lệ'); return; }
+    if (!icsUrl) { setGcalError('Invalid link'); return; }
     setGcalLoading(true);
     setGcalError('');
     const now = new Date();
@@ -504,7 +504,7 @@ export const MasterCalendar = () => {
         setGcalEvents(expandEvents(raw, winStartIso, winEndIso));
         setGcalLoading(false);
       })
-      .catch(() => { setGcalError('Lịch không công khai hoặc lỗi kết nối'); setGcalLoading(false); });
+      .catch(() => { setGcalError('Calendar not public or connection error'); setGcalLoading(false); });
   }, [gcalEmbedUrl]);
 
   const today    = new Date();
@@ -577,7 +577,7 @@ export const MasterCalendar = () => {
       const d = new Date(last); d.setDate(last.getDate() + 1);
       cells.push({ date: d, inMonth: false });
     }
-    return { cells, label: base.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }) };
+    return { cells, label: base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) };
   };
   const { cells: monthCells, label: monthLabel } = getMonthGrid();
 
@@ -680,14 +680,14 @@ export const MasterCalendar = () => {
           <label className="mc-sb-item" style={{ paddingLeft: '12px' }}>
             <input type="checkbox" checked={showTasks.overdue} onChange={() => toggleTaskFilter('overdue')} />
             <span className="mc-sb-swatch" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444' }}></span>
-            <span className="mc-sb-label" style={{ color:'var(--red)' }}>Quá hạn ⚠️</span>
+            <span className="mc-sb-label" style={{ color:'var(--red)' }}>Overdue ⚠️</span>
           </label>
         </div>
 
         {/* Google Calendar Group */}
         <div className="mc-sb-group">
-          <div className="mc-sb-group-hdr">📆 LỊCH GOOGLE</div>
-          <div style={{ fontSize:'11px', color:'var(--text3)', padding:'4px 0' }}>Dùng nút GCal trên thanh lọc phía trên.</div>
+          <div className="mc-sb-group-hdr">📆 GOOGLE CALENDAR</div>
+          <div style={{ fontSize:'11px', color:'var(--text3)', padding:'4px 0' }}>Use GCal button on the filter bar above.</div>
         </div>
 
       </div>
@@ -703,18 +703,18 @@ export const MasterCalendar = () => {
           
           <div className="mc-nav-controls">
             <button className="btn btn-sm" onClick={e => { e.stopPropagation(); setQuickAdd({ date: todayIso }); }}>
-              ✚ Thêm Task
+              ✚ Add Task
             </button>
             <div className="mc-view-tabs" style={{marginLeft:'8px'}}>
               {['week', 'month'].map(v => (
                 <button key={v} className={`tab-pill${view === v ? ' active' : ''}`} onClick={() => setView(v)}>
-                  {v === 'month' ? '⊞ Tháng' : '☰ Tuần'}
+                  {v === 'month' ? '⊞ Month' : '☰ Week'}
                 </button>
               ))}
             </div>
             <div className="mc-nav-arrows">
               <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o - 1) : setMonthOffset(o => o - 1)}>‹</button>
-              <button className="btn btn-sm" onClick={() => { setWeekOffset(0); setMonthOffset(0); }}>Hôm nay</button>
+              <button className="btn btn-sm" onClick={() => { setWeekOffset(0); setMonthOffset(0); }}>Today</button>
               <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o + 1) : setMonthOffset(o => o + 1)}>›</button>
             </div>
             <select
@@ -722,9 +722,9 @@ export const MasterCalendar = () => {
               value={partnerFilter}
               onChange={e => setPartnerFilter(e.target.value)}
               style={{ marginLeft: '8px' }}
-              title="Lọc theo Partner"
+              title="Filter by Partner"
             >
-              <option value="">Tất cả Partner</option>
+              <option value="">All Partners</option>
               {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
@@ -736,7 +736,7 @@ export const MasterCalendar = () => {
           <div className="mc-nav-mobile-row">
             <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o - 1) : setMonthOffset(o => o - 1)}>‹</button>
             <span style={{ fontSize:'13px', fontWeight:600, flex:1, textAlign:'center' }}>{navLabel}</span>
-            <button className="btn btn-sm" onClick={() => { setWeekOffset(0); setMonthOffset(0); }}>Hôm nay</button>
+            <button className="btn btn-sm" onClick={() => { setWeekOffset(0); setMonthOffset(0); }}>Today</button>
             <button className="btn btn-sm" onClick={() => view === 'week' ? setWeekOffset(o => o + 1) : setMonthOffset(o => o + 1)}>›</button>
           </div>
           {/* Filter chips row */}
@@ -754,19 +754,19 @@ export const MasterCalendar = () => {
             <label className="mc-sb-item" style={{ margin:0 }}>
               <input type="checkbox" checked={showTasks.overdue} onChange={() => toggleTaskFilter('overdue')} />
               <span className="mc-sb-swatch" style={{ background:'rgba(239,68,68,0.1)', border:'1px solid #ef4444' }}></span>
-              <span style={{ fontSize:'12px', color:'var(--red)' }}>Quá hạn</span>
+              <span style={{ fontSize:'12px', color:'var(--red)' }}>Overdue</span>
             </label>
             {!gcalEmbedUrl ? (
               <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6 }}>
                 <input
                   className="mc-sb-client-input"
                   style={{ width:220, fontSize:'12px' }}
-                  placeholder="Dán link Google Calendar embed..."
+                  placeholder="Paste Google Calendar embed link..."
                   value={gcalInputVal}
                   onChange={e => setGcalInputVal(e.target.value)}
                 />
                 <button className="btn btn-sm" onClick={() => { if (gcalInputVal.trim()) saveGcalEmbedUrl(gcalInputVal.trim()); }} style={{ background:'#fff', border:'1px solid var(--border)', color:'#3b82f6', whiteSpace:'nowrap' }}>
-                  📅 Lưu
+                  📅 Save
                 </button>
               </div>
             ) : (
@@ -777,7 +777,7 @@ export const MasterCalendar = () => {
                 <button className="btn btn-sm" onClick={() => setShowGcalPanel(v => !v)} style={{ background: showGcalPanel ? '#3b82f6' : '#fff', border:'1px solid var(--border)', color: showGcalPanel ? '#fff' : '#3b82f6', whiteSpace:'nowrap' }}>
                   📅 Google Cal
                 </button>
-                <button onClick={() => { saveGcalEmbedUrl(''); setGcalEvents([]); setShowGcalPanel(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'14px' }} title="Xóa lịch Google">✕</button>
+                <button onClick={() => { saveGcalEmbedUrl(''); setGcalEvents([]); setShowGcalPanel(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'14px' }} title="Remove Google Calendar">✕</button>
               </div>
             )}
           </div>
@@ -825,7 +825,7 @@ export const MasterCalendar = () => {
                           ? <TaskChip key={`t_${evt.data.id}`} task={evt.data} compact />
                           : <GCalChip key={`g_${evt.data.uid || evt.data.summary}_${evt.data._isoDate}`} ev={evt.data} compact />
                       )}
-                      {events.length > 4 && <div className="uc-more">+{events.length - 4} nữa</div>}
+                      {events.length > 4 && <div className="uc-more">+{events.length - 4} more</div>}
                     </div>
                   </div>
                 );

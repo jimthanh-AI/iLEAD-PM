@@ -84,7 +84,7 @@ const GlobalKanban = () => {
 
   const handleDelete = (e, a) => {
     e.stopPropagation();
-    if (window.confirm(`Xóa "${a.name}"?`)) deleteActivity(a.id);
+    if (window.confirm(`Delete "${a.name}"?`)) deleteActivity(a.id);
   };
 
   const getPartner = (a) => partnerMap[a.partnerId];
@@ -97,10 +97,10 @@ const GlobalKanban = () => {
       <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'16px', flexShrink:0 }}>
         <h1 className="page-title" style={{ flex:1, fontSize:'20px' }}>Kanban — Activities</h1>
         <select className="filter-sel" value={partnerFilter} onChange={e => setPartnerFilter(e.target.value)}>
-          <option value="">Tất cả Partner</option>
+          <option value="">All Partners</option>
           {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <button className="btn btn-secondary" onClick={openReport} title="Xuất báo cáo Activities (PDF)"><FileText size={14} /> Report</button>
+        <button className="btn btn-secondary" onClick={openReport} title="Export Activities Report (PDF)"><FileText size={14} /> Report</button>
         <button className="btn btn-primary" onClick={() => openAdd('not_started')}>+ Activity</button>
       </div>
 
@@ -182,7 +182,7 @@ const GlobalKanban = () => {
                               </div>
                               {a.author && (
                                 <div style={{ fontSize: '10px', color: 'var(--text3)', textAlign: 'right', marginTop: '6px' }}>
-                                  Tạo bởi: {a.author}
+                                  Created by: {a.author}
                                 </div>
                               )}
                               <div className="proj-card-actions">

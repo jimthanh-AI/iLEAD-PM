@@ -117,7 +117,7 @@ export const KanbanBoard = ({ projects, defaultPartnerId = null }) => {
                             </div>
                             {project.author && (
                               <div style={{ fontSize: '10px', color: 'var(--text3)', textAlign: 'right', marginTop: '6px' }}>
-                                Tạo bởi: {project.author}
+                                Created by: {project.author}
                               </div>
                             )}
                           </div>

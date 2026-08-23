@@ -57,8 +57,8 @@ export const GanttTimeline = () => {
   const rangeLabel = mode === 'week'
     ? fmtDate(rs.toISOString().split('T')[0]) + ' – ' + fmtDate(re.toISOString().split('T')[0])
     : mode === 'month'
-      ? rs.toLocaleDateString('vi-VN', { month:'long', year:'numeric' })
-      : 'Năm ' + rs.getFullYear();
+      ? rs.toLocaleDateString('en-US', { month:'long', year:'numeric' })
+      : 'Year ' + rs.getFullYear();
 
   let acts = activities.filter(a => a.startDate);
   if (partnerFilter) {
@@ -84,19 +84,19 @@ export const GanttTimeline = () => {
             {['week','month','year'].map(m => (
               <button key={m} className={`tab-pill ${mode===m?'active':''}`}
                 onClick={() => { setMode(m); setOffset(0); }}>
-                {m==='week'?'Tuần':m==='month'?'Tháng':'Năm'}
+                {m==='week'?'Week':m==='month'?'Month':'Year'}
               </button>
             ))}
           </div>
           <button className="btn btn-sm" onClick={() => setOffset(o=>o-1)}>‹</button>
-          <button className="btn btn-sm" onClick={() => setOffset(0)}>Hôm nay</button>
+          <button className="btn btn-sm" onClick={() => setOffset(0)}>Today</button>
           <button className="btn btn-sm" onClick={() => setOffset(o=>o+1)}>›</button>
           <select className="filter-sel"
             value={partnerFilter} onChange={e => setPartnerFilter(e.target.value)}>
-            <option value="">Tất cả Partner</option>
+            <option value="">All Partners</option>
             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className="btn btn-secondary btn-sm" onClick={openReport} title="Xuất báo cáo Timeline (PDF)"><FileText size={14} /> Report</button>
+          <button className="btn btn-secondary btn-sm" onClick={openReport} title="Export Timeline Report (PDF)"><FileText size={14} /> Report</button>
         </div>
         <div className="gantt-range-label">{rangeLabel} — {visible.length} activities</div>
 
@@ -107,7 +107,7 @@ export const GanttTimeline = () => {
               <div className="gantt-thdr">
                 {labels.map(l => <span key={l.pct} className="gantt-lbl" style={{left:`${l.pct}%`}}>{l.label}</span>)}
                 {todayPct > 0 && todayPct < 100 && (
-                  <span className="gantt-today-lbl" style={{left:`${todayPct}%`}}>Hôm nay</span>
+                  <span className="gantt-today-lbl" style={{left:`${todayPct}%`}}>Today</span>
                 )}
               </div>
             </div>
@@ -147,7 +147,7 @@ export const GanttTimeline = () => {
             }) : (
               <div className="empty-state" style={{padding:'40px'}}>
                 <div style={{fontSize:'32px',opacity:.3,marginBottom:'8px'}}>📅</div>
-                <div>Không có activity nào trong kỳ này</div>
+                <div>No activities in this period</div>
               </div>
             )}
           </div>

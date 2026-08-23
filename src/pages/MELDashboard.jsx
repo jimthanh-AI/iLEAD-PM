@@ -168,7 +168,7 @@ function ModuleRiskMatrix({ riskMatrix, activities, partnerMap }) {
                           <strong>Contributing activities for {g.code}</strong>
                           {g.activityIds.length === 0 ? (
                             <div className="l3-muted" style={{ marginTop: 6 }}>
-                              Chưa có activity nào liên kết indicator này trong activityIndicators.
+                              No activities linked to this indicator in activityIndicators.
                             </div>
                           ) : (
                             <table className="l3-drill-table">
@@ -296,7 +296,7 @@ function ModulePartnerScorecard({ partnerScorecard }) {
                           <div style={{ width: `${100 - femalePct}%`, background: '#2563eb' }} />
                         </div>
                         <div className="l3-sub-label" style={{ color: p.femaleFlag ? '#dc2626' : '#16a34a' }}>
-                          {femalePct}% nữ {p.femaleFlag ? '🔴' : '✓'}
+                          {femalePct}% women {p.femaleFlag ? '🔴' : '✓'}
                         </div>
                       </div>
                     ) : (
@@ -338,7 +338,7 @@ function ModuleForecast({ forecasts }) {
           <div className="l3-module-title">Module C — Forecast &amp; Alerts</div>
           <div className="l3-module-desc">
             Projection cuối FY · rule-based insights · As of{' '}
-            {new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            {new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
           </div>
         </div>
         <span className="l3-badge" style={{ background: '#f3f4f6', color: '#6b7280' }}>
@@ -509,7 +509,7 @@ export default function MELDashboard() {
   }));
 
   const femaleData = indicatorStats.map(g => ({
-    name: g.code, Nam: g.male, 'Nữ': g.female,
+    name: g.code, Male: g.male, Female: g.female,
     pct:  g.actual > 0 ? Math.round(g.female / g.actual * 100) : 0,
   }));
 
@@ -563,7 +563,7 @@ export default function MELDashboard() {
       <div className="mel-header">
         <h1>i-LEAD MEL Dashboard</h1>
         <span className="mel-subtitle">Fiscal Year 2025–2026 · Vietnam</span>
-        <button className="btn btn-secondary btn-sm" onClick={openReport} title="Xuất báo cáo MEL (PDF)" style={{ marginLeft:'auto' }}><FileText size={14} /> Report</button>
+        <button className="btn btn-secondary btn-sm" onClick={openReport} title="Export MEL Report (PDF)" style={{ marginLeft:'auto' }}><FileText size={14} /> Report</button>
       </div>
 
       {/* Tab bar */}
@@ -593,7 +593,7 @@ export default function MELDashboard() {
 
           {/* ── Progress Board: Indicator Table ── */}
           <div className="mel-indicator-table-wrap">
-            <h3>Tiến độ theo Indicator Group</h3>
+            <h3>Progress by Indicator Group</h3>
             <table className="l3-table">
               <thead>
                 <tr>
@@ -670,7 +670,7 @@ export default function MELDashboard() {
 
           <div className="mel-budget-section">
             <div className="mel-budget-header">
-              <h2>Ngân sách dự án</h2>
+              <h2>Project Budget</h2>
               <div className="mel-budget-summary">
                 <span className="bsum-item"><label>Total</label><strong>{fmtCad(totalAllocated)}</strong></span>
                 <span className="bsum-item spent"><label>Spent</label><strong>{fmtCad(totalSpent)}</strong></span>
@@ -680,7 +680,7 @@ export default function MELDashboard() {
 
             <div className="mel-budget-charts">
               <div className="mel-chart-card donut-card">
-                <h3>Phân bổ theo Đối tác</h3>
+                <h3>Budget by Partner</h3>
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie data={budgetWithPartner} dataKey="allocated" nameKey="name"
@@ -714,7 +714,7 @@ export default function MELDashboard() {
             </div>
 
             <div className="mel-budget-table-wrap">
-              <h3>Chi tiết ngân sách <span className="hint">— click partner để xem chi tiết · click ô để chỉnh sửa</span></h3>
+              <h3>Budget Details <span className="hint">— click partner for details · click cell to edit</span></h3>
               <table className="mel-budget-table">
                 <thead>
                   <tr><th>Partner</th><th>Allocated (CAD)</th><th>Spent (CAD)</th><th>Remaining</th><th>Remain %</th></tr>
@@ -758,7 +758,7 @@ export default function MELDashboard() {
                                 <table className="budget-line-table">
                                   <thead>
                                     <tr>
-                                      <th>Activity / Mô tả</th>
+                                      <th>Activity / Description</th>
                                       <th className="num">Spent (CAD)</th>
                                       <th style={{ width: 60 }}></th>
                                     </tr>
@@ -774,10 +774,10 @@ export default function MELDashboard() {
                                               <div style={{ display:'flex', gap:6, alignItems:'center' }}>
                                                 <select defaultValue={li.activityId || ''} style={{ flex:1, fontSize:'.82rem' }}
                                                   onChange={e => setEditLineItem(prev => ({ ...prev, activityId: e.target.value || null }))}>
-                                                  <option value="">— Chọn activity —</option>
+                                                  <option value="">— Select activity —</option>
                                                   {partnerActivities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                                 </select>
-                                                <input type="text" defaultValue={li.description} placeholder="Mô tả..."
+                                                <input type="text" defaultValue={li.description} placeholder="Description..."
                                                   style={{ flex:1, fontSize:'.82rem' }}
                                                   onChange={e => setEditLineItem(prev => ({ ...prev, description: e.target.value }))} />
                                               </div>
@@ -817,7 +817,7 @@ export default function MELDashboard() {
                                     })}
                                     {partnerLines.length === 0 && (
                                       <tr><td colSpan={3} style={{ color:'#9ca3af', fontSize:'.82rem', textAlign:'center' }}>
-                                        Chưa có dòng chi tiết. Nhấn + để thêm.
+                                        No detail rows yet. Click + to add.
                                       </td></tr>
                                     )}
                                   </tbody>
@@ -825,7 +825,7 @@ export default function MELDashboard() {
                                 {canEdit && (
                                   <button className="btn btn-sm btn-secondary" style={{ marginTop: 8 }}
                                     onClick={() => addBudgetLineItem({ partnerId: p.id, activityId: null, description: '', amount: 0 })}>
-                                    + Thêm dòng chi tiết
+                                    + Add detail row
                                   </button>
                                 )}
                               </div>
