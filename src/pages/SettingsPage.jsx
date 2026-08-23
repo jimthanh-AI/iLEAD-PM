@@ -15,10 +15,10 @@ function storageSize() {
 }
 
 const ROLES = [
-  { v: 'admin',       label: 'Admin',       desc: 'Toàn quyền' },
-  { v: 'pm',          label: 'PM',          desc: 'Chỉnh sửa & xóa' },
-  { v: 'coordinator', label: 'Coordinator', desc: 'Chỉnh sửa, không xóa' },
-  { v: 'viewer',      label: 'Viewer',      desc: 'Chỉ xem' },
+  { v: 'admin',       label: 'Admin',       desc: 'Full access' },
+  { v: 'pm',          label: 'PM',          desc: 'Edit & delete' },
+  { v: 'coordinator', label: 'Coordinator', desc: 'Edit, no delete' },
+  { v: 'viewer',      label: 'Viewer',      desc: 'Read only' },
 ];
 
 export default function SettingsPage() {
@@ -62,24 +62,24 @@ export default function SettingsPage() {
     setEditTypeForm({ code: t.code, nameVi: t.nameVi, nameEn: t.nameEn, standardReach: t.standardReach, standardBudgetCad: t.standardBudgetCad, sort_order: t.sort_order ?? 99 });
   };
   const saveEditType = async () => {
-    if (!editTypeForm.code.trim()) { setAtMsg('Code không được trống'); return; }
+    if (!editTypeForm.code.trim()) { setAtMsg('Code cannot be empty'); return; }
     await updateActivityType(editingTypeId, editTypeForm);
     setEditingTypeId(null);
-    setAtMsg('Đã cập nhật');
+    setAtMsg('Updated');
     setTimeout(() => setAtMsg(''), 2000);
   };
   const saveNewType = async () => {
-    if (!newTypeForm.code.trim() || !newTypeForm.nameVi.trim()) { setAtMsg('Cần nhập Code và Tên VN'); return; }
+    if (!newTypeForm.code.trim() || !newTypeForm.nameVi.trim()) { setAtMsg('Code and Vietnamese Name are required'); return; }
     await addActivityType({ id: newTypeForm.code, ...newTypeForm });
     setShowNewType(false);
     setNewTypeForm({ code:'', nameVi:'', nameEn:'', standardReach:0, standardBudgetCad:0, sort_order:99 });
-    setAtMsg('Đã thêm loại mới');
+    setAtMsg('New type added');
     setTimeout(() => setAtMsg(''), 2000);
   };
   const confirmDeleteType = async (id) => {
     await deleteActivityType(id);
     setDeleteTypeId(null);
-    setAtMsg('Đã xóa');
+    setAtMsg('Deleted');
     setTimeout(() => setAtMsg(''), 2000);
   };
 
@@ -195,15 +195,15 @@ export default function SettingsPage() {
   return (
     <div className="settings-page">
       <div className="settings-header">
-        <h1>Cài đặt</h1>
-        <p className="settings-sub">Quản lý dữ liệu, giao diện và quyền truy cập</p>
+        <h1>Settings</h1>
+        <p className="settings-sub">Manage data, appearance and access control</p>
       </div>
 
       <div className="settings-grid">
 
         {/* ── Data Overview ── */}
         <div className="settings-card">
-          <h2>Tổng quan dữ liệu</h2>
+          <h2>Data Overview</h2>
           <div className="stats-grid">
             <div className="stat-item"><span className="stat-val">{partners.length}</span><span className="stat-label">Partners</span></div>
             <div className="stat-item"><span className="stat-val">{activities.length}</span><span className="stat-label">Activities</span></div>
@@ -222,15 +222,15 @@ export default function SettingsPage() {
 
         {/* ── Backup & Restore ── */}
         <div className="settings-card">
-          <h2>Sao lưu & Khôi phục</h2>
-          <p className="card-hint">Xuất toàn bộ dữ liệu thành file JSON để lưu trữ hoặc chuyển máy tính khác.</p>
+          <h2>Backup & Restore</h2>
+          <p className="card-hint">Export all data as a JSON file for storage or migration to another machine.</p>
 
           <div className="settings-actions">
             <button className="btn-settings primary" onClick={handleExport}>
-              ⬇ Tải xuống JSON Backup
+              ⬇ Download JSON Backup
             </button>
             <button className="btn-settings secondary" onClick={() => fileRef.current?.click()}>
-              ⬆ Khôi phục từ JSON
+              ⬆ Restore from JSON
             </button>
             <input ref={fileRef} type="file" accept=".json" style={{ display:'none' }} onChange={handleImportFile} />
           </div>
@@ -241,14 +241,14 @@ export default function SettingsPage() {
 
         {/* ── Appearance ── */}
         <div className="settings-card">
-          <h2>Giao diện</h2>
-          <p className="card-hint">Chọn chế độ sáng / tối cho ứng dụng.</p>
+          <h2>Appearance</h2>
+          <p className="card-hint">Choose light or dark mode for the app.</p>
           <div className="theme-switcher">
             {['light', 'dark'].map(t => (
               <button key={t}
                 className={`theme-btn ${theme === t ? 'active' : ''}`}
                 onClick={() => applyTheme(t)}>
-                {t === 'light' ? '☀ Sáng' : '🌙 Tối'}
+                {t === 'light' ? '☀ Light' : '🌙 Dark'}
               </button>
             ))}
           </div>
@@ -256,8 +256,8 @@ export default function SettingsPage() {
 
         {/* ── My Role ── */}
         <div className="settings-card">
-          <h2>Quyền của bạn</h2>
-          <p className="card-hint">Role được gán bởi Admin. Liên hệ Jim Thanh để thay đổi.</p>
+          <h2>Your Role</h2>
+          <p className="card-hint">Role assigned by Admin. Contact Jim Thanh to change.</p>
           <div className="role-switcher">
             {ROLES.map(r => (
               <div key={r.v} className={`role-btn ${userRole === r.v ? 'active' : ''}`} style={{ cursor: 'default' }}>
@@ -271,11 +271,11 @@ export default function SettingsPage() {
         {/* ── User Management (Admin only) ── */}
         {isAdmin && (
           <div className="settings-card">
-            <h2>Quản lý người dùng</h2>
-            <p className="card-hint">Ai đăng nhập lần đầu sẽ tự động thành Viewer. Admin có thể đổi role ở đây.</p>
+            <h2>User Management</h2>
+            <p className="card-hint">First-time login auto-creates a Viewer. Admin can change roles here.</p>
             {userMsg && <div className="msg-ok" style={{ marginBottom: 12 }}>{userMsg}</div>}
             {usersLoading ? (
-              <div style={{ color: 'var(--text2)', fontSize: 13 }}>Đang tải...</div>
+              <div style={{ color: 'var(--text2)', fontSize: 13 }}>Loading...</div>
             ) : (
               <div className="user-mgmt-list">
                 {users.map(u => (
@@ -295,7 +295,7 @@ export default function SettingsPage() {
                     </select>
                     {pendingRoles[u.email] && (
                       <button className="btn-save-role" onClick={() => handleSaveRole(u.email)}>
-                        Lưu
+                        Save
                       </button>
                     )}
                   </div>
@@ -309,18 +309,18 @@ export default function SettingsPage() {
         <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
             <div>
-              <h2 style={{ margin:0 }}>Loại Hoạt Động</h2>
-              <p className="card-hint" style={{ margin:'4px 0 0' }}>Thêm, sửa, xóa các loại activity (dùng trong dropdown khi tạo activity).</p>
+              <h2 style={{ margin:0 }}>Activity Types</h2>
+              <p className="card-hint" style={{ margin:'4px 0 0' }}>Add, edit, delete activity types (used in dropdown when creating an activity).</p>
             </div>
             {canEdit && (
               <button className="btn-settings primary" style={{ whiteSpace:'nowrap' }} onClick={() => { setShowNewType(true); setEditingTypeId(null); }}>
-                + Thêm loại mới
+                + Add new type
               </button>
             )}
           </div>
           {!canEdit && (
             <div style={{ background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'8px 12px', marginBottom:'10px', fontSize:'12px', color:'var(--text2)' }}>
-              🔒 Bạn đang ở chế độ chỉ xem (role: <strong>{userRole}</strong>). Liên hệ Admin để chỉnh sửa loại hoạt động.
+              🔒 You are in read-only mode (role: <strong>{userRole}</strong>). Contact Admin to edit activity types.
             </div>
           )}
           {atMsg && <div className="msg-ok" style={{ marginBottom:10 }}>{atMsg}</div>}
@@ -329,11 +329,11 @@ export default function SettingsPage() {
               <thead>
                 <tr style={{ background:'var(--bg2)', textAlign:'left' }}>
                   <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Code</th>
-                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Tên VN</th>
-                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Tên EN</th>
-                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Reach KH</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Name (VN)</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)' }}>Name (EN)</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Std. Reach</th>
                   <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Budget CAD</th>
-                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Thứ tự</th>
+                  <th style={{ padding:'8px 10px', fontWeight:600, color:'var(--text2)', textAlign:'right' }}>Sort order</th>
                   {canEdit && <th style={{ padding:'8px 10px', width:'100px' }}></th>}
                 </tr>
               </thead>
@@ -349,8 +349,8 @@ export default function SettingsPage() {
                         <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'90px', padding:'4px 6px' }} value={editTypeForm.standardBudgetCad} onChange={e => setEditTypeForm(f => ({...f, standardBudgetCad: Number(e.target.value)||0}))} /></td>
                         <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'60px', padding:'4px 6px' }} value={editTypeForm.sort_order} onChange={e => setEditTypeForm(f => ({...f, sort_order: Number(e.target.value)||0}))} /></td>
                         <td style={{ padding:'6px 8px', textAlign:'right' }}>
-                          <button className="btn-save-role" onClick={saveEditType}>Lưu</button>
-                          <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setEditingTypeId(null)}>Hủy</button>
+                          <button className="btn-save-role" onClick={saveEditType}>Save</button>
+                          <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setEditingTypeId(null)}>Cancel</button>
                         </td>
                       </>
                     ) : (
@@ -369,26 +369,26 @@ export default function SettingsPage() {
                                 <div style={{ textAlign:'right' }}>
                                   {used.length > 0 ? (
                                     <div style={{ fontSize:'11px', color:'var(--red)', marginBottom:'4px', maxWidth:'280px', marginLeft:'auto', lineHeight:'1.5' }}>
-                                      ⚠ <strong>{used.length} activity đang dùng loại này</strong>:<br/>
+                                      ⚠ <strong>{used.length} activity using this type</strong>:<br/>
                                       {used.slice(0,3).map((a,i) => (
                                         <span key={a.id}>{i>0 ? '; ' : ''}{partnerMap[a.partnerId]?.name ? `[${partnerMap[a.partnerId].name}] ` : ''}{a.name}</span>
                                       ))}
-                                      {used.length > 3 && <span> và {used.length - 3} khác</span>}
-                                      <br/>Xóa sẽ không mất activity, nhưng chúng sẽ mất liên kết loại.
+                                      {used.length > 3 && <span> and {used.length - 3} more</span>}
+                                      <br/>Deleting will not remove activities, but they will lose their type link.
                                     </div>
                                   ) : (
-                                    <div style={{ fontSize:'11px', color:'var(--text3)', marginBottom:'4px' }}>Xác nhận xóa loại "{t.code}"?</div>
+                                    <div style={{ fontSize:'11px', color:'var(--text3)', marginBottom:'4px' }}>Confirm delete type "{t.code}"?</div>
                                   )}
                                   <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => confirmDeleteType(t.id)}>
-                                    {used.length > 0 ? 'Vẫn xóa' : 'Xóa'}
+                                    {used.length > 0 ? 'Delete anyway' : 'Delete'}
                                   </button>
-                                  <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(null)}>Hủy</button>
+                                  <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(null)}>Cancel</button>
                                 </div>
                               );
                             })() : (
                               <>
-                                <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => startEditType(t)}>Sửa</button>
-                                <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(t.id)}>Xóa</button>
+                                <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px' }} onClick={() => startEditType(t)}>Edit</button>
+                                <button className="btn-settings danger" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setDeleteTypeId(t.id)}>Delete</button>
                               </>
                             )}
                           </td>
@@ -406,8 +406,8 @@ export default function SettingsPage() {
                     <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'90px', padding:'4px 6px' }} value={newTypeForm.standardBudgetCad} onChange={e => setNewTypeForm(f => ({...f, standardBudgetCad: Number(e.target.value)||0}))} /></td>
                     <td style={{ padding:'6px 8px', textAlign:'right' }}><input className="form-input" type="number" style={{ width:'60px', padding:'4px 6px' }} value={newTypeForm.sort_order} onChange={e => setNewTypeForm(f => ({...f, sort_order: Number(e.target.value)||0}))} /></td>
                     <td style={{ padding:'6px 8px', textAlign:'right' }}>
-                      <button className="btn-save-role" onClick={saveNewType}>Thêm</button>
-                      <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setShowNewType(false)}>Hủy</button>
+                      <button className="btn-save-role" onClick={saveNewType}>Add</button>
+                      <button className="btn-settings secondary" style={{ fontSize:'11px', padding:'3px 8px', marginLeft:'4px' }} onClick={() => setShowNewType(false)}>Cancel</button>
                     </td>
                   </tr>
                 )}
@@ -418,29 +418,29 @@ export default function SettingsPage() {
 
         {/* ── Danger Zone ── */}
         <div className="settings-card danger-zone">
-          <h2>Vùng nguy hiểm</h2>
-          <p className="card-hint">Xóa toàn bộ dữ liệu và nạp lại dữ liệu mẫu (SEED). Thao tác này không thể hoàn tác.</p>
+          <h2>Danger Zone</h2>
+          <p className="card-hint">Delete all data and reload sample data (SEED). This action cannot be undone.</p>
           {!resetConfirm ? (
             <button className="btn-settings danger" onClick={() => setResetConfirm(true)}>
-              🗑 Reset về dữ liệu mẫu
+              🗑 Reset to sample data
             </button>
           ) : (
             <div className="confirm-row">
-              <span className="confirm-txt">Bạn chắc chắn? Toàn bộ dữ liệu sẽ mất.</span>
-              <button className="btn-settings danger" onClick={handleReset}>Xác nhận Reset</button>
-              <button className="btn-settings secondary" onClick={() => setResetConfirm(false)}>Hủy</button>
+              <span className="confirm-txt">Are you sure? All data will be lost.</span>
+              <button className="btn-settings danger" onClick={handleReset}>Confirm Reset</button>
+              <button className="btn-settings secondary" onClick={() => setResetConfirm(false)}>Cancel</button>
             </div>
           )}
         </div>
 
         {/* ── App Info ── */}
         <div className="settings-card">
-          <h2>Thông tin ứng dụng</h2>
+          <h2>App Info</h2>
           <div className="app-info-list">
-            <div className="info-row"><span>Tên</span><strong>i-LEAD Dashboard</strong></div>
+            <div className="info-row"><span>Name</span><strong>i-LEAD Dashboard</strong></div>
             <div className="info-row"><span>Schema version</span><strong>v4</strong></div>
-            <div className="info-row"><span>Chương trình</span><strong>iLEAD 2025–2028</strong></div>
-            <div className="info-row"><span>Quốc gia</span><strong>Vietnam</strong></div>
+            <div className="info-row"><span>Program</span><strong>iLEAD 2025–2028</strong></div>
+            <div className="info-row"><span>Country</span><strong>Vietnam</strong></div>
             <div className="info-row"><span>Fiscal Year</span><strong>Q1 Apr–Jun · Q4 ends 31 Mar</strong></div>
             <div className="info-row"><span>Storage</span><strong>Supabase (cloud)</strong></div>
           </div>

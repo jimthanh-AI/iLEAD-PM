@@ -4,7 +4,7 @@ export const COLORS = ['#2563eb','#7c3aed','#16a34a','#ea580c','#dc2626','#0891b
 // ── Stages (S1–S7) ────────────────────────────────────────────
 export const STAGES = ['S1','S2','S3','S4','S5','S6','S7'];
 export const STAGE_LABELS = {
-  S1:'Phát triển Partner', S2:'Thiết kế AAF', S3:'Tìm Advisor',
+  S1:'Partner Development', S2:'AAF Design', S3:'Advisor Search',
   S4:'Virtual Assignment', S5:'In-Country Prep', S6:'In-Country Impl.', S7:'Monitoring'
 };
 export const STAGE_COLORS = {

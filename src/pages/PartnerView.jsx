@@ -59,16 +59,16 @@ const PartnerView = () => {
     e.stopPropagation();
     const actMel = melEntries.filter(m => m.activityId === a.id);
     const melWarn = actMel.length > 0
-      ? `\n\n⚠ Activity này có ${actMel.length} MEL entry — dữ liệu MEL cũng sẽ bị xóa theo.`
+      ? `\n\n⚠ This activity has ${actMel.length} MEL entry — MEL data will also be deleted.`
       : '';
-    confirm(`Xóa activity "${a.name}"?${melWarn}`).then(ok => { if (ok) deleteActivity(a.id); });
+    confirm(`Delete activity "${a.name}"?${melWarn}`).then(ok => { if (ok) deleteActivity(a.id); });
   };
 
   const handleDeletePartner = () => {
     const partnerMel = melEntries.filter(m => m.partnerId === partner.id);
     const melNote = partnerMel.length > 0 ? ` và ${partnerMel.length} MEL entries` : '';
     confirm(
-      `Xóa đối tác "${partner.name}"?\n\nThao tác này sẽ xóa toàn bộ ${allActs.length} hoạt động, tasks, indicators${melNote} liên quan. Không thể hoàn tác.`
+      `Delete partner "${partner.name}"?\n\nThis will permanently delete all ${allActs.length} activities, tasks, indicators${melNote} linked to this partner. Cannot be undone.`
     ).then(ok => {
       if (ok) {
         deletePartner(partner.id);

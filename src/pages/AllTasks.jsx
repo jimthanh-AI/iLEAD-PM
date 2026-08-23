@@ -9,7 +9,7 @@ import { FileText } from 'lucide-react';
 import './Dashboard.css';
 import './PartnerView.css';
 
-const MOBILE_ASSIGNEES = ['Tất cả', 'Jim Thanh', 'Hieu Phung', 'Yen Ton', 'Truc Nguyen', 'CR/Mnr', 'Partner', 'ICT team'];
+const MOBILE_ASSIGNEES = ['All', 'Jim Thanh', 'Hieu Phung', 'Yen Ton', 'Truc Nguyen', 'CR/Mnr', 'Partner', 'ICT team'];
 
 const MOBILE_TEAM_COLORS = {
   'Jim Thanh':   '#2563eb',
@@ -95,7 +95,7 @@ const AllTasks = () => {
 
   // Mobile-specific filter state
   const [mobileTab,       setMobileTab]        = useState('all');   // all|mine|today|overdue
-  const [mobileAssignee,  setMobileAssignee]   = useState('Tất cả');
+  const [mobileAssignee,  setMobileAssignee]   = useState('All');
 
   useEffect(() => {
     const handler = () => setTaskFormOpen(true);
@@ -176,7 +176,7 @@ const AllTasks = () => {
       if (mobileTab === 'overdue') return t.dueDate && t.dueDate < today;
       return true; // 'all'
     }).filter(t => {
-      if (mobileAssignee === 'Tất cả') return true;
+      if (mobileAssignee === 'All') return true;
       return t.assignee && t.assignee.includes(mobileAssignee);
     }).sort((a, b) => {
       if (!a.dueDate && !b.dueDate) return 0;
@@ -259,7 +259,7 @@ const AllTasks = () => {
         {/* Done toggle circle */}
         <div onClick={e => toggleDone(e, t.id)}
           style={{ width:'18px', height:'18px', border:`2px solid ${isDone?'var(--green)':'var(--border2)'}`, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background: isDone ? 'var(--green)' : 'transparent', color:'#fff', fontSize:'11px' }}
-          title={isDone ? 'Đánh dấu chưa xong' : 'Đánh dấu xong'}
+          title={isDone ? 'Mark incomplete' : 'Mark done'}
         >
           {isDone ? '✓' : ''}
         </div>
@@ -286,7 +286,7 @@ const AllTasks = () => {
         {/* Activity — desktop only */}
         {!isMobile && (
           <span style={{ fontSize:'11px', color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={act?.name}>
-            {act?.name || <span style={{ color:'var(--text3)' }}>Hoạt động khác</span>}
+            {act?.name || <span style={{ color:'var(--text3)' }}>Other activity</span>}
           </span>
         )}
 
@@ -342,10 +342,10 @@ const AllTasks = () => {
         {/* Filter tabs */}
         <div className="mt-tabs">
           {[
-            { id: 'all',     label: 'Tất cả' },
-            { id: 'mine',    label: 'Của tôi' },
-            { id: 'today',   label: 'Hôm nay' },
-            { id: 'overdue', label: 'Quá hạn' },
+            { id: 'all',     label: 'All' },
+            { id: 'mine',    label: 'Mine' },
+            { id: 'today',   label: 'Today' },
+            { id: 'overdue', label: 'Overdue' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -375,13 +375,13 @@ const AllTasks = () => {
 
         {/* Task groups */}
         <div className="mt-list">
-          {renderGroup('🔴 Quá hạn',  'var(--red)',    mobileGrouped.overdue)}
-          {renderGroup('🟡 Hôm nay',  'var(--orange)', mobileGrouped.today)}
-          {renderGroup('🟢 Tuần này', 'var(--green)',  mobileGrouped.week)}
-          {renderGroup('⚪ Sau này',  'var(--text3)',  mobileGrouped.later)}
+          {renderGroup('🔴 Overdue',   'var(--red)',    mobileGrouped.overdue)}
+          {renderGroup('🟡 Today',     'var(--orange)', mobileGrouped.today)}
+          {renderGroup('🟢 This week', 'var(--green)',  mobileGrouped.week)}
+          {renderGroup('⚪ Later',     'var(--text3)',  mobileGrouped.later)}
           {mobileTasks.length === 0 && (
             <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>
-              Không có task nào
+              No tasks
             </div>
           )}
         </div>
@@ -400,10 +400,10 @@ const AllTasks = () => {
           <h1 className="page-title">All Tasks</h1>
           {/* Stats bar */}
           <div style={{ display:'flex', gap:'16px', marginTop:'6px', flexWrap:'wrap', alignItems:'center' }}>
-            <span style={{ fontSize:'13px', color:'var(--text2)' }}>{tasks.length} tasks tổng</span>
+            <span style={{ fontSize:'13px', color:'var(--text2)' }}>{tasks.length} tasks total</span>
             <span style={{ fontSize:'13px', color:'var(--green)', fontWeight:600 }}>✓ {doneCount} done</span>
             {overdue > 0 && (
-              <span style={{ fontSize:'13px', color:'var(--red)', fontWeight:700 }}>⚠️ {overdue} quá hạn</span>
+              <span style={{ fontSize:'13px', color:'var(--red)', fontWeight:700 }}>⚠️ {overdue} overdue</span>
             )}
             <span style={{ width:'1px', height:'16px', background:'var(--border)', flexShrink:0 }} />
             {memberStats.map(m => (
@@ -419,11 +419,11 @@ const AllTasks = () => {
       {/* ── Bulk toolbar ── */}
       {selectedIds.size > 0 && (
         <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', padding:'10px 14px', background:'var(--accent-bg)', border:'1px solid var(--accent)', borderRadius:'var(--radius)', fontSize:'12px', marginBottom:'8px' }}>
-          <span style={{ fontWeight:600, color:'var(--accent)' }}>{selectedIds.size} task được chọn:</span>
-          <button className="btn btn-sm" style={{ background:'var(--green-bg)', color:'var(--green)' }} onClick={bulkDone}>✓ Đánh dấu Done</button>
-          <button className="btn btn-sm" onClick={bulkTodo}>○ Đánh dấu Todo</button>
-          {canDelete && <button className="btn btn-sm" style={{ background:'var(--red-bg)', color:'var(--red)' }} onClick={bulkDelete}>🗑 Xóa</button>}
-          <button className="btn btn-sm" style={{ marginLeft:'auto' }} onClick={clearSel}>✕ Bỏ chọn</button>
+          <span style={{ fontWeight:600, color:'var(--accent)' }}>{selectedIds.size} task(s) selected:</span>
+          <button className="btn btn-sm" style={{ background:'var(--green-bg)', color:'var(--green)' }} onClick={bulkDone}>✓ Mark Done</button>
+          <button className="btn btn-sm" onClick={bulkTodo}>○ Mark Todo</button>
+          {canDelete && <button className="btn btn-sm" style={{ background:'var(--red-bg)', color:'var(--red)' }} onClick={bulkDelete}>🗑 Delete</button>}
+          <button className="btn btn-sm" style={{ marginLeft:'auto' }} onClick={clearSel}>✕ Deselect</button>
         </div>
       )}
 
@@ -434,20 +434,20 @@ const AllTasks = () => {
             style={{ width:'16px', height:'16px', border:`1.5px solid ${allActiveSelected?'var(--accent)':'var(--border2)'}`, borderRadius:'4px', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background: allActiveSelected ? 'var(--accent)' : 'transparent', color:'#fff', fontSize:'10px' }}>
             {allActiveSelected ? '✓' : selectedIds.size > 0 ? '–' : ''}
           </div>
-          <input className="filter-input" placeholder="🔍 Tìm task..." value={search}
+          <input className="filter-input" placeholder="🔍 Search tasks..." value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ flex:1, minWidth:'120px', padding:'5px 10px', border:'1px solid var(--border2)', borderRadius:'var(--radius)', background:'var(--surface-solid)', color:'var(--text)', fontSize:'12px', outline:'none' }} />
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={FS}>
-            <option value="active">Chưa xong</option>
-            <option value="done">Đã xong</option>
-            <option value="">Tất cả</option>
+            <option value="active">Not done</option>
+            <option value="done">Done</option>
+            <option value="">All</option>
           </select>
           <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={FS}>
-            <option value="">Tất cả thành viên</option>
+            <option value="">All members</option>
             {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
           <select value={partnerFilter} onChange={e => setPartnerFilter(e.target.value)} style={FS}>
-            <option value="">Tất cả Partner</option>
+            <option value="">All Partners</option>
             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
@@ -457,9 +457,9 @@ const AllTasks = () => {
           <span />
           <span />
           <span>Task</span>
-          {!isMobile && <span>Hoạt động</span>}
+          {!isMobile && <span>Activity</span>}
           {!isMobile && <span>Partner</span>}
-          {!isMobile && <span>Giao cho</span>}
+          {!isMobile && <span>Assigned to</span>}
           <span>Deadline</span>
         </div>
 
@@ -469,7 +469,7 @@ const AllTasks = () => {
         {/* Empty active */}
         {activeTasks.length === 0 && statusFilter !== 'done' && (
           <div style={{ padding:'24px', textAlign:'center', color:'var(--green)', fontSize:'13px' }}>
-            ✓ Không có task nào đang chờ
+            ✓ No pending tasks
           </div>
         )}
 
@@ -481,7 +481,7 @@ const AllTasks = () => {
               style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', background:'var(--surface2)', borderTop:'2px solid var(--border)', cursor:'pointer', userSelect:'none' }}
             >
               <span style={{ fontSize:'11px', color:'var(--text3)', fontWeight:600, letterSpacing:'.05em' }}>
-                {doneCollapsed ? '▶' : '▼'} ĐÃ HOÀN THÀNH — {doneTasks.length} task
+                {doneCollapsed ? '▶' : '▼'} COMPLETED — {doneTasks.length} task(s)
               </span>
             </div>
             {!doneCollapsed && doneTasks.map(t => <TaskRow key={t.id} t={t} />)}
@@ -489,7 +489,7 @@ const AllTasks = () => {
         )}
 
         {activeTasks.length === 0 && doneTasks.length === 0 && (
-          <div className="empty-state">Không có task nào</div>
+          <div className="empty-state">No tasks found</div>
         )}
 
         {/* Bottom add button */}

@@ -70,9 +70,9 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
   };
 
   const handleSubmit = () => {
-    if (!form.name.trim()) { setError('Nhập tên activity'); return; }
+    if (!form.name.trim()) { setError('Enter activity name'); return; }
     if (form.startDate && form.endDate && form.startDate > form.endDate) {
-      setError('Ngày bắt đầu không được sau ngày kết thúc'); return;
+      setError('Start date cannot be after end date'); return;
     }
     try {
       if (editActivity) {
@@ -88,7 +88,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
       setError('');
       onClose();
     } catch (e) {
-      setError('Lỗi: ' + e.message);
+      setError('Error: ' + e.message);
     }
   };
 
@@ -100,15 +100,15 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={editActivity ? 'Sửa activity' : 'Thêm activity mới'}
+      title={editActivity ? 'Edit Activity' : 'Add New Activity'}
       onSubmit={handleSubmit}
-      submitLabel={editActivity ? 'Cập nhật' : 'Thêm mới'}
+      submitLabel={editActivity ? 'Update' : 'Add'}
     >
       {/* Activity Type */}
       <div className="form-group">
-        <label className="form-label">Loại hoạt động (Activity Type)</label>
+        <label className="form-label">Activity Type</label>
         <select className="form-select" value={form.activityTypeCode} onChange={e => handleTypeChange(e.target.value)}>
-          <option value="">— Chọn loại —</option>
+          <option value="">— Select type —</option>
           {activityTypes.map(t => (
             <option key={t.code} value={t.code}>
               {t.code} · {t.nameVi}
@@ -117,14 +117,14 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         </select>
         {selectedType && selectedType.code !== 'X' && (
           <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'4px' }}>
-            📊 Reach chuẩn: {selectedType.standardReach} người · 💰 Ngân sách chuẩn: ${selectedType.standardBudgetCad.toLocaleString()} CAD
+            📊 Standard reach: {selectedType.standardReach} people · 💰 Standard budget: ${selectedType.standardBudgetCad.toLocaleString()} CAD
           </div>
         )}
       </div>
 
       {/* Name */}
       <div className="form-group">
-        <label className="form-label">Tên hoạt động *</label>
+        <label className="form-label">Activity Name *</label>
         <input autoFocus className="form-input" value={form.name}
           onChange={e => set('name', e.target.value)}
           placeholder="VD: ToT cán bộ công chức về RBP/ESG – VCCI MTTN" />
@@ -149,7 +149,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
           </select>
         </div>
         <div className="form-group">
-          <label className="form-label">Stage hiện tại</label>
+          <label className="form-label">Current Stage</label>
           <select className="form-select" value={form.stage} onChange={e => set('stage', e.target.value)}>
             {STAGES.map(s => (
               <option key={s} value={s}>{s}: {STAGE_LABELS[s]}</option>
@@ -164,7 +164,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
           <div className="form-group">
             <label className="form-label">Ball Owner</label>
             <select className="form-select" value={form.ballOwner} onChange={e => set('ballOwner', e.target.value)}>
-              <option value="">— Chọn —</option>
+              <option value="">— Select —</option>
               {BALL_OWNERS.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
           </div>
@@ -180,7 +180,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
       {editActivity && (
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Lần thứ</label>
+            <label className="form-label">Iteration</label>
             <input className="form-input" type="number" min="1" value={form.iteration}
               onChange={e => set('iteration', Number(e.target.value) || 1)} />
           </div>
@@ -190,13 +190,13 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
       {/* Dates */}
       <div className="form-row">
         <div className="form-group">
-          <label className="form-label">Ngày bắt đầu</label>
+          <label className="form-label">Start Date</label>
           <input className="form-input" type="date" value={form.startDate}
             max={form.endDate || undefined}
             onChange={e => set('startDate', e.target.value)} />
         </div>
         <div className="form-group">
-          <label className="form-label">Ngày kết thúc</label>
+          <label className="form-label">End Date</label>
           <input className="form-input" type="date" value={form.endDate}
             min={form.startDate || undefined}
             onChange={e => set('endDate', e.target.value)} />
@@ -207,40 +207,40 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
       {(
         <div style={{ background:'var(--bg2)', borderRadius:'var(--radius)', padding:'12px', marginBottom:'4px' }}>
           <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text2)', marginBottom:'8px' }}>
-            Số người {editActivity ? 'tham gia' : 'ước lượng'} (Reach)
-            {!editActivity && <span style={{ fontWeight:400, color:'var(--text3)', marginLeft:'6px' }}>· điền ước lượng kế hoạch, cập nhật thực tế sau khi Done</span>}
+            {editActivity ? 'Participants' : 'Estimated participants'} (Reach)
+            {!editActivity && <span style={{ fontWeight:400, color:'var(--text3)', marginLeft:'6px' }}>· enter planned estimate, update actuals after Done</span>}
           </div>
           <div className="form-row" style={{ marginBottom:0 }}>
             <div className="form-group" style={{ marginBottom:0 }}>
-              <label className="form-label">Tổng</label>
+              <label className="form-label">Total</label>
               <input className="form-input" type="number" min="0" value={form.reachTotal}
                 onChange={e => set('reachTotal', Number(e.target.value) || 0)} />
             </div>
             <div className="form-group" style={{ marginBottom:0 }}>
-              <label className="form-label">Phụ nữ</label>
+              <label className="form-label">Women</label>
               <input className="form-input" type="number" min="0" value={form.reachWomen}
                 onChange={e => set('reachWomen', Number(e.target.value) || 0)} />
             </div>
             <div className="form-group" style={{ marginBottom:0 }}>
-              <label className="form-label">Nam</label>
+              <label className="form-label">Men</label>
               <input className="form-input" type="number" min="0" value={form.reachMen}
                 onChange={e => set('reachMen', Number(e.target.value) || 0)} />
             </div>
           </div>
           {form.reachTotal > 0 && (
             <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'6px' }}>
-              % phụ nữ: {Math.round((form.reachWomen / form.reachTotal) * 100)}%
-              {selectedType && selectedType.code !== 'X' && ` · Target: ${selectedType.standardReach} người`}
+              % women: {Math.round((form.reachWomen / form.reachTotal) * 100)}%
+              {selectedType && selectedType.code !== 'X' && ` · Target: ${selectedType.standardReach} people`}
             </div>
           )}
           {(Number(form.reachWomen) + Number(form.reachMen)) > Number(form.reachTotal) && Number(form.reachTotal) > 0 && (
             <div style={{ fontSize:'11px', color:'var(--red)', marginTop:'4px' }}>
-              ⚠ Phụ nữ + Nam ({Number(form.reachWomen) + Number(form.reachMen)}) vượt Tổng ({form.reachTotal}) — kiểm tra lại số liệu.
+              ⚠ Women + Men ({Number(form.reachWomen) + Number(form.reachMen)}) exceeds Total ({form.reachTotal}) — please check figures.
             </div>
           )}
           {Number(form.reachWomen) > Number(form.reachTotal) && Number(form.reachTotal) > 0 && (
             <div style={{ fontSize:'11px', color:'var(--red)', marginTop:'4px' }}>
-              ⚠ Số phụ nữ ({form.reachWomen}) không thể lớn hơn Tổng ({form.reachTotal}).
+              ⚠ Women count ({form.reachWomen}) cannot exceed Total ({form.reachTotal}).
             </div>
           )}
         </div>
@@ -249,7 +249,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
       {/* Budget (CAD) */}
       <div className="form-row">
         <div className="form-group">
-          <label className="form-label">Ngân sách KH (CAD)</label>
+          <label className="form-label">Budget Planned (CAD)</label>
           <input className="form-input" type="number" min="0" step="500"
             value={form.budget_planned}
             onChange={e => set('budget_planned', e.target.value === '' ? '' : Number(e.target.value))}
@@ -258,7 +258,7 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
         {/* Budget actual — edit only */}
         {editActivity && (
           <div className="form-group">
-            <label className="form-label">Thực tế (CAD)</label>
+            <label className="form-label">Actual (CAD)</label>
             <input className="form-input" type="number" min="0" step="500"
               value={form.budget_actual}
               onChange={e => set('budget_actual', e.target.value === '' ? '' : Number(e.target.value))}
@@ -270,13 +270,13 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
       {/* Budget over-planned warning */}
       {editActivity && form.budget_actual > 0 && form.budget_planned > 0 && Number(form.budget_actual) > Number(form.budget_planned) && (
         <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'var(--radius)', padding:'8px 12px', fontSize:'12px', color:'#92400e', marginTop:'-4px', marginBottom:'4px' }}>
-          ⚠ Thực tế (<strong>${Number(form.budget_actual).toLocaleString()}</strong>) vượt kế hoạch (<strong>${Number(form.budget_planned).toLocaleString()}</strong>) — chênh lệch ${(Number(form.budget_actual) - Number(form.budget_planned)).toLocaleString()} CAD. Cần báo cáo PM.
+          ⚠ Actual (<strong>${Number(form.budget_actual).toLocaleString()}</strong>) exceeds planned (<strong>${Number(form.budget_planned).toLocaleString()}</strong>) — variance ${(Number(form.budget_actual) - Number(form.budget_planned)).toLocaleString()} CAD. Please report to PM.
         </div>
       )}
 
       {/* Ghi chú / Blocker */}
       <div className="form-group">
-        <label className="form-label">Ghi chú / Blocker</label>
+        <label className="form-label">Notes / Blocker</label>
         <input className="form-input" value={form.notes}
           onChange={e => set('notes', e.target.value)}
           placeholder="Đang chờ Jane approve, blocked by…" />
@@ -285,14 +285,14 @@ export const ActivityForm = ({ isOpen, onClose, partnerId, editActivity }) => {
       {/* Conflict banner */}
       {conflict && (
         <div style={{ background:'var(--orange-bg)', border:'1px solid var(--orange)', borderRadius:'var(--radius)', padding:'10px 12px', marginTop:'8px', fontSize:'12px' }}>
-          ⚠️ <strong>Xung đột:</strong> Bản ghi này vừa được cập nhật bởi người khác.
+          ⚠️ <strong>Conflict:</strong> This record was just updated by someone else.
           <div style={{ marginTop:'6px', display:'flex', gap:'8px' }}>
             <button className="btn btn-sm" style={{ fontSize:'11px' }}
               onClick={() => { setConflict(false); openSignatureRef.current = getSignature(editActivity); }}>
-              Ghi đè (giữ bản của tôi)
+              Overwrite (keep my version)
             </button>
             <button className="btn btn-sm btn-primary" style={{ fontSize:'11px' }} onClick={handleClose}>
-              Tải lại bản mới nhất
+              Reload latest version
             </button>
           </div>
         </div>
