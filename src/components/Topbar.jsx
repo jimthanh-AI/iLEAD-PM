@@ -32,12 +32,12 @@ const Topbar = ({ onHamburger }) => {
     if (segs[0] === 'tasks')         return [...base, { name:'All Tasks',       path:'/tasks' }];
     if (segs[0] === 'kanban')        return [...base, { name:'All Activities',   path:'/kanban' }];
     if (segs[0] === 'timeline')      return [...base, { name:'Timeline / Gantt', path:'/timeline' }];
-    if (segs[0] === 'weekly')        return [...base, { name:'Kế hoạch tuần',    path:'/weekly' }];
+    if (segs[0] === 'weekly')        return [...base, { name:'Weekly Plan',       path:'/weekly' }];
     if (segs[0] === 'calendar')      return [...base, { name:'Master Calendar',  path:'/calendar' }];
-    if (segs[0] === 'report')        return [...base, { name:'Báo cáo',          path:'/report' }];
+    if (segs[0] === 'report')        return [...base, { name:'Report',           path:'/report' }];
     if (segs[0] === 'mel-dashboard') return [...base, { name:'MEL Dashboard',    path:'/mel-dashboard' }];
     if (segs[0] === 'mel-entry')     return [...base, { name:'MEL Entries',      path:'/mel-entry' }];
-    if (segs[0] === 'settings')      return [...base, { name:'Cài đặt',          path:'/settings' }];
+    if (segs[0] === 'settings')      return [...base, { name:'Settings',         path:'/settings' }];
 
     if (segs[0] === 'partner') {
       const p = partners.find(x => x.id === segs[1]);
@@ -80,7 +80,7 @@ const Topbar = ({ onHamburger }) => {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="hamburger" onClick={onHamburger} aria-label="Mở menu">☰</button>
+        <button className="hamburger" onClick={onHamburger} aria-label="Open menu">☰</button>
         <nav className="breadcrumb">
           {crumbs.map((c, i) => {
             const isLast = i === crumbs.length - 1;
@@ -108,7 +108,7 @@ const Topbar = ({ onHamburger }) => {
           <input 
             type="text" 
             className="search-input" 
-            placeholder="Tìm kiếm mọi thứ..." 
+            placeholder="Search everything..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -117,7 +117,7 @@ const Topbar = ({ onHamburger }) => {
           {searchFocused && searchQuery.length > 1 && (
             <div className="search-dropdown">
               {searchResults.length === 0 ? (
-                <div className="search-empty">Không tìm thấy "{searchQuery}"</div>
+                <div className="search-empty">No results for "{searchQuery}"</div>
               ) : (
                 searchResults.map((res, i) => (
                   <button 
@@ -142,7 +142,7 @@ const Topbar = ({ onHamburger }) => {
         <button
           className={`btn btn-icon${location.pathname === '/settings' ? ' active' : ''}`}
           onClick={() => nav('/settings')}
-          title="Cài đặt"
+          title="Settings"
         >
           <Settings size={18} />
         </button>
@@ -169,7 +169,7 @@ const Topbar = ({ onHamburger }) => {
                 </div>
                 <button className="topbar-signout" onClick={signOut}>
                   <LogOut size={14} />
-                  Đăng xuất
+                  Logout
                 </button>
               </div>
             )}

@@ -18,7 +18,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             <span className="i-lower">i</span>-LEAD
           </span>
         </div>
-        <button className="sidebar-close" onClick={onClose} aria-label="Đóng menu">✕</button>
+        <button className="sidebar-close" onClick={onClose} aria-label="Close menu">✕</button>
       </div>
 
       <nav className="sidebar-nav">
@@ -50,12 +50,12 @@ const Sidebar = ({ isOpen, onClose }) => {
         </NavLink>
         <div className="nav-section-title">Admin</div>
         <NavLink to="/activity-log" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onClose}>
-          <Activity size={16} /><span>Lich su hoat dong</span>
+          <Activity size={16} /><span>Activity Log</span>
         </NavLink>
       </nav>
 
       <div className="sidebar-section">
-        <h3 className="section-title">Đối tác</h3>
+        <h3 className="section-title">Partners</h3>
         <div className="partners-list">
           {partners.map(p => {
             const cnt = activities.filter(a => {
@@ -78,7 +78,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           })}
         </div>
         <button className="btn-add-partner" onClick={() => setPartnerModalOpen(true)}>
-          <Plus size={15} /> Thêm đối tác
+          <Plus size={15} /> Add partner
         </button>
       </div>
 

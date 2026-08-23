@@ -61,7 +61,7 @@ const ActivityDetail = () => {
       updateActivity(id, { stage: newStage }); return;
     }
     const skipped = STAGES.slice(curIdx + 1, newIdx).map(s => `${s}: ${STAGE_LABELS[s]}`).join(', ');
-    confirm(`Bỏ qua stage:\n"${skipped}"\n\nVẫn chuyển sang ${newStage}?`).then(ok => {
+    confirm(`Skip stage(s):\n"${skipped}"\n\nProceed to ${newStage}?`).then(ok => {
       if (ok) updateActivity(id, { stage: newStage });
     });
   };

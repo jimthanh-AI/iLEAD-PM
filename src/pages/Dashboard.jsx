@@ -104,7 +104,7 @@ const Dashboard = () => {
     const dl = daysLeft(endDate);
     if (dl === null) return '—';
     if (dl < 0)  return <span style={{color:'var(--red)'}}>+{-dl}d</span>;
-    if (dl === 0) return <span style={{color:'var(--orange)'}}>Hôm nay</span>;
+    if (dl === 0) return <span style={{color:'var(--orange)'}}>Today</span>;
     if (dl <= 3)  return <span style={{color:'var(--orange)'}}>{dl}d</span>;
     return fmtDate(endDate);
   };
@@ -137,7 +137,7 @@ const Dashboard = () => {
   const melTotalFemale = melEntries.reduce((s, e) => s + (e.q1_f||0)+(e.q2_f||0)+(e.q3_f||0)+(e.q4_f||0), 0);
   const melFemaleRatio = melTotalActual > 0 ? Math.round(melTotalFemale / melTotalActual * 100) : 0;
 
-  const today = new Date().toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const today = new Date().toLocaleDateString('en-US', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
   // ── Project Timeline ──────────────────────────────────────────
   const PROJECT_START  = new Date('2025-04-30');
@@ -176,48 +176,48 @@ const Dashboard = () => {
       {/* ══════════════════════════════════════════════════════════ */}
       <div style={{ background:'#f0f7ff', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
         <div className="dash-section-label" style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>
-          📋 KẾ HOẠCH — Từ Activities
+          📋 PLAN — From Activities
         </div>
         <div className="proj-health-bar">
           {/* Timeline */}
           <div className="proj-health-item">
-            <div className="phb-label">Tiến độ dự án</div>
+            <div className="phb-label">Project Progress</div>
             <div className="phb-main">
-              <span className="phb-val">Tháng {monthsElapsed}/{totalMonths}</span>
+              <span className="phb-val">Month {monthsElapsed}/{totalMonths}</span>
               <span className="phb-badge" style={{ background: `var(--${timelineRag}-bg,var(--bg2))`, color: `var(--${timelineRag})` }}>
-                {timelineRag === 'green' ? 'Đúng tiến độ' : timelineRag === 'orange' ? 'Hơi chậm' : 'Chậm'}
+                {timelineRag === 'green' ? 'On track' : timelineRag === 'orange' ? 'Slightly behind' : 'Behind'}
               </span>
             </div>
             <div className="phb-track">
               <div className="phb-fill" style={{ width:`${timeElapsedPct}%`, background:'var(--text3)', opacity:0.3 }} />
               <div className="phb-fill phb-fill-acts" style={{ width:`${actDonePct}%`, background:`var(--${timelineRag})` }} />
             </div>
-            <div className="phb-sub">{timeElapsedPct}% thời gian · {actDonePct}% HĐ xong · còn {daysRemaining} ngày</div>
+            <div className="phb-sub">{timeElapsedPct}% time elapsed · {actDonePct}% done · {daysRemaining} days left</div>
           </div>
 
-          {/* Reach KH — từ activities */}
+          {/* Plan KPI Reach — from activities */}
           <div className="proj-health-item">
-            <div className="phb-label">Reach KH</div>
+            <div className="phb-label">Plan KPI Reach</div>
             <div className="phb-main">
               <span className="phb-val">{totalReach > 0 ? totalReach.toLocaleString() : '—'}</span>
               <span className="phb-badge" style={{ background:`var(--${reachRag}-bg,var(--bg2))`, color:`var(--${reachRag})` }}>
-                {reachGapPct}% target
+                {reachGapPct}% of target
               </span>
             </div>
             <div className="phb-track">
               <div className="phb-fill" style={{ width:`${Math.min(reachGapPct,100)}%`, background:`var(--${reachRag})` }} />
             </div>
-            <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · Kế hoạch dự kiến từ các HĐ</div>
+            <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · Projected from activities</div>
           </div>
 
-          {/* Ngân sách KH — từ activities budget_planned */}
+          {/* Budget Planned — from activities budget_planned */}
           <div className="proj-health-item">
-            <div className="phb-label">Ngân sách KH</div>
+            <div className="phb-label">Budget Planned</div>
             <div className="phb-main">
               <span className="phb-val">{khBudget > 0 ? fmtCad(khBudget) : '—'}</span>
               {ttBudgetAlloc > 0 && (
                 <span className="phb-badge" style={{ background:`var(--${khBudgetRag}-bg,var(--bg2))`, color:`var(--${khBudgetRag})` }}>
-                  {khBudgetPct}% GAC
+                  {khBudgetPct}% of GAC
                 </span>
               )}
             </div>
@@ -225,48 +225,48 @@ const Dashboard = () => {
               {ttBudgetAlloc > 0 && <div className="phb-fill" style={{ width:'100%', background:'var(--text3)', opacity:0.15 }} />}
               <div className="phb-fill" style={{ width:`${ttBudgetAlloc > 0 ? Math.min(khBudgetPct,100) : 0}%`, background:`var(--${khBudgetRag})` }} />
             </div>
-            <div className="phb-sub">{khBudget > 0 ? fmtCad(khBudget) : '$0'}{ttBudgetAlloc > 0 ? ` / ${fmtCad(ttBudgetAlloc)} GAC` : ''} · Từ budget_planned các HĐ</div>
+            <div className="phb-sub">{khBudget > 0 ? fmtCad(khBudget) : '$0'}{ttBudgetAlloc > 0 ? ` / ${fmtCad(ttBudgetAlloc)} GAC` : ''} · From activity budgets</div>
           </div>
 
-          {/* Gender KH */}
+          {/* Gender Plan */}
           <div className="proj-health-item">
-            <div className="phb-label">Tỉ lệ nữ (KH)</div>
+            <div className="phb-label">Women Ratio (Plan)</div>
             <div className="phb-main">
               <span className="phb-val">{pctWomen}%</span>
               <span className="phb-badge" style={{ background:`var(--${genderRag}-bg,var(--bg2))`, color:`var(--${genderRag})` }}>
-                {genderRag === 'green' ? 'Đạt 50%' : genderRag === 'orange' ? 'Gần 50%' : 'Dưới 40%'}
+                {genderRag === 'green' ? 'Meets 50%' : genderRag === 'orange' ? 'Near 50%' : 'Below 40%'}
               </span>
             </div>
             <div className="phb-track">
               <div className="phb-fill" style={{ width:'50%', background:'var(--text3)', opacity:0.2 }} />
               <div className="phb-fill" style={{ width:`${Math.min(pctWomen,100)}%`, background:`var(--${genderRag})` }} />
             </div>
-            <div className="phb-sub">{totalWomen.toLocaleString()} / {totalReach.toLocaleString()} người · Target: ≥50%</div>
+            <div className="phb-sub">{totalWomen.toLocaleString()} / {totalReach.toLocaleString()} participants · Target: ≥50%</div>
           </div>
         </div>
 
         {/* KPI Cards — 5 cards phân bố đều */}
         <div className="kpi-grid" style={{ marginTop:16, gridTemplateColumns:'repeat(5,1fr)' }}>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--accent)'}} onClick={() => nav('/kanban')}>
-            <div className="kpi-label">Tổng hoạt động</div>
+            <div className="kpi-label">Total Activities</div>
             <div className="kpi-val">{total}</div>
             <div className="kpi-sub">iLEAD 2025–2028</div>
           </div>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--text3)'}} onClick={() => nav('/kanban')}>
-            <div className="kpi-label">Chưa triển khai</div>
+            <div className="kpi-label">Not Started</div>
             <div className="kpi-val">{notst}</div>
           </div>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--accent)'}} onClick={() => nav('/kanban')}>
-            <div className="kpi-label">Đang triển khai</div>
+            <div className="kpi-label">In Progress</div>
             <div className="kpi-val">{inp}</div>
           </div>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--green)'}} onClick={() => nav('/kanban')}>
-            <div className="kpi-label">Hoàn thành</div>
+            <div className="kpi-label">Completed</div>
             <div className="kpi-val">{done}</div>
             <div className="prog"><div className="prog-fill" style={{width:`${pct}%`, background:'var(--green)'}}></div></div>
           </div>
           <div className="kpi-card glass-card kpi-clickable" style={{'--kc':'var(--red)'}} onClick={() => nav('/kanban')}>
-            <div className="kpi-label">Quá hạn</div>
+            <div className="kpi-label">Overdue</div>
             <div className="kpi-val">{over}</div>
           </div>
         </div>
@@ -275,12 +275,12 @@ const Dashboard = () => {
         {total > 0 && (
           <div className="dash-section" style={{ marginTop:16 }}>
             <div className="dash-section-hdr">
-              <h2 className="dash-section-title">Pipeline hoạt động</h2>
+              <h2 className="dash-section-title">Activity Pipeline</h2>
               <span className="dash-section-count">
-                {stagedTotal}/{total} activities có stage
+                {stagedTotal}/{total} activities with stage
                 {unstagedTotal > 0 && (
                   <span style={{ marginLeft: '8px', color: 'var(--text3)', fontSize: '12px' }}>
-                    · {unstagedTotal} chưa gán stage
+                    · {unstagedTotal} no stage assigned
                   </span>
                 )}
               </span>
@@ -310,9 +310,9 @@ const Dashboard = () => {
               })}
             </div>
             <div style={{ display:'flex', gap:'16px', marginTop:'10px', fontSize:'11px', color:'var(--text3)' }}>
-              <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:8, height:8, borderRadius:'50%', background:'var(--accent)', display:'inline-block' }}></span>Có activities</span>
-              <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:8, height:8, borderRadius:'50%', background:'var(--orange)', display:'inline-block' }}></span>Đang chờ xử lý</span>
-              <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:8, height:8, borderRadius:'50%', background:'var(--bg2)', border:'1px solid var(--border)', display:'inline-block' }}></span>Chưa có</span>
+              <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:8, height:8, borderRadius:'50%', background:'var(--accent)', display:'inline-block' }}></span>Has activities</span>
+              <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:8, height:8, borderRadius:'50%', background:'var(--orange)', display:'inline-block' }}></span>Pending</span>
+              <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:8, height:8, borderRadius:'50%', background:'var(--bg2)', border:'1px solid var(--border)', display:'inline-block' }}></span>None</span>
             </div>
           </div>
         )}
@@ -323,23 +323,23 @@ const Dashboard = () => {
       {/* ══════════════════════════════════════════════════════════ */}
       <div style={{ background:'#fff7ed', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
         <div className="dash-section-label" style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>
-          📊 THỰC TẾ — Từ MEL Entries
+          📊 ACTUAL — From MEL Entries
         </div>
         <div className="proj-health-bar">
-          {/* Budget TT */}
+          {/* Budget Actual */}
           <div className="proj-health-item">
-            <div className="phb-label">Budget đã dùng</div>
+            <div className="phb-label">Budget Used</div>
             <div className="phb-main">
               <span className="phb-val">{fmtCad(ttBudgetSpent)}</span>
               <span className="phb-badge" style={{ background:`var(--${budgetRag}-bg,var(--bg2))`, color:`var(--${budgetRag})` }}>
-                {ttBurnRate}% của {fmtCad(ttBudgetAlloc)}
+                {ttBurnRate}% of {fmtCad(ttBudgetAlloc)}
               </span>
             </div>
             <div className="phb-track">
               <div className="phb-fill" style={{ width:`${timeElapsedPct}%`, background:'var(--text3)', opacity:0.2 }} />
               <div className="phb-fill" style={{ width:`${Math.min(ttBurnRate,100)}%`, background:`var(--${budgetRag})`, opacity:0.8 }} />
             </div>
-            <div className="phb-sub">Còn lại: {fmtCad(ttBudgetAlloc - ttBudgetSpent)} · Nguồn: MEL line items</div>
+            <div className="phb-sub">Remaining: {fmtCad(ttBudgetAlloc - ttBudgetSpent)} · Source: MEL line items</div>
           </div>
 
           {/* Actual Reach MEL */}
@@ -357,20 +357,20 @@ const Dashboard = () => {
             <div className="phb-sub">Target GAC: {melTotalTarget.toLocaleString()} · {melEntries.length} MEL entries</div>
           </div>
 
-          {/* Gender TT */}
+          {/* Gender Actual */}
           <div className="proj-health-item">
-            <div className="phb-label">Tỉ lệ nữ (TT/MEL)</div>
+            <div className="phb-label">Women Ratio (Actual/MEL)</div>
             <div className="phb-main">
               <span className="phb-val">{melFemaleRatio}%</span>
               <span className="phb-badge" style={{ background: melFemaleRatio >= 50 ? 'var(--green-bg,var(--bg2))' : 'var(--orange-bg,var(--bg2))', color: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }}>
-                {melFemaleRatio >= 50 ? 'Đạt ≥50%' : 'Dưới 50%'}
+                {melFemaleRatio >= 50 ? 'Meets ≥50%' : 'Below 50%'}
               </span>
             </div>
             <div className="phb-track">
               <div className="phb-fill" style={{ width:'50%', background:'var(--text3)', opacity:0.2 }} />
               <div className="phb-fill" style={{ width:`${Math.min(melFemaleRatio,100)}%`, background: melFemaleRatio >= 50 ? 'var(--green)' : 'var(--orange)' }} />
             </div>
-            <div className="phb-sub">{melTotalFemale.toLocaleString()} / {melTotalActual.toLocaleString()} người · GAC ≥50%</div>
+            <div className="phb-sub">{melTotalFemale.toLocaleString()} / {melTotalActual.toLocaleString()} participants · GAC ≥50%</div>
           </div>
 
           {/* MEL Progress */}
@@ -379,13 +379,13 @@ const Dashboard = () => {
             <div className="phb-main">
               <span className="phb-val">{melPct}%</span>
               <span className="phb-badge" style={{ background: melPct >= 80 ? 'var(--green-bg,var(--bg2))' : melPct >= 40 ? 'var(--orange-bg,var(--bg2))' : 'var(--bg2)', color: melPct >= 80 ? 'var(--green)' : melPct >= 40 ? 'var(--orange)' : 'var(--red)' }}>
-                {melPct >= 80 ? 'Đạt mục tiêu' : melPct >= 40 ? 'Đang tiến hành' : 'Cần đẩy mạnh'}
+                {melPct >= 80 ? 'On target' : melPct >= 40 ? 'In progress' : 'Needs push'}
               </span>
             </div>
             <div className="phb-track">
               <div className="phb-fill" style={{ width:`${Math.min(melPct,100)}%`, background: melPct >= 80 ? 'var(--green)' : melPct >= 40 ? 'var(--orange)' : 'var(--red)' }} />
             </div>
-            <div className="phb-sub">{melTotalActual.toLocaleString()} / {melTotalTarget.toLocaleString()} · Xem MEL Dashboard →</div>
+            <div className="phb-sub">{melTotalActual.toLocaleString()} / {melTotalTarget.toLocaleString()} · View MEL Dashboard →</div>
           </div>
         </div>
 
@@ -393,26 +393,26 @@ const Dashboard = () => {
         {hasBudget && (
           <div className="dash-section" style={{ marginTop:16 }}>
             <div className="dash-section-hdr">
-              <h2 className="dash-section-title">Ngân sách (CAD)</h2>
-              <span className="dash-section-count">{ttBurnRate}% đã sử dụng</span>
+              <h2 className="dash-section-title">Budget (CAD)</h2>
+              <span className="dash-section-count">{ttBurnRate}% used</span>
             </div>
             <div className="kpi-grid" style={{ gridTemplateColumns:'repeat(4,1fr)' }}>
               <div className="kpi-card glass-card" style={{'--kc':'var(--accent)'}}>
-                <div className="kpi-label">Tổng KH (GAC)</div>
+                <div className="kpi-label">Total Plan (GAC)</div>
                 <div className="kpi-val" style={{ fontSize:'22px' }}>{fmtCad(ttBudgetAlloc)}</div>
               </div>
               <div className="kpi-card glass-card" style={{'--kc':'var(--orange)'}}>
-                <div className="kpi-label">Đã sử dụng</div>
+                <div className="kpi-label">Used</div>
                 <div className="kpi-val" style={{ fontSize:'22px' }}>{fmtCad(ttBudgetSpent)}</div>
                 <div className="prog"><div className="prog-fill" style={{ width:`${Math.min(ttBurnRate,100)}%`, background: ttBurnRate > 100 ? 'var(--red)' : ttBurnRate > 80 ? 'var(--orange)' : 'var(--green)' }}></div></div>
               </div>
               <div className="kpi-card glass-card" style={{'--kc': ttBurnRate > 100 ? 'var(--red)' : ttBurnRate > 80 ? 'var(--orange)' : 'var(--green)'}}>
                 <div className="kpi-label">Burn Rate</div>
                 <div className="kpi-val" style={{ fontSize:'28px' }}>{ttBurnRate}%</div>
-                <div className="kpi-sub">{ttBurnRate > 100 ? 'Vượt' : ttBurnRate > 80 ? 'Gần hết' : 'OK'}</div>
+                <div className="kpi-sub">{ttBurnRate > 100 ? 'Over' : ttBurnRate > 80 ? 'Near limit' : 'OK'}</div>
               </div>
               <div className="kpi-card glass-card" style={{'--kc':'var(--green)'}}>
-                <div className="kpi-label">Còn lại</div>
+                <div className="kpi-label">Remaining</div>
                 <div className="kpi-val" style={{ fontSize:'22px' }}>{fmtCad(ttBudgetAlloc - ttBudgetSpent)}</div>
               </div>
             </div>
@@ -428,7 +428,7 @@ const Dashboard = () => {
       {followUp.length > 0 && (
         <div className="dash-section">
           <div className="dash-section-hdr">
-            <h2 className="dash-section-title">Cần follow-up ngay</h2>
+            <h2 className="dash-section-title">Needs Immediate Follow-up</h2>
             <span className="dash-section-count">{followUp.length} activities</span>
           </div>
           <div className="tbl-wrap">
@@ -444,7 +444,7 @@ const Dashboard = () => {
       {/* ── Partner Summary Table ── */}
       <div className="dash-section">
         <div className="dash-section-hdr">
-          <h2 className="dash-section-title">🏢 Tổng quan theo Đối tác</h2>
+          <h2 className="dash-section-title">🏢 Overview by Partner</h2>
           <span className="dash-section-count">{partners.length} partners</span>
         </div>
         <div className="tbl-wrap">
@@ -459,7 +459,7 @@ const Dashboard = () => {
                 <div style={{ width:10, height:10, borderRadius:'50%', background:p.color, flexShrink:0 }}></div>
                 <span className="cell-name" style={{ color:p.color }}>{p.name}</span>
               </div>
-              <span className="cell-small">{acts.length} HĐ</span>
+              <span className="cell-small">{acts.length} acts</span>
               <span className={`cell-tag stage-${topStage}`} style={{ fontSize:'11px' }}>{topStage}</span>
               <span className="cell-small">{reach > 0 ? reach.toLocaleString() : '—'}</span>
               <span className="cell-small">{budget > 0 ? fmtCad(budget) : '—'}</span>
@@ -479,12 +479,12 @@ const Dashboard = () => {
       {totalReach > 0 && (
         <div className="dash-section">
           <div className="dash-section-hdr">
-            <h2 className="dash-section-title">👥 Phân bổ Reach</h2>
-            <span className="dash-section-count">{totalReach.toLocaleString()} người tổng</span>
+            <h2 className="dash-section-title">👥 Reach Distribution</h2>
+            <span className="dash-section-count">{totalReach.toLocaleString()} total participants</span>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'24px' }}>
             <div>
-              <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text2)', marginBottom:'10px' }}>Theo đối tác</div>
+              <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text2)', marginBottom:'10px' }}>By partner</div>
               {reachByPartner.map(({ p, reach }) => (
                 <div key={p.id} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px' }}>
                   <div style={{ width:'100px', fontSize:'12px', color:p.color, fontWeight:500, flexShrink:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
@@ -496,7 +496,7 @@ const Dashboard = () => {
               ))}
             </div>
             <div>
-              <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text2)', marginBottom:'10px' }}>Theo loại hoạt động</div>
+              <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text2)', marginBottom:'10px' }}>By activity type</div>
               {reachByType.map(({ t, count, reach }) => (
                 <div key={t.code} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px' }}>
                   <div style={{ width:'100px', fontSize:'12px', color:'var(--text)', flexShrink:0 }}>

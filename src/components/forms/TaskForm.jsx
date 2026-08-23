@@ -28,7 +28,7 @@ export const TaskForm = ({ isOpen, onClose, activityId, editTask }) => {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = () => {
-    if (!form.name.trim()) { setError('Nhập tên task'); return; }
+    if (!form.name.trim()) { setError('Enter task name'); return; }
     try {
       if (editTask) {
         updateTask(editTask.id, { ...form, notes: editTask.notes || '' });
@@ -39,7 +39,7 @@ export const TaskForm = ({ isOpen, onClose, activityId, editTask }) => {
       setError('');
       onClose();
     } catch (e) {
-      setError('Lỗi: ' + e.message);
+      setError('Error: ' + e.message);
     }
   };
 
@@ -47,21 +47,21 @@ export const TaskForm = ({ isOpen, onClose, activityId, editTask }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose}
-      title={editTask ? 'Sửa task' : 'Thêm task mới'}
+      title={editTask ? 'Edit Task' : 'Add New Task'}
       onSubmit={handleSubmit}
-      submitLabel={editTask ? 'Cập nhật' : 'Thêm task'}
+      submitLabel={editTask ? 'Update' : 'Add task'}
     >
       <div className="form-group">
-        <label className="form-label">Tên Task *</label>
+        <label className="form-label">Task Name *</label>
         <input autoFocus className="form-input" value={form.name}
           onChange={e => set('name', e.target.value)}
           placeholder="Viết TOR và gửi Jane duyệt" />
       </div>
 
       <div className="form-group">
-        <label className="form-label">Thuộc hoạt động</label>
+        <label className="form-label">Belongs to Activity</label>
         <select className="form-select" value={form.activityId} onChange={e => set('activityId', e.target.value)}>
-          <option value="">— Hoạt động khác —</option>
+          <option value="">— Other activity —</option>
           {(activities || []).map(a => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
@@ -75,9 +75,9 @@ export const TaskForm = ({ isOpen, onClose, activityId, editTask }) => {
             onChange={e => set('dueDate', e.target.value)} />
         </div>
         <div className="form-group">
-          <label className="form-label">Giao cho</label>
+          <label className="form-label">Assigned to</label>
           <select className="form-select" value={form.assignee} onChange={e => set('assignee', e.target.value)}>
-            <option value="">— Chọn thành viên —</option>
+            <option value="">— Select member —</option>
             {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>

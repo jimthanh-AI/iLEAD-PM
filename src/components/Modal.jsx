@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import './Modal.css';
 
-export const Modal = ({ isOpen, onClose, title, children, onSubmit, submitLabel = 'Lưu', secondaryLabel, onSecondary }) => {
+export const Modal = ({ isOpen, onClose, title, children, onSubmit, submitLabel = 'Save', secondaryLabel, onSecondary }) => {
   const bodyRef = useRef(null);
 
   // Scroll body to top each time modal opens
@@ -36,7 +36,7 @@ export const Modal = ({ isOpen, onClose, title, children, onSubmit, submitLabel 
           <div className="modal-footer">
             {secondaryLabel && onSecondary
               ? <button className="btn" onClick={onSecondary}>{secondaryLabel}</button>
-              : <button className="btn" onClick={onClose}>Hủy</button>
+              : <button className="btn" onClick={onClose}>Cancel</button>
             }
             <button className="btn btn-primary" onClick={onSubmit}>{submitLabel}</button>
           </div>
