@@ -30,3 +30,5 @@ dist-ssr
 
 backups/
 .env.local
+.vercel
+.env*
