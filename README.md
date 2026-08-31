@@ -47,9 +47,8 @@ Without env vars the app falls back to a stub Supabase client in dev — it rend
 but returns empty data and logs a warning. In a production build, missing env
 vars throw at startup instead. See [src/utils/supabaseClient.js](src/utils/supabaseClient.js).
 
-> **Port note:** [vite.config.js](vite.config.js) sets port **5175**, while
-> `start-ilead.bat` and `.claude/launch.json` assume **5173**. Vite prints the
-> real URL on start — trust that.
+The dev server listens on **5173** (`host: true`, so it is reachable from other
+devices on your network). Vite prints the real URL on start.
 
 ### Scripts
 
